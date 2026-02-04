@@ -4,43 +4,29 @@ import (
 	"bytes"
 	"encoding/json"
 	"flag"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"net/url"
-     "strconv"
-	"github.com/gorilla/websocket"
 
 	"elasiyanetwork/protocol"
+
+	"github.com/gorilla/websocket"
 )
-const version = "0.1.0"
+
+type ClientHello struct {
+	Name string `json:"name"`
+}
 
 func main() {
-	// ---- CLI FLAGS ----
-	port := flag.Int(
-		"port",
-		3000,
-		"Local server port to expose (default 3000)",
-	)
-	_ = flag.String(
-	"name",
-	"default",
-	"Client name (for multi-client support)",
-)
-
-	showVersion := flag.Bool(
-		"version",
-		false,
-		"Print version and exit",
-	)
-
+	name := flag.String("name", "", "client name")
+	port := flag.Int("port", 3000, "local port")
 	flag.Parse()
 
-	if *showVersion {
-		log.Println("elasiyatunnel version", version)
-		return
+	if *name == "" {
+		log.Fatal("client name required: --name abc")
 	}
-	// -------------------
 
 	serverURL := url.URL{
 		Scheme: "ws",
@@ -48,25 +34,25 @@ func main() {
 		Path:   "/connect",
 	}
 
-	log.Println("===================================")
-	log.Println(" Elasiyanetwork Tunnel Client")
-	log.Println(" Exposing localhost on port:", *port)
-	log.Println("===================================")
-
-	log.Println("Connecting to server:", serverURL.String())
-
+	log.Println("Connecting to", serverURL.String())
 	ws, _, err := websocket.DefaultDialer.Dial(serverURL.String(), nil)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer ws.Close()
 
-	log.Println("Connected to tunnel server")
+	// 🔴 HELLO MUTLAKA BURADA GİDER
+	hello := ClientHello{Name: *name}
+	data, _ := json.Marshal(hello)
+	ws.WriteMessage(websocket.TextMessage, data)
 
+	log.Println("HELLO sent as:", string(data))
+
+	// 🔒 LOOP
 	for {
 		_, msg, err := ws.ReadMessage()
 		if err != nil {
-			log.Println("read error:", err)
+			log.Println("server disconnected")
 			return
 		}
 
@@ -75,12 +61,8 @@ func main() {
 			continue
 		}
 
-		url := "http://localhost:" + strconv.Itoa(*port) + req.Path
-		httpReq, _ := http.NewRequest(
-			req.Method,
-			url,
-			bytes.NewReader(req.Body),
-		)
+		url := "http://localhost:" + fmt.Sprint(*port) + req.Path
+		httpReq, _ := http.NewRequest(req.Method, url, bytes.NewReader(req.Body))
 
 		for k, v := range req.Header {
 			httpReq.Header.Set(k, v)
@@ -107,8 +89,7 @@ func main() {
 			}
 		}
 
-		data, _ := json.Marshal(res)
-		ws.WriteMessage(websocket.TextMessage, data)
+		out, _ := json.Marshal(res)
+		ws.WriteMessage(websocket.TextMessage, out)
 	}
 }
-

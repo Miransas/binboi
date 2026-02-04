@@ -1,4 +1,5 @@
 package protocol
+import "encoding/json"
 
 type Request struct {
 	ID     string
@@ -14,6 +15,19 @@ type Response struct {
 	Header     map[string]string
 	Body       []byte
 }
+type MessageType string
+
+const (
+	MsgHello   MessageType = "hello"
+	MsgRequest MessageType = "request"
+	MsgResponse MessageType = "response"
+)
+
+type Envelope struct {
+	Type MessageType     `json:"type"`
+	Data json.RawMessage `json:"data"`
+}
+
 
 
 

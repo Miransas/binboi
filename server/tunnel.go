@@ -13,18 +13,18 @@ import (
 	"elasiyanetwork/protocol"
 )
 
-type TunnelConn struct {
-	ws        *websocket.Conn
-	responses map[string]chan protocol.Response
-}
 type ClientHello struct {
 	Name string `json:"name"`
 }
 
+type TunnelConn struct {
+	ws        *websocket.Conn
+	responses map[string]chan protocol.Response
+}
 
 var (
-	clientConn *TunnelConn
-	mu         sync.Mutex
+	clients   = make(map[string]*TunnelConn)
+	clientsMu sync.Mutex
 )
 
 var upgrader = websocket.Upgrader{
@@ -32,43 +32,50 @@ var upgrader = websocket.Upgrader{
 }
 
 func handleClientConnect(w http.ResponseWriter, r *http.Request) {
+	log.Println(">>> handleClientConnect HIT <<<")
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println("upgrade error:", err)
 		return
 	}
 
-	mu.Lock()
-	clientConn = &TunnelConn{
+	// HELLO
+	_, msg, err := ws.ReadMessage()
+	if err != nil {
+		log.Println("hello read error:", err)
+		ws.Close()
+		return
+	}
+
+	var hello ClientHello
+	if err := json.Unmarshal(msg, &hello); err != nil || hello.Name == "" {
+		log.Println("invalid hello")
+		ws.Close()
+		return
+	}
+
+	conn := &TunnelConn{
 		ws:        ws,
 		responses: make(map[string]chan protocol.Response),
 	}
-	mu.Unlock()
 
-	log.Println("Client connected")
+	clientsMu.Lock()
+	clients[hello.Name] = conn
+	log.Println("Client registered:", hello.Name, "MAP SIZE:", len(clients))
+	clientsMu.Unlock()
 
-	go listenClient(ws)
-	_, msg, err := ws.ReadMessage()
-if err != nil {
-	log.Println("failed to read hello:", err)
-	return
-}
+	defer func() {
+		clientsMu.Lock()
+		delete(clients, hello.Name)
+		log.Println("Client disconnected:", hello.Name, "MAP SIZE:", len(clients))
+		clientsMu.Unlock()
+		ws.Close()
+	}()
 
-var hello ClientHello
-if err := json.Unmarshal(msg, &hello); err != nil {
-	log.Println("invalid hello:", err)
-	return
-}
-
-log.Println("Client connected with name:", hello.Name)
-
-}
-
-func listenClient(ws *websocket.Conn) {
+	// 🔒 BLOKLA
 	for {
 		_, msg, err := ws.ReadMessage()
 		if err != nil {
-			log.Println("client disconnected")
 			return
 		}
 
@@ -77,10 +84,7 @@ func listenClient(ws *websocket.Conn) {
 			continue
 		}
 
-		mu.Lock()
-		ch := clientConn.responses[res.ID]
-		mu.Unlock()
-
+		ch := conn.responses[res.ID]
 		if ch != nil {
 			ch <- res
 		}
@@ -88,12 +92,16 @@ func listenClient(ws *websocket.Conn) {
 }
 
 func handleHTTP(w http.ResponseWriter, r *http.Request) {
-	mu.Lock()
-	conn := clientConn
-	mu.Unlock()
+	clientsMu.Lock()
+	var conn *TunnelConn
+	for _, c := range clients {
+		conn = c
+		break
+	}
+	clientsMu.Unlock()
 
 	if conn == nil {
-		http.Error(w, "no client connected", 503)
+		http.Error(w, "NO CLIENT CONNECTED", 503)
 		return
 	}
 
@@ -119,9 +127,7 @@ func handleHTTP(w http.ResponseWriter, r *http.Request) {
 	data, _ := json.Marshal(req)
 
 	ch := make(chan protocol.Response)
-	mu.Lock()
 	conn.responses[reqID] = ch
-	mu.Unlock()
 
 	conn.ws.WriteMessage(websocket.TextMessage, data)
 
