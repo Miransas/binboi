@@ -1,0 +1,34 @@
+# Elasiya Tunnel 🚇
+
+Localhost üzerinde çalışan servisleri, **NAT / firewall / port forwarding** derdi olmadan
+internete açmak için yazılmış **ngrok benzeri bir reverse tunnel** projesi.
+
+Bu proje bir wrapper değil,
+**tünelin kendisini** sıfırdan inşa etmeyi hedefler.
+
+---
+
+## ✨ Özellikler
+
+- Reverse tunnel mimarisi
+- Client → Server outbound bağlantı (NAT uyumlu)
+- WebSocket tabanlı iletişim
+- HTTP request / response forwarding
+- Go ile yazılmış, tek binary
+
+---
+
+## 🧠 Mimari Genel Bakış
+
+![Architecture](docs/architecture.png)
+[Architecture](docs/architecture1.png)
+[Architecture](docs/architecture2.png)
+
+```text
+Browser
+  ↓
+[VPS Server :8080]
+  ↓  (WebSocket Tunnel)
+[Client (Local Machine)]
+  ↓
+localhost:3000
