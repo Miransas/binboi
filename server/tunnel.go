@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/gorilla/websocket"
 	"github.com/google/uuid"
+	"github.com/gorilla/websocket"
 
 	"elasiyanetwork/protocol"
 )
@@ -17,6 +17,10 @@ type TunnelConn struct {
 	ws        *websocket.Conn
 	responses map[string]chan protocol.Response
 }
+type ClientHello struct {
+	Name string `json:"name"`
+}
+
 
 var (
 	clientConn *TunnelConn
@@ -44,6 +48,20 @@ func handleClientConnect(w http.ResponseWriter, r *http.Request) {
 	log.Println("Client connected")
 
 	go listenClient(ws)
+	_, msg, err := ws.ReadMessage()
+if err != nil {
+	log.Println("failed to read hello:", err)
+	return
+}
+
+var hello ClientHello
+if err := json.Unmarshal(msg, &hello); err != nil {
+	log.Println("invalid hello:", err)
+	return
+}
+
+log.Println("Client connected with name:", hello.Name)
+
 }
 
 func listenClient(ws *websocket.Conn) {

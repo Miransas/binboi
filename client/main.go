@@ -3,22 +3,55 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"flag"
 	"io"
 	"log"
 	"net/http"
 	"net/url"
-
+     "strconv"
 	"github.com/gorilla/websocket"
 
 	"elasiyanetwork/protocol"
 )
+const version = "0.1.0"
 
 func main() {
+	// ---- CLI FLAGS ----
+	port := flag.Int(
+		"port",
+		3000,
+		"Local server port to expose (default 3000)",
+	)
+	_ = flag.String(
+	"name",
+	"default",
+	"Client name (for multi-client support)",
+)
+
+	showVersion := flag.Bool(
+		"version",
+		false,
+		"Print version and exit",
+	)
+
+	flag.Parse()
+
+	if *showVersion {
+		log.Println("elasiyatunnel version", version)
+		return
+	}
+	// -------------------
+
 	serverURL := url.URL{
 		Scheme: "ws",
 		Host:   "localhost:8080",
 		Path:   "/connect",
 	}
+
+	log.Println("===================================")
+	log.Println(" Elasiyanetwork Tunnel Client")
+	log.Println(" Exposing localhost on port:", *port)
+	log.Println("===================================")
 
 	log.Println("Connecting to server:", serverURL.String())
 
@@ -42,7 +75,7 @@ func main() {
 			continue
 		}
 
-		url := "http://localhost:3000" + req.Path
+		url := "http://localhost:" + strconv.Itoa(*port) + req.Path
 		httpReq, _ := http.NewRequest(
 			req.Method,
 			url,
@@ -78,3 +111,4 @@ func main() {
 		ws.WriteMessage(websocket.TextMessage, data)
 	}
 }
+

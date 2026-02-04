@@ -6,15 +6,10 @@ import (
 )
 
 func main() {
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("HTTPS çalışıyor 🔒"))
-	})
+	http.HandleFunc("/connect", handleClientConnect)
+	http.HandleFunc("/", handleHTTP)
 
-	log.Println("HTTPS server on https://localhost:8443")
-	log.Fatal(http.ListenAndServeTLS(
-		":8443",
-		"cert.pem",
-		"key.pem",
-		nil,
-	))
+	log.Println("Server listening on :8080")
+	log.Fatal(http.ListenAndServe(":8080", nil))
 }
+
