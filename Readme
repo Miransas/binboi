@@ -1,21 +1,13 @@
 🌐 ElasiyaNetwork
 ElasiyaNetwork is a high-performance, modular networking framework built with Go. Designed for scalability and low-latency communication, it provides a robust foundation for distributed systems and custom network protocols.
-<img src="assets/banner.png" alt="Elasiya Network Banner" width="600">
-<img src="assets/banner1.png" alt="Elasiya Network Banner" width="600">
-<img src="assets/banner2.png" alt="Elasiya Network Banner" width="600">
 
-<p align="center">
-  <a href="LICENSE">
-    <img src="https://github.com/sardorazimov/elasiyanetwork/blob/main/assets/banner.png" alt="License">
-  </a>
-  <a href="package.json">
-    <img src="https://github.com/sardorazimov/elasiyanetwork/blob/main/assets/banner1.png" alt="Version">
-  </a>
-  <a href="package.json">
-    <img src="https://github.com/sardorazimov/elasiyanetwork/blob/main/assets/banner.png" alt="Node">
-  </a>
-  
-</p>
+<div align="center">
+  <img src="./assets/banner.png" alt="Elasiya Network Banner" width="800">
+  <br><br>
+  <img src="./assets/banner1.png" alt="Elasiya Network Banner 1" width="800">
+  <br><br>
+  <img src="./assets/banner2.png" alt="Elasiya Network Banner 2" width="800">
+</div>
 
 🚀 Key Features
 Concurrency-First: Built on Go's goroutines for handling thousands of simultaneous connections.
