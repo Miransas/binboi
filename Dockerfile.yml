@@ -1,4 +1,0 @@
-
-FROM  baseImage 
-             ADD source dest--platform=arm64
-             SHELL [ "executable" ]
