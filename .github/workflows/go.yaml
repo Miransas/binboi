@@ -1,0 +1,37 @@
+name: Go CI with Lint & Test
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v5
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.23'
+        cache: true  # go mod cache'ini otomatik tutar
+
+    - name: Install golangci-lint
+      run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+
+    - name: Lint
+      run: golangci-lint run ./... --timeout=5m
+
+    - name: Vet
+      run: go vet ./...
+
+    - name: Test with coverage
+      run: go test -v -race -coverprofile=coverage.out ./...
+
+    - name: Upload coverage to Codecov (opsiyonel)
+      uses: codecov/codecov-action@v4
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}  # Codecov hesabı varsa
