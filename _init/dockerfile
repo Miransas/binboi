@@ -1,0 +1,50 @@
+# =============================================================================
+# ElasiyaNetwork - Dockerfile (Multi-stage build)
+# =============================================================================
+
+# -----------------------
+# Stage 1: Builder
+# -----------------------
+FROM golang:1.23-alpine AS builder
+
+# Gerekli paketleri kur (git vs. lazım olabilir)
+RUN apk add --no-cache git
+
+# Çalışma dizini
+WORKDIR /app
+
+# Go mod dosyalarını kopyala ve cache'le (layer optimizasyonu)
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Tüm kaynak kodunu kopyala
+COPY . .
+
+# Server'ı derle (statik binary için -ldflags ile)
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -ldflags "-s -w" \
+    -o /app/elasiya-server ./cmd/elasiya-server
+
+# -----------------------
+# Stage 2: Final image (çok küçük)
+# -----------------------
+FROM alpine:3.20
+
+# Zaman dilimi ve temel araçlar (opsiyonel)
+RUN apk add --no-cache ca-certificates tzdata
+
+# Binary'i kopyala
+COPY --from=builder /app/elasiya-server /usr/local/bin/elasiya-server
+
+# Çalışma dizini
+WORKDIR /app
+
+# Portu expose et (default 8080, ama docker run ile override edilebilir)
+EXPOSE 8080
+
+# Varsayılan komut: server'ı çalıştır
+# --port dışarıdan ENV veya arg ile değiştirilebilir
+ENTRYPOINT ["elasiya-server"]
+
+# Varsayılan portu belirt (docker run -e PORT=8080 ile override edilebilir)
+ENV PORT=8080
+CMD ["--port", "${PORT}"]
