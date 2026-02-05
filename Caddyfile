@@ -1,3 +1,8 @@
-localhost {
-	reverse_proxy localhost:3000
+{
+	local_certs
 }
+
+abc.localhost, xyz.localhost {
+	reverse_proxy localhost:9090
+}
+

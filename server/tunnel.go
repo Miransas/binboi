@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"sync"
 	"time"
-
+     "strings"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 
@@ -20,9 +20,12 @@ type ClientHello struct {
 }
 
 type TunnelConn struct {
-	ws        *websocket.Conn
-	responses map[string]chan protocol.Response
+	ws          *websocket.Conn
+	responses   map[string]chan protocol.Response
 	connectedAt time.Time
+	// 👇 New
+	requestCount int
+	lastRequest  time.Time
 }
 
 var (
@@ -35,7 +38,11 @@ var upgrader = websocket.Upgrader{
 }
 
 func handleClientConnect(w http.ResponseWriter, r *http.Request) {
-	
+    token := r.Header.Get("Authorization")
+	if token != "Bearer "+getAPIToken() {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
 	log.Println(">>> handleClientConnect HIT <<<")
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -59,8 +66,8 @@ func handleClientConnect(w http.ResponseWriter, r *http.Request) {
 	}
 
 	conn := &TunnelConn{
-		ws:        ws,
-		responses: make(map[string]chan protocol.Response),
+		ws:          ws,
+		responses:   make(map[string]chan protocol.Response),
 		connectedAt: time.Now(),
 	}
 
@@ -98,17 +105,30 @@ func handleClientConnect(w http.ResponseWriter, r *http.Request) {
 
 func handleHTTP(w http.ResponseWriter, r *http.Request) {
 	clientsMu.Lock()
-	var conn *TunnelConn
-	for _, c := range clients {
-		conn = c
-		break
-	}
+	// 📊 request stats
+	host := r.Host
+	name := ""
+    if strings.Contains(host, ".") {
+	name = strings.Split(host, ".")[0]
+}
+	
 	clientsMu.Unlock()
-
+	clientsMu.Lock()
+    conn, ok := clients[name]
+    clientsMu.Unlock()
+     
+    if !ok {
+	http.Error(w, "no client for "+name, 404)
+	return 
+     }
 	if conn == nil {
 		http.Error(w, "NO CLIENT CONNECTED", 503)
 		return
 	}
+	clientsMu.Lock()
+	conn.requestCount++
+	conn.lastRequest = time.Now()
+	clientsMu.Unlock()
 
 	body, _ := io.ReadAll(r.Body)
 
@@ -146,24 +166,38 @@ func handleHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleDashboard(w http.ResponseWriter, r *http.Request) {
+	token := r.Header.Get("Authorization")
+	if token != "Bearer "+getAPIToken() {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
 	type ClientView struct {
-		Name        string
-		ConnectedAt string
+		Name          string
+		ConnectedAt   string
+		RequestCount  int
+		LastRequestAt string
 	}
 
 	var list []ClientView
 
 	clientsMu.Lock()
 	for name, c := range clients {
-		list = append(list, ClientView{
-			Name:        name,
-			ConnectedAt: c.connectedAt.Format("15:04:05"),
-		})
+		view := ClientView{
+			Name:         name,
+			ConnectedAt:  c.connectedAt.Format("15:04:05"),
+			RequestCount: c.requestCount,
+		}
+		if !c.lastRequest.IsZero() {
+			view.LastRequestAt = c.lastRequest.Format("15:04:05")
+		} else {
+			view.LastRequestAt = "-"
+		}
+		list = append(list, view)
 	}
 	clientsMu.Unlock()
 
 	tmpl := `
-<!doctype html>
+          <!doctype html>
 <html>
 <head>
 	<title>Elasiyanetwork Dashboard</title>
@@ -174,31 +208,78 @@ func handleDashboard(w http.ResponseWriter, r *http.Request) {
 		th { background: #222; }
 	</style>
 	<script>
-	setTimeout(function () {
-		window.location.reload();
-	}, 2000);
-</script>
-
+		setTimeout(function () {
+			window.location.reload();
+		}, 2000);
+	</script>
 </head>
 <body>
 	<h1>🚇 Tunnel Dashboard</h1>
 	<p>Connected clients: {{len .}}</p>
 
 	<table>
-	<tr>
-		<th>Name</th>
-		<th>Connected At</th>
-	</tr>
-	{{range .}}
-	<tr>
-		<td>{{.Name}}</td>
-		<td>{{.ConnectedAt}}</td>
-	</tr>
-	{{end}}
+		<tr>
+			<th>Name</th>
+			<th>Connected At</th>
+			<th>Requests</th>
+			<th>Last Request</th>
+			<th>Action</th>
+		</tr>
+
+		{{range .}}
+		<tr>
+			<td>{{.Name}}</td>
+			<td>{{.ConnectedAt}}</td>
+			<td>{{.RequestCount}}</td>
+			<td>{{.LastRequestAt}}</td>
+			<td>
+				<form method="POST" action="/disconnect?name={{.Name}}">
+					<button style="
+						background:#c0392b;
+						color:white;
+						border:none;
+						padding:6px 10px;
+						cursor:pointer;
+					">
+						Disconnect
+					</button>
+				</form>
+			</td>
+		</tr>
+		{{end}}
 	</table>
 </body>
 </html>
-`
+
+        `
 	t := template.Must(template.New("dash").Parse(tmpl))
 	t.Execute(w, list)
 }
+
+
+func handleDisconnect(w http.ResponseWriter, r *http.Request) {
+	name := r.URL.Query().Get("name")
+	if name == "" {
+		http.Error(w, "missing client name", 400)
+		return
+	}
+
+	clientsMu.Lock()
+	conn, ok := clients[name]
+	if ok {
+		delete(clients, name)
+	}
+	clientsMu.Unlock()
+
+	if !ok {
+		http.Error(w, "client not found", 404)
+		return
+	}
+
+	// WebSocket’ close
+	conn.ws.Close()
+
+	// Dashboard’a back
+	http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
+}
+

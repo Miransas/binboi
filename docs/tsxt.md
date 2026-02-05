@@ -12,7 +12,7 @@ domain adı (example.com)
 public key
 
 imza
-
+xStep20012006()%
 Ama bu imza server’a ait değildir.
 
 2️⃣ Sertifikayı KİM imzalamış?
