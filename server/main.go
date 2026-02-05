@@ -7,8 +7,10 @@ import (
 
 func main() {
 	http.HandleFunc("/connect", handleClientConnect)
+	http.HandleFunc("/dashboard", handleDashboard)
 	http.HandleFunc("/", handleHTTP)
 
 	log.Println("Server listening on :8080")
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	log.Fatal(http.ListenAndServe(":9090", nil))
+
 }

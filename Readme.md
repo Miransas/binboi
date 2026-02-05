@@ -2,12 +2,38 @@
 ElasiyaNetwork is a high-performance, modular networking framework built with Go. Designed for scalability and low-latency communication, it provides a robust foundation for distributed systems and custom network protocols.
 
 <div align="center">
-  <img src="./assets/banner.png" alt="Elasiya Network Banner" width="800">
-  <br><br>
-  <img src="./assets/banner1.png" alt="Elasiya Network Banner 1" width="800">
-  <br><br>
-  <img src="./assets/banner2.png" alt="Elasiya Network Banner 2" width="800">
+  <br />
+    <a href="https://t.me/azsams" target="_blank">
+      <img src=https://github.com/sardorazimov/elasiyanetwork/blob/main/assets/banner.png?raw=true alt="Project Banner">
+    </a>
+  <br />
+  <br />
+    <a href="https://t.me/azsams" target="_blank">
+      <img src=https://github.com/sardorazimov/elasiyanetwork/blob/main/assets/banner1.png?raw=true alt="Project Banner">
+    </a>
+  <br />
+  <br />
+    <a href="https://t.me/azsams" target="_blank">
+      <img src=https://github.com/sardorazimov/elasiyanetwork/blob/main/assets/banner2.png?raw=true alt="Project Banner">
+    </a>
+  <br />
+  <div>
+       <a href="https://t.me/azsams" target="_blank"> </a>
+  </div>
+
+  <h3 align="center">A Fintech Bank Application</h3>
+
+   <div align="center">
+      Insagram <a hreh="https://instagram.com/azimov.s_"></a>
+    </div>
 </div>
+
+## 📋 <a name="table">Table of Contents</a>
+
+
+
+
+</a>
 
 🚀 Key Features
 Concurrency-First: Built on Go's goroutines for handling thousands of simultaneous connections.

@@ -2,10 +2,12 @@ package main
 
 import (
 	"encoding/json"
+	"html/template"
 	"io"
 	"log"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
@@ -20,6 +22,7 @@ type ClientHello struct {
 type TunnelConn struct {
 	ws        *websocket.Conn
 	responses map[string]chan protocol.Response
+	connectedAt time.Time
 }
 
 var (
@@ -32,6 +35,7 @@ var upgrader = websocket.Upgrader{
 }
 
 func handleClientConnect(w http.ResponseWriter, r *http.Request) {
+	
 	log.Println(">>> handleClientConnect HIT <<<")
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -57,6 +61,7 @@ func handleClientConnect(w http.ResponseWriter, r *http.Request) {
 	conn := &TunnelConn{
 		ws:        ws,
 		responses: make(map[string]chan protocol.Response),
+		connectedAt: time.Now(),
 	}
 
 	clientsMu.Lock()
@@ -138,4 +143,56 @@ func handleHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(res.StatusCode)
 	w.Write(res.Body)
+}
+
+func handleDashboard(w http.ResponseWriter, r *http.Request) {
+	type ClientView struct {
+		Name        string
+		ConnectedAt string
+	}
+
+	var list []ClientView
+
+	clientsMu.Lock()
+	for name, c := range clients {
+		list = append(list, ClientView{
+			Name:        name,
+			ConnectedAt: c.connectedAt.Format("15:04:05"),
+		})
+	}
+	clientsMu.Unlock()
+
+	tmpl := `
+<!doctype html>
+<html>
+<head>
+	<title>Elasiyanetwork Dashboard</title>
+	<style>
+		body { font-family: sans-serif; background: #111; color: #eee; }
+		table { border-collapse: collapse; margin-top: 20px; }
+		td, th { padding: 8px 12px; border: 1px solid #333; }
+		th { background: #222; }
+	</style>
+</head>
+<body>
+	<h1>🚇 Tunnel Dashboard</h1>
+	<p>Connected clients: {{len .}}</p>
+
+	<table>
+	<tr>
+		<th>Name</th>
+		<th>Connected At</th>
+	</tr>
+	{{range .}}
+	<tr>
+		<td>{{.Name}}</td>
+		<td>{{.ConnectedAt}}</td>
+	</tr>
+	{{end}}
+	</table>
+</body>
+</html>
+`
+	t := template.Must(template.New("dash").Parse(tmpl))
+	t.Execute(w, list)
 }
