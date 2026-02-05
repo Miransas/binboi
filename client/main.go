@@ -2,95 +2,82 @@ package main
 
 import (
 	"bytes"
-	"encoding/json"
-	"flag"
-	"fmt"
+	
 	"io"
 	"log"
 	"net/http"
-	"net/url"
-
-	"elasiyanetwork/protocol"
+	
 
 	"github.com/gorilla/websocket"
+	"elasiyanetwork/protocol"
 )
 
-type ClientHello struct {
-	Name string `json:"name"`
-}
-
 func main() {
-	name := flag.String("name", "", "client name")
-	port := flag.Int("port", 3000, "local port")
-	flag.Parse()
-
-	if *name == "" {
-		log.Fatal("client name required: --name abc")
-	}
-
-	serverURL := url.URL{
-	Scheme: "ws",
-	Host:   "localhost:9090",
-	Path:   "/connect",
-}
+	// --- CONFIG ---
+    serverWS := "ws://abc.tunnel.missdurutemizlik.com:8080/tunnel?host=abc.tunnel.missdurutemizlik.com"
 
 
-	log.Println("Connecting to", serverURL.String())
-	ws, _, err := websocket.DefaultDialer.Dial(serverURL.String(), nil)
+	token := "ela_free_test"
+	localAddr := "http://localhost:3000"
+
+	headers := http.Header{}
+	headers.Set("Authorization", token)
+
+	// --- CONNECT WS ---
+	conn, _, err := websocket.DefaultDialer.Dial(serverWS, headers)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("WS connect error:", err)
 	}
-	defer ws.Close()
+	defer conn.Close()
 
-	// 🔴 HELLO MUTLAKA BURADA GİDER
-	hello := ClientHello{Name: *name}
-	data, _ := json.Marshal(hello)
-	ws.WriteMessage(websocket.TextMessage, data)
+	log.Println("Connected to Elasiya server")
 
-	log.Println("HELLO sent as:", string(data))
-
-	// 🔒 LOOP
 	for {
-		_, msg, err := ws.ReadMessage()
-		if err != nil {
-			log.Println("server disconnected")
+		var msg protocol.TunnelMessage
+		if err := conn.ReadJSON(&msg); err != nil {
+			log.Println("read error:", err)
 			return
 		}
 
-		var req protocol.Request
-		if err := json.Unmarshal(msg, &req); err != nil {
+		if msg.Type != protocol.MsgRequest {
 			continue
 		}
 
-		url := "http://localhost:" + fmt.Sprint(*port) + req.Path
-		httpReq, _ := http.NewRequest(req.Method, url, bytes.NewReader(req.Body))
-
-		for k, v := range req.Header {
-			httpReq.Header.Set(k, v)
+		// --- FORWARD TO LOCAL ---
+		req, err := http.NewRequest(
+			msg.Method,
+			localAddr+msg.Path,
+			bytes.NewReader(msg.Body),
+		)
+		if err != nil {
+			log.Println("request error:", err)
+			continue
 		}
 
-		resp, err := http.DefaultClient.Do(httpReq)
+		for k, v := range msg.Headers {
+			req.Header.Set(k, v)
+		}
+
+		resp, err := http.DefaultClient.Do(req)
 		if err != nil {
+			log.Println("local forward error:", err)
 			continue
 		}
 
 		body, _ := io.ReadAll(resp.Body)
 		resp.Body.Close()
 
-		res := protocol.Response{
-			ID:         req.ID,
-			StatusCode: resp.StatusCode,
-			Header:     map[string]string{},
-			Body:       body,
+		// --- SEND BACK ---
+		reply := protocol.TunnelMessage{
+			ID:     msg.ID,
+			Type:   protocol.MsgResponse,
+			Status: resp.StatusCode,
+			Body:   body,
 		}
 
-		for k, v := range resp.Header {
-			if len(v) > 0 {
-				res.Header[k] = v[0]
-			}
+		if err := conn.WriteJSON(reply); err != nil {
+			log.Println("write error:", err)
+			return
 		}
-
-		out, _ := json.Marshal(res)
-		ws.WriteMessage(websocket.TextMessage, out)
 	}
 }
