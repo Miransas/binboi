@@ -173,6 +173,12 @@ func handleDashboard(w http.ResponseWriter, r *http.Request) {
 		td, th { padding: 8px 12px; border: 1px solid #333; }
 		th { background: #222; }
 	</style>
+	<script>
+	setTimeout(function () {
+		window.location.reload();
+	}, 2000);
+</script>
+
 </head>
 <body>
 	<h1>🚇 Tunnel Dashboard</h1>

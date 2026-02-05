@@ -29,10 +29,11 @@ func main() {
 	}
 
 	serverURL := url.URL{
-		Scheme: "ws",
-		Host:   "localhost:8080",
-		Path:   "/connect",
-	}
+	Scheme: "ws",
+	Host:   "localhost:9090",
+	Path:   "/connect",
+}
+
 
 	log.Println("Connecting to", serverURL.String())
 	ws, _, err := websocket.DefaultDialer.Dial(serverURL.String(), nil)

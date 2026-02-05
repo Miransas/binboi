@@ -10,7 +10,6 @@ func main() {
 	http.HandleFunc("/dashboard", handleDashboard)
 	http.HandleFunc("/", handleHTTP)
 
-	log.Println("Server listening on :8080")
+	log.Println("Server listening on :9090")
 	log.Fatal(http.ListenAndServe(":9090", nil))
-
 }
