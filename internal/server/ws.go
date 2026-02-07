@@ -1,35 +1,40 @@
 package server
 
 import (
+	"log"
 	"net/http"
 
-	"github.com/gorilla/websocket"
+
+
 	"elasiyanetwork/internal/auth"
 	"elasiyanetwork/internal/tunnel"
+
+	"github.com/gorilla/websocket"
 )
 
 var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool { return true },
 }
-
 func TunnelWS(w http.ResponseWriter, r *http.Request) {
-	token := r.Header.Get("Authorization")
-	user, err := auth.VerifyToken(token)
-	if err != nil {
-		http.Error(w, "unauthorized", 401)
-		return
-	}
+    log.Println("WS CONNECT HIT")
 
-	host := r.URL.Query().Get("host")
-	if host == "" {
-		http.Error(w, "host required", 400)
-		return
-	}
+    token := r.Header.Get("Authorization")
+    user, err := auth.VerifyToken(token)
+    if err != nil {
+        log.Println("AUTH FAIL:", token)
+        http.Error(w, "unauthorized", 401)
+        return
+    }
 
-	conn, _ := upgrader.Upgrade(w, r, nil)
+    host := r.URL.Query().Get("host")
+    log.Println("REGISTER HOST:", host)
 
-	tunnel.Register(host, &tunnel.ClientTunnel{
-		UserID: user,
-		Conn:   conn,
-	})
+    conn, _ := upgrader.Upgrade(w, r, nil)
+
+    tunnel.Register(host, &tunnel.ClientTunnel{
+        UserID: user,
+        Conn:   conn,
+    })
+
+    log.Println("TUNNEL REGISTERED AS:", host)
 }

@@ -14,7 +14,10 @@ import (
 
 func main() {
 	// --- CONFIG ---
-    serverWS := "ws://abc.tunnel.missdurutemizlik.com:8080/tunnel?host=abc.tunnel.missdurutemizlik.com"
+    serverWS := "ws://localhost:8080/tunnel?host=local.elasiya"
+
+
+
 
 
 	token := "ela_free_test"
