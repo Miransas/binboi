@@ -7,5 +7,4 @@ require (
 	github.com/gorilla/websocket v1.5.3
 )
 
-
-/// Sardor Azimov 
+/// Sardor Azimov

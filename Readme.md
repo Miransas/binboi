@@ -1,104 +1,263 @@
-🌐 ElasiyaNetwork
-ElasiyaNetwork is a high-performance, modular networking framework built with Go. Designed for scalability and low-latency communication, it provides a robust foundation for distributed systems and custom network protocols.
+# 🌐 Elasiya Network
+
+**Elasiya** is an open-source, ngrok-like HTTP tunnel written in Go. It exposes your local services to the internet instantly — no configuration needed.
 
 <div align="center">
-  <br />
-    <a href="https://t.me/azsams" target="_blank">
-      <img src=https://github.com/sardorazimov/elasiyanetwork/blob/main/assets/banner.png?raw=true alt="Project Banner">
-    </a>
-  <br />
-  <br />
-    <a href="https://t.me/azsams" target="_blank">
-      <img src=https://github.com/sardorazimov/elasiyanetwork/blob/main/assets/banner1.png?raw=true alt="Project Banner">
-    </a>
-  <br />
-  <br />
-    <a href="https://t.me/azsams" target="_blank">
-      <img src=https://github.com/sardorazimov/elasiyanetwork/blob/main/assets/banner2.png?raw=true alt="Project Banner">
-    </a>
-  <br />
-  <div>
-       <a href="https://t.me/azsams" target="_blank"> </a>
-  </div>
-
-  <h3 align="center">A Fintech Bank Application</h3>
-
-   <div align="center">
-      Insagram <a hreh="https://instagram.com/azimov.s_"></a>
-    </div>
+  <a href="https://t.me/azsams" target="_blank">
+    <img src="https://github.com/sardorazimov/elasiyanetwork/blob/main/assets/banner.png?raw=true" alt="Elasiya Banner">
+  </a>
 </div>
 
-## 📋 <a name="table">Table of Contents</a>
+---
 
+## 📋 Table of Contents
 
+1. [Features](#-features)
+2. [Installation](#-installation)
+3. [Quick Start](#-quick-start)
+4. [Usage Guide](#-usage-guide)
+5. [Running the Server](#-running-the-server)
+6. [Project Structure](#-project-structure)
+7. [Contributing](#-contributing)
+8. [License](#-license)
 
+---
 
-</a>
+## 🚀 Features
 
-🚀 Key Features
-Concurrency-First: Built on Go's goroutines for handling thousands of simultaneous connections.
+- **Instant tunnels** – expose any local port with one command (`elasiya http 3000`)
+- **WebSocket-based** – efficient, low-latency bidirectional communication
+- **Auto-reconnect** – client reconnects automatically on drop
+- **Concurrent requests** – handles multiple simultaneous HTTP requests per tunnel
+- **Token auth** – simple token-based access control
+- **Dashboard** – built-in web dashboard at `/dashboard`
+- **Self-hostable** – run your own server with a single binary
 
-Modular Architecture: Easily swap or extend core components like encoders, decoders, and transport layers.
+---
 
-Efficient Resource Management: Optimized memory usage to ensure high throughput.
+## 📦 Installation
 
-Protocol Agnostic: Designed to support multiple communication standards (TCP, UDP, and more).
+### Option 1 — Homebrew (macOS / Linux)
 
-📸 Visual Overview
-1. System Architecture
-A high-level view of how ElasiyaNetwork handles node-to-node communication.
+```bash
+brew tap sardorazimov/elasiya
+brew install elasiya
+```
 
-2. Connection Flow
-Visualization of the secure handshake and data transmission cycle.
+### Option 2 — apt (Debian / Ubuntu)
 
-3. Performance Benchmarks
-Early performance metrics showing low latency under high load.
+```bash
+curl -fsSL https://raw.githubusercontent.com/sardorazimov/elasiyanetwork/main/install.sh | sudo bash
+```
 
-📂 Project Structure
-Bash
-.
-├── cmd/             # Entry points for the applications
-├── internal/        # Private application and library code
-├── pkg/             # Library code that's ok to use by external applications
-├── scripts/         # Scripts to perform various build/docker tasks
-├── go.mod           # Dependency management
-└── README.md
-🛠️ Getting Started
-Prerequisites
-Go: 1.21 or higher
+Or add the apt repository:
 
-Git: To clone the repository
+```bash
+sudo apt update
+sudo apt install elasiya
+```
 
-Installation
-Bash
+### Option 3 — Go install
+
+```bash
+go install github.com/sardorazimov/elasiyanetwork/cmd/elasiya@latest
+```
+
+> Make sure `$GOPATH/bin` (usually `~/go/bin`) is in your `$PATH`.
+
+### Option 4 — Build from source
+
+```bash
 # Clone the repository
 git clone https://github.com/sardorazimov/elasiyanetwork.git
-
-# Navigate to the project directory
 cd elasiyanetwork
 
-# Install dependencies
+# Download dependencies
 go mod download
-🗺️ Roadmap & Development
-[x] Initial Core Architecture
 
-[ ] Implementation of TCP Transport Layer
+# Build the client CLI
+go build -o elasiya ./cmd/elasiya
 
-[ ] Advanced Logging & Monitoring Tools
+# Build the server
+go build -o elasiya-server ./cmd/elasiya-server
 
-[ ] TLS / Secure Communication Support
+# (optional) Move to PATH
+sudo mv elasiya /usr/local/bin/
+sudo mv elasiya-server /usr/local/bin/
+```
 
-[ ] UDP & WebSockets Integration
+### Option 5 — Quick install script
 
-🤝 Contributing
-Contributions are what make the open-source community such an amazing place to learn, inspire, and create. Any contributions you make are greatly appreciated.
+```bash
+curl -fsSL https://raw.githubusercontent.com/sardorazimov/elasiyanetwork/main/install.sh | bash
+```
 
-Fork the Project
+---
 
-Create your Feature Branch (git checkout -b feature/AmazingFeature)
+## ⚡ Quick Start
 
-Commit your Changes (git commit -m 'Add some AmazingFeature')
+1. Start the server (or use a hosted Elasiya server):
 
-Push to the Branch (git push origin feature/AmazingFeature)
+```bash
+elasiya-server
+# Server listening on :8080
+```
 
-Open a Pull Request
+2. In another terminal, expose your local service:
+
+```bash
+# Expose localhost:3000
+elasiya http 3000
+
+# Output:
+#   🚇 Elasiya Tunnel  v1.0.0
+#   ─────────────────────────────────────────
+#   Server   ws://localhost:8080
+#   Tunnel   http://localhost:8080/ela-ela_fre  →  http://localhost:3000
+#   ─────────────────────────────────────────
+#   Press Ctrl+C to stop
+```
+
+---
+
+## 📖 Usage Guide
+
+### Client — `elasiya`
+
+```
+elasiya [options] <command> [args]
+
+COMMANDS:
+  http <port>   Expose a local HTTP service on <port>
+  version       Print version and exit
+
+OPTIONS:
+  --server string   Elasiya server WebSocket address
+                    Default: ws://localhost:8080
+                    Env:     ELASIYA_SERVER
+
+  --token  string   Auth token
+                    Default: ela_free_test
+                    Env:     ELASIYA_TOKEN
+
+  --host   string   Custom tunnel hostname (optional)
+```
+
+#### Examples
+
+```bash
+# Expose port 3000 with default settings
+elasiya http 3000
+
+# Use a remote server
+elasiya http 3000 --server ws://tunnel.elasiya.network
+
+# Use a custom token
+elasiya http 8080 --token my-secret-token
+
+# Custom host name
+elasiya http 3000 --host myapp
+
+# Use environment variables
+export ELASIYA_SERVER=ws://tunnel.elasiya.network
+export ELASIYA_TOKEN=my-secret-token
+elasiya http 3000
+
+# Print version
+elasiya version
+```
+
+### Server — `elasiya-server`
+
+```bash
+# Start server on default port 8080
+elasiya-server
+
+# Override token via environment variable
+ELASIYA_TOKEN=my-secret-token elasiya-server
+```
+
+The server exposes:
+
+| Endpoint      | Description                                    |
+|---------------|------------------------------------------------|
+| `/tunnel`     | WebSocket endpoint for client tunnel handshake |
+| `/<anything>` | Proxies incoming HTTP requests to the tunnel   |
+
+---
+
+## 🐳 Docker
+
+```bash
+# Build the image
+docker build -t elasiyanetwork:latest .
+
+# Run the server
+docker run -d -p 8080:8080 --name elasiya-server elasiyanetwork:latest
+
+# Run with a custom token
+docker run -d -p 8080:8080 -e ELASIYA_TOKEN=my-token --name elasiya-server elasiyanetwork:latest
+
+# Using Docker Compose
+docker compose up -d --build
+```
+
+---
+
+## 📂 Project Structure
+
+```
+.
+├── cmd/
+│   ├── elasiya/           # Client CLI entry point
+│   └── elasiya-server/    # Server entry point
+├── internal/
+│   ├── auth/              # Token verification
+│   ├── server/            # HTTP proxy + WebSocket handler
+│   └── tunnel/            # Tunnel registry
+├── protocol/              # Shared message types
+├── install.sh             # Quick-install script
+├── Dockerfile             # Multi-stage Docker build
+├── go.mod
+└── LICENSE
+```
+
+---
+
+## 📸 Architecture
+
+```
+Internet
+   │
+   ▼
+elasiya-server (:8080)
+   │  WebSocket /tunnel
+   ├──────────────────────► elasiya client (your machine)
+   │                              │
+   │  HTTP request arrives        │ forward to localhost:<port>
+   │  server sends to client ─────┘
+   │  client returns response
+   │  server writes HTTP response
+   ▼
+Caller gets response
+```
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! Here's how:
+
+1. Fork the project
+2. Create your feature branch: `git checkout -b feature/my-feature`
+3. Commit your changes: `git commit -m 'Add my feature'`
+4. Push to the branch: `git push origin feature/my-feature`
+5. Open a Pull Request
+
+---
+
+## 📄 License
+
+MIT License — see [LICENSE](LICENSE) for details.
+
+Copyright © 2026 Sardor Azimov
