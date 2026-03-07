@@ -9,7 +9,7 @@ import (
 	
 
 	"github.com/gorilla/websocket"
-	"elasiyanetwork/protocol"
+	"github.com/Miransas/binboi/protocol"
 )
 
 func main() {

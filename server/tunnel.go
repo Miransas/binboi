@@ -12,7 +12,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 
-	"elasiyanetwork/protocol"
+	"github.com/Miransas/binboi/protocol"
 )
 
 type ClientHello struct {

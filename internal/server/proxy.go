@@ -6,8 +6,8 @@ import (
 	"log"
 	"net/http"
 
-	"elasiyanetwork/internal/tunnel"
-	"elasiyanetwork/protocol"
+	"github.com/Miransas/binboi/internal/tunnel"
+	"github.com/Miransas/binboi/protocol"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"

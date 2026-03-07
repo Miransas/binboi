@@ -1,4 +1,4 @@
-module elasiyanetwork
+module github.com/Miransas/binboi
 
 go 1.25
 

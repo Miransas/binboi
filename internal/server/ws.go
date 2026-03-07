@@ -5,9 +5,9 @@ import (
 	"log"
 	"net/http"
 
-	"elasiyanetwork/internal/auth"
-	"elasiyanetwork/internal/tunnel"
-	"elasiyanetwork/protocol"
+	"github.com/Miransas/binboi/internal/auth"
+	"github.com/Miransas/binboi/internal/tunnel"
+	"github.com/Miransas/binboi/protocol"
 
 	"github.com/gorilla/websocket"
 )

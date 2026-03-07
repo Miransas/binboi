@@ -1,7 +1,7 @@
 package main
 
 import (
-	"elasiyanetwork/internal/server"
+	"github.com/Miransas/binboi/internal/server"
 
 )
 

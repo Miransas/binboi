@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"elasiyanetwork/protocol"
+	"github.com/Miransas/binboi/protocol"
 
 	"github.com/gorilla/websocket"
 )
