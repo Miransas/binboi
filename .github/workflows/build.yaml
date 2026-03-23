@@ -1,0 +1,43 @@
+name: Binboi Build & Release
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    name: Build Binaries
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.21' # Go versiyonun
+
+    - name: Install dependencies
+      run: go mod tidy
+
+    # 1. Build Server for Linux (VPS)
+    - name: Build Server (Linux amd64)
+      run: |
+        GOOS=linux GOARCH=amd64 go build -o binboi-server-linux cmd/binboi-server/main.go
+
+    # 2. Build Client for macOS M1 (Darwin arm64)
+    - name: Build Client (macOS M1)
+      run: |
+        GOOS=darwin GOARCH=arm64 go build -o binboi-client-macos cmd/binboi-client/main.go
+
+    # 3. Upload Artifacts (Derlenen dosyaları GitHub üzerinden indirebilirsin)
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: binboi-binaries
+        path: |
+          binboi-server-linux
+          binboi-client-macos
