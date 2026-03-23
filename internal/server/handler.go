@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+
 	"github.com/hashicorp/yamux"
 	"github.com/miransas/binboi/internal/protocol"
 )
@@ -70,9 +71,31 @@ func HandleClient(conn net.Conn) {
 	fmt.Printf("🚀 [SERVER] Authorized tunnel established: %s\n", hp.Subdomain)
 }
 
+// Relay handles robust bidirectional data transfer
 func Relay(src, dst net.Conn) {
+	// Ensure both connections are closed when the transfer ends
 	defer src.Close()
 	defer dst.Close()
-	go io.Copy(src, dst)
-	io.Copy(dst, src)
+
+	// Error channel to catch issues during copying
+	errChan := make(chan error, 2)
+
+	// Start copying from client to server (e.g., Request)
+	go func() {
+		_, err := io.Copy(src, dst)
+		errChan <- err
+	}()
+
+	// Start copying from server back to client (e.g., Response)
+	go func() {
+		_, err := io.Copy(dst, src)
+		errChan <- err
+	}()
+
+	// Wait for the first error or completion
+	err := <-errChan
+	if err != nil && err != io.EOF {
+		// Log error professionally (we can add a real logger later)
+		fmt.Printf("⚠️  Relay connection closed: %v\n", err)
+	}
 }
