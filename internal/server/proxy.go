@@ -1,75 +1,52 @@
 package server
 
 import (
-	"encoding/json"
-	"io"
-	"log"
+	"fmt"
+
 	"net/http"
-
-	"github.com/Miransas/binboi/internal/tunnel"
-	"github.com/Miransas/binboi/protocol"
-
-	"github.com/google/uuid"
-	"github.com/gorilla/websocket"
+	"strings"
+	"time"
 )
 
-func ProxyHandler(w http.ResponseWriter, r *http.Request) {
-	host := r.Host
+func StartHTTPRouter(addr string) {
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		// 📝 Detailed Request Logging
+		startTime := time.Now()
+		defer func() {
+			fmt.Printf("📝 [HTTP] %s %s | %s | %v\n",
+				r.Method, r.URL.Path, r.RemoteAddr, time.Since(startTime))
+		}()
 
-	tun, ok := tunnel.Get(host)
-	if !ok {
-		http.Error(w, "no tunnel for "+host, 502)
-		return
-	}
+		hostParts := strings.Split(r.Host, ".")
+		subdomain := hostParts[0]
 
-	id := uuid.New().String()
-	body, _ := io.ReadAll(r.Body)
+		mu.RLock()
+		session, ok := Sessions[subdomain]
+		mu.RUnlock()
 
-	headers := map[string]string{}
-	for k, v := range r.Header {
-		if len(v) > 0 {
-			headers[k] = v[0]
+		if !ok {
+			http.Error(w, "Tunnel not found", http.StatusNotFound)
+			return
 		}
-	}
 
-	msg := protocol.TunnelMessage{
-		ID:      id,
-		Type:    protocol.MsgRequest,
-		Method:  r.Method,
-		Path:    r.URL.RequestURI(),
-		Headers: headers,
-		Body:    body,
-	}
+		stream, err := session.Mux.Open()
+		if err != nil {
+			http.Error(w, "Tunnel stream error", http.StatusServiceUnavailable)
+			return
+		}
+		defer stream.Close()
 
-	ch := make(chan []byte, 1)
-	tun.Mu.Lock()
-	tun.Responses[id] = ch
-	tun.Mu.Unlock()
+		r.Write(stream)
 
-	defer func() {
-		tun.Mu.Lock()
-		delete(tun.Responses, id)
-		tun.Mu.Unlock()
-	}()
+		hj, ok := w.(http.Hijacker)
+		if !ok {
+			http.Error(w, "Hijacking not supported", http.StatusInternalServerError)
+			return
+		}
+		conn, _, _ := hj.Hijack()
+		Relay(stream, conn)
+	})
 
-	if err := tun.Conn.(*websocket.Conn).WriteJSON(msg); err != nil {
-		log.Println("write to tunnel error:", err)
-		http.Error(w, "tunnel write error", 502)
-		return
-	}
-
-	rawResp := <-ch
-
-	var resp protocol.TunnelMessage
-	if err := json.Unmarshal(rawResp, &resp); err != nil {
-		log.Println("response parse error:", err)
-		http.Error(w, "bad response", 502)
-		return
-	}
-
-	for k, v := range resp.Headers {
-		w.Header().Set(k, v)
-	}
-	w.WriteHeader(resp.Status)
-	w.Write(resp.Body)
+	fmt.Printf("🌐 [ROUTER] Listening on %s\n", addr)
+	http.ListenAndServe(addr, nil)
 }

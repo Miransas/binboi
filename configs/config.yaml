@@ -1,0 +1,9 @@
+server:
+  addr: "0.0.0.0:8080"
+  token: "miransas-secret-2026"
+
+client:
+  remote_addr: "localhost:8080" # VPS'e geçtiğinde burayı server IP'si yaparsın
+  local_port: 3000
+  subdomain: "sazlab"
+  token: "miransas-secret-2026"
