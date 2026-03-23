@@ -7,50 +7,76 @@ import (
 	"net"
 
 	"github.com/hashicorp/yamux"
+	"github.com/miransas/binboi/internal/auth"
+	"github.com/miransas/binboi/internal/db"
+	"github.com/miransas/binboi/internal/models"
 	"github.com/miransas/binboi/internal/protocol"
 )
 
-// Define a valid token (In production, load this from config.yaml)
-const ValidToken = "miransas-secret-2026"
-
+// HandleClient is the entry point for every new incoming tunnel connection
 func HandleClient(conn net.Conn) {
 	buffer := make([]byte, 2048)
 	n, err := conn.Read(buffer)
 	if err != nil {
+		fmt.Printf("❌ Failed to read handshake: %v\n", err)
 		conn.Close()
 		return
 	}
 
+	// 1. Decode the initial protocol message
 	msg, err := protocol.Decode(buffer[:n])
 	if err != nil || msg.Type != protocol.TypeHandshake {
-		conn.Close()
+		sendError(conn, "Invalid protocol handshake")
 		return
 	}
 
 	var hp protocol.HandshakePayload
-	json.Unmarshal(msg.Payload, &hp)
-
-	// 🔒 Security Check: Validate Token
-	if hp.Token != ValidToken {
-		fmt.Printf("⚠️  [AUTH] Unauthorized access attempt from: %s\n", conn.RemoteAddr())
-		resp := protocol.HandshakeResponse{
-			Status:  "error",
-			Message: "Invalid authentication token",
-		}
-		payload, _ := json.Marshal(resp)
-		errData, _ := (&protocol.Message{Type: protocol.TypeError, Payload: payload}).Encode()
-		conn.Write(errData)
-		conn.Close()
+	if err := json.Unmarshal(msg.Payload, &hp); err != nil {
+		sendError(conn, "Malformed handshake payload")
 		return
 	}
 
-	// Initialize Yamux Server
+	// 2. Security Check: Hash the incoming token and verify against Database
+	incomingHash := auth.HashToken(hp.Token)
+	var user models.User
+	if err := db.DB.Where("token = ?", incomingHash).First(&user).Error; err != nil {
+		sendError(conn, "Authentication failed: Invalid Miransas Token")
+		return
+	}
+
+	// 3. Subdomain Ownership Logic
+	var existingTunnel models.Tunnel
+	err = db.DB.Where("subdomain = ?", hp.Subdomain).First(&existingTunnel).Error
+
+	if err == nil {
+		// Subdomain exists, check if it belongs to THIS user
+		if existingTunnel.UserID != user.ID {
+			sendError(conn, "Permission denied: Subdomain is already owned by another user")
+			return
+		}
+	} else {
+		// New subdomain! Reserve it for this user permanently in the database
+		newTunnel := models.Tunnel{
+			UserID:    user.ID,
+			Subdomain: hp.Subdomain,
+			LocalPort: hp.LocalPort,
+			IsOnline:  true,
+		}
+		if err := db.DB.Create(&newTunnel).Error; err != nil {
+			sendError(conn, "Database error while reserving subdomain")
+			return
+		}
+	}
+
+	// 4. Upgrade connection to Yamux Multiplexing session
 	mux, err := yamux.Server(conn, nil)
 	if err != nil {
+		fmt.Printf("❌ Failed to initialize Yamux: %v\n", err)
 		conn.Close()
 		return
 	}
 
+	// 5. Register active session in memory for the HTTP Router
 	mu.Lock()
 	Sessions[hp.Subdomain] = &Session{
 		Conn:      conn,
@@ -59,7 +85,7 @@ func HandleClient(conn net.Conn) {
 	}
 	mu.Unlock()
 
-	// Send Success ACK
+	// 6. Send Handshake Success ACK back to Client
 	resp := protocol.HandshakeResponse{
 		Status: "success",
 		URL:    fmt.Sprintf("%s.binboi.link", hp.Subdomain),
@@ -68,34 +94,40 @@ func HandleClient(conn net.Conn) {
 	ack, _ := (&protocol.Message{Type: protocol.TypeHandshakeAck, Payload: payload}).Encode()
 	conn.Write(ack)
 
-	fmt.Printf("🚀 [SERVER] Authorized tunnel established: %s\n", hp.Subdomain)
+	fmt.Printf("🚀 [SERVER] Tunnel active: %s -> User: %s\n", hp.Subdomain, user.Username)
 }
 
-// Relay handles robust bidirectional data transfer
+// sendError helper sends a protocol-level error message and closes the connection
+func sendError(conn net.Conn, reason string) {
+	resp := protocol.HandshakeResponse{
+		Status:  "error",
+		Message: reason,
+	}
+	payload, _ := json.Marshal(resp)
+	errMsg, _ := (&protocol.Message{Type: protocol.TypeError, Payload: payload}).Encode()
+	conn.Write(errMsg)
+	conn.Close()
+}
+
+// Relay performs bidirectional data transfer between two connections with error handling
 func Relay(src, dst net.Conn) {
-	// Ensure both connections are closed when the transfer ends
 	defer src.Close()
 	defer dst.Close()
 
-	// Error channel to catch issues during copying
 	errChan := make(chan error, 2)
 
-	// Start copying from client to server (e.g., Request)
+	// Pipe from Source to Destination
 	go func() {
 		_, err := io.Copy(src, dst)
 		errChan <- err
 	}()
 
-	// Start copying from server back to client (e.g., Response)
+	// Pipe from Destination back to Source
 	go func() {
 		_, err := io.Copy(dst, src)
 		errChan <- err
 	}()
 
-	// Wait for the first error or completion
-	err := <-errChan
-	if err != nil && err != io.EOF {
-		// Log error professionally (we can add a real logger later)
-		fmt.Printf("⚠️  Relay connection closed: %v\n", err)
-	}
+	// Wait for any side to close or fail
+	<-errChan
 }
