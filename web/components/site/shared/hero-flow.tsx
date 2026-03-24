@@ -1,151 +1,123 @@
-"use client"
+"use client";
 
 import { ArrowRight } from "lucide-react"
 
-// Share Localhost Card with flowing particles
+// 1. Local Tunnels Card
 export function ShareLocalhostCard() {
   return (
-    <div className="relative p-8 rounded-xl bg-zinc-900 border border-zinc-800 overflow-hidden group hover:border-emerald-500/50 transition-colors">
-      <div className="flex items-center justify-between mb-4">
-        <span className="text-emerald-400 font-mono text-sm tracking-wider">SHARE LOCALHOST</span>
-        <ArrowRight className="w-5 h-5 text-zinc-600 group-hover:text-emerald-400 transition-colors" />
+    <div className="relative p-8 md:p-10 rounded-2xl bg-[#060606] border border-white/10 overflow-hidden group hover:border-miransas-cyan/30 transition-colors duration-500 shadow-2xl flex flex-col h-full">
+      <div className="absolute inset-0 bg-gradient-to-br from-miransas-cyan/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+      
+      <div className="flex items-center justify-between mb-4 relative z-10">
+        <span className="text-miransas-cyan font-mono text-xs font-bold tracking-[0.2em] uppercase">Local Introspection</span>
+        <ArrowRight className="w-5 h-5 text-gray-600 group-hover:text-miransas-cyan group-hover:translate-x-1 transition-all" />
       </div>
 
-      <h3 className="text-2xl md:text-3xl font-semibold text-white mb-8 text-balance">
-        Put your local app<br />on a public URL
+      <h3 className="text-3xl md:text-4xl font-black italic tracking-tight text-white mb-8 text-balance relative z-10">
+        Instantly expose<br />localhost to the world.
       </h3>
 
-      <div className="flex justify-center">
-        <svg width="300" height="340" viewBox="0 0 300 340" fill="none">
+      <div className="flex justify-center flex-1 items-end relative z-10">
+        {/* SVG genişletildi ve responsive yapıldı */}
+        <svg width="100%" height="100%" viewBox="0 0 320 340" fill="none" className="max-w-[320px]">
           <defs>
-            {/* Glow filter */}
-            <filter id="glow1" x="-50%" y="-50%" width="200%" height="200%">
-              <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+            <filter id="glowCyan" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
               <feMerge>
                 <feMergeNode in="coloredBlur"/>
                 <feMergeNode in="SourceGraphic"/>
               </feMerge>
             </filter>
-            
-            {/* Particle gradient */}
-            <radialGradient id="particleGrad1">
-              <stop offset="0%" stopColor="#4ade80" stopOpacity="1"/>
-              <stop offset="100%" stopColor="#4ade80" stopOpacity="0"/>
-            </radialGradient>
           </defs>
 
-          {/* Collaborators badge */}
-          <g transform="translate(40, 10)">
-            <rect x="0" y="0" width="105" height="30" rx="6" fill="#18181b" stroke="#3f3f46" strokeWidth="1"/>
+          {/* Miransas Hub badge */}
+          <g transform="translate(30, 10)">
+            <rect x="0" y="0" width="115" height="30" rx="6" fill="#111" stroke="#333" strokeWidth="1"/>
             <rect x="10" y="8" width="14" height="14" rx="2" fill="none" stroke="#a855f7" strokeWidth="1.5"/>
             <rect x="14" y="12" width="6" height="6" rx="1" fill="#a855f7" opacity="0.5"/>
-            <text x="32" y="20" fill="#d4d4d8" fontSize="12" fontFamily="monospace">Collaborators</text>
+            <text x="32" y="20" fill="#a1a1aa" fontSize="12" fontFamily="monospace">Miransas Hub</text>
           </g>
 
-          {/* Webhooks badge */}
-          <g transform="translate(160, 10)">
-            <rect x="0" y="0" width="95" height="30" rx="6" fill="#18181b" stroke="#3f3f46" strokeWidth="1"/>
-            <path d="M14 10 L22 18 M22 10 L14 18" stroke="#a855f7" strokeWidth="1.5" strokeLinecap="round"/>
-            <text x="30" y="20" fill="#d4d4d8" fontSize="12" fontFamily="monospace">Webhooks</text>
+          {/* CI/CD badge */}
+          <g transform="translate(170, 10)">
+            <rect x="0" y="0" width="115" height="30" rx="6" fill="#111" stroke="#333" strokeWidth="1"/>
+            <path d="M14 10 L22 18 M22 10 L14 18" stroke="#ff00ff" strokeWidth="1.5" strokeLinecap="round"/>
+            <text x="30" y="20" fill="#a1a1aa" fontSize="12" fontFamily="monospace">CI/CD Hooks</text>
           </g>
 
           {/* Left diagonal line */}
-          <path 
-            d="M92 40 L92 65 Q92 85 120 100 L150 115" 
-            stroke="#3f3f46" 
-            strokeWidth="1.5" 
-            fill="none"
-          />
-          <path 
-            d="M92 40 L92 65 Q92 85 120 100 L150 115" 
-            stroke="#4ade80" 
-            strokeWidth="2" 
-            strokeDasharray="8 6"
-            fill="none"
-          >
-            <animate attributeName="stroke-dashoffset" from="28" to="0" dur="1s" repeatCount="indefinite"/>
+          <path d="M85 40 L85 65 Q85 85 120 100 L160 115" stroke="#222" strokeWidth="2" fill="none"/>
+          <path d="M85 40 L85 65 Q85 85 120 100 L160 115" stroke="#00ffd1" strokeWidth="2.5" strokeDasharray="8 8" fill="none">
+            <animate attributeName="stroke-dashoffset" from="32" to="0" dur="0.8s" repeatCount="indefinite"/>
           </path>
           
-          {/* Flowing particle on left line */}
-          <circle r="4" fill="#4ade80" filter="url(#glow1)">
-            <animateMotion dur="1.5s" repeatCount="indefinite">
+          {/* Flowing particle */}
+          <circle r="4.5" fill="#00ffd1" filter="url(#glowCyan)">
+            <animateMotion dur="1.2s" repeatCount="indefinite">
               <mpath href="#leftPath1"/>
             </animateMotion>
           </circle>
-          <path id="leftPath1" d="M92 40 L92 65 Q92 85 120 100 L150 115" fill="none"/>
+          <path id="leftPath1" d="M85 40 L85 65 Q85 85 120 100 L160 115" fill="none"/>
 
           {/* Right diagonal line */}
-          <path 
-            d="M208 40 L208 65 Q208 85 180 100 L150 115" 
-            stroke="#3f3f46" 
-            strokeWidth="1.5" 
-            fill="none"
-          />
-          <path 
-            d="M208 40 L208 65 Q208 85 180 100 L150 115" 
-            stroke="#4ade80" 
-            strokeWidth="2" 
-            strokeDasharray="8 6"
-            fill="none"
-          >
-            <animate attributeName="stroke-dashoffset" from="28" to="0" dur="1s" repeatCount="indefinite" begin="0.5s"/>
+          <path d="M230 40 L230 65 Q230 85 190 100 L160 115" stroke="#222" strokeWidth="2" fill="none"/>
+          <path d="M230 40 L230 65 Q230 85 190 100 L160 115" stroke="#ff00ff" strokeWidth="2.5" strokeDasharray="8 8" fill="none">
+            <animate attributeName="stroke-dashoffset" from="32" to="0" dur="0.8s" repeatCount="indefinite" begin="0.4s"/>
           </path>
           
-          {/* Flowing particle on right line */}
-          <circle r="4" fill="#4ade80" filter="url(#glow1)">
-            <animateMotion dur="1.5s" repeatCount="indefinite" begin="0.5s">
+          <circle r="4.5" fill="#ff00ff" filter="url(#glowCyan)">
+            <animateMotion dur="1.2s" repeatCount="indefinite" begin="0.4s">
               <mpath href="#rightPath1"/>
             </animateMotion>
           </circle>
-          <path id="rightPath1" d="M208 40 L208 65 Q208 85 180 100 L150 115" fill="none"/>
+          <path id="rightPath1" d="M230 40 L230 65 Q230 85 190 100 L160 115" fill="none"/>
 
-          {/* Central logo with pulse */}
-          <circle cx="150" cy="155" r="42" fill="#052e16" stroke="#4ade8060" strokeWidth="1.5"/>
-          <circle cx="150" cy="155" r="42" fill="none" stroke="#4ade80" strokeWidth="2" opacity="0.3">
-            <animate attributeName="r" values="42;52;42" dur="2s" repeatCount="indefinite"/>
-            <animate attributeName="opacity" values="0.3;0;0.3" dur="2s" repeatCount="indefinite"/>
+          {/* Core Node Logo (Binboi) */}
+          <circle cx="160" cy="160" r="48" fill="#0a0a0a" stroke="#00ffd1" strokeWidth="1" strokeOpacity="0.4"/>
+          <circle cx="160" cy="160" r="48" fill="none" stroke="#00ffd1" strokeWidth="2" opacity="0.3">
+            <animate attributeName="r" values="48;65;48" dur="2s" repeatCount="indefinite"/>
+            <animate attributeName="opacity" values="0.4;0;0.4" dur="2s" repeatCount="indefinite"/>
           </circle>
-          <text x="150" y="172" textAnchor="middle" fill="#4ade80" fontSize="40" fontWeight="bold" fontFamily="system-ui">n</text>
+          {/* Binboi "B" Harfi */}
+          <text x="160" y="180" textAnchor="middle" fill="#fff" fontSize="55" fontStyle="italic" fontWeight="900" style={{ filter: 'drop-shadow(0 0 10px rgba(0,255,209,0.5))' }}>B</text>
 
-          {/* Line from logo to NAT */}
-          <path d="M150 197 L150 225" stroke="#3f3f46" strokeWidth="1.5" fill="none"/>
-          <path d="M150 197 L150 225" stroke="#4ade80" strokeWidth="2" strokeDasharray="6 4" fill="none">
-            <animate attributeName="stroke-dashoffset" from="20" to="0" dur="0.8s" repeatCount="indefinite"/>
+          {/* Line from Core to Shield */}
+          <path d="M160 208 L160 235" stroke="#222" strokeWidth="2" fill="none"/>
+          <path d="M160 208 L160 235" stroke="#00ffd1" strokeWidth="2.5" strokeDasharray="6 6" fill="none">
+            <animate attributeName="stroke-dashoffset" from="24" to="0" dur="0.6s" repeatCount="indefinite"/>
           </path>
-          <circle r="3" fill="#4ade80" filter="url(#glow1)">
-            <animateMotion dur="0.8s" repeatCount="indefinite">
-              <mpath href="#toNat"/>
+          <circle r="4" fill="#00ffd1" filter="url(#glowCyan)">
+            <animateMotion dur="0.6s" repeatCount="indefinite">
+              <mpath href="#toShield"/>
             </animateMotion>
           </circle>
-          <path id="toNat" d="M150 197 L150 225" fill="none"/>
+          <path id="toShield" d="M160 208 L160 235" fill="none"/>
 
-          {/* NAT badge */}
-          <g transform="translate(115, 225)">
-            <rect x="0" y="0" width="70" height="30" rx="6" fill="#18181b" stroke="#3f3f46" strokeWidth="1"/>
-            <text x="35" y="20" textAnchor="middle" fill="#d4d4d8" fontSize="13" fontFamily="monospace">NAT</text>
+          {/* Shield/WAF badge */}
+          <g transform="translate(125, 235)">
+            <rect x="0" y="0" width="70" height="28" rx="6" fill="#111" stroke="#333" strokeWidth="1"/>
+            <text x="35" y="18" textAnchor="middle" fill="#00ffd1" fontSize="11" fontFamily="monospace" fontWeight="bold">NAT Bypass</text>
           </g>
 
-          {/* Line from NAT to Localhost */}
-          <path d="M150 255 L150 285" stroke="#3f3f46" strokeWidth="1.5" fill="none"/>
-          <path d="M150 255 L150 285" stroke="#4ade80" strokeWidth="2" strokeDasharray="6 4" fill="none">
-            <animate attributeName="stroke-dashoffset" from="20" to="0" dur="0.8s" repeatCount="indefinite" begin="0.3s"/>
+          {/* Line from Shield to Localhost */}
+          <path d="M160 263 L160 290" stroke="#222" strokeWidth="2" fill="none"/>
+          <path d="M160 263 L160 290" stroke="#00ffd1" strokeWidth="2.5" strokeDasharray="6 6" fill="none">
+            <animate attributeName="stroke-dashoffset" from="24" to="0" dur="0.6s" repeatCount="indefinite" begin="0.3s"/>
           </path>
-          <circle r="3" fill="#4ade80" filter="url(#glow1)">
-            <animateMotion dur="0.8s" repeatCount="indefinite" begin="0.3s">
+          <circle r="4" fill="#00ffd1" filter="url(#glowCyan)">
+            <animateMotion dur="0.6s" repeatCount="indefinite" begin="0.3s">
               <mpath href="#toLocal"/>
             </animateMotion>
           </circle>
-          <path id="toLocal" d="M150 255 L150 285" fill="none"/>
+          <path id="toLocal" d="M160 263 L160 290" fill="none"/>
 
-          {/* Localhost box */}
-          <g transform="translate(75, 285)">
-            <rect x="0" y="0" width="150" height="50" rx="8" fill="#18181b" stroke="#3f3f46" strokeWidth="1"/>
-            <rect x="60" y="10" width="30" height="18" rx="3" fill="none" stroke="#71717a" strokeWidth="1.5"/>
-            <line x1="60" y1="24" x2="90" y2="24" stroke="#71717a" strokeWidth="1"/>
-            <circle cx="75" cy="17" r="2" fill="#4ade80">
-              <animate attributeName="opacity" values="1;0.3;1" dur="1.5s" repeatCount="indefinite"/>
+          {/* Localhost Machine */}
+          <g transform="translate(85, 290)">
+            <rect x="0" y="0" width="150" height="45" rx="8" fill="#111" stroke="#333" strokeWidth="1"/>
+            <circle cx="20" cy="22" r="4" fill="#00ffd1">
+              <animate attributeName="opacity" values="1;0.2;1" dur="1s" repeatCount="indefinite"/>
             </circle>
-            <text x="75" y="42" textAnchor="middle" fill="#d4d4d8" fontSize="13" fontFamily="system-ui">Localhost</text>
+            <text x="35" y="27" fill="#d4d4d8" fontSize="14" fontFamily="monospace">localhost:3000</text>
           </g>
         </svg>
       </div>
@@ -153,24 +125,26 @@ export function ShareLocalhostCard() {
   )
 }
 
-// API Gateway Card
+// 2. L7 Gateway Card
 export function ApiGatewayCard() {
   return (
-    <div className="relative p-8 rounded-xl bg-zinc-900 border border-zinc-800 overflow-hidden group hover:border-emerald-500/50 transition-colors">
-      <div className="flex items-center justify-between mb-4">
-        <span className="text-emerald-400 font-mono text-sm tracking-wider">API GATEWAY</span>
-        <ArrowRight className="w-5 h-5 text-zinc-600 group-hover:text-emerald-400 transition-colors" />
+    <div className="relative p-8 md:p-10 rounded-2xl bg-[#060606] border border-white/10 overflow-hidden group hover:border-miransas-magenta/30 transition-colors duration-500 shadow-2xl flex flex-col h-full">
+      <div className="absolute inset-0 bg-gradient-to-br from-miransas-magenta/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+
+      <div className="flex items-center justify-between mb-4 relative z-10">
+        <span className="text-miransas-magenta font-mono text-xs font-bold tracking-[0.2em] uppercase">L7 NEURAL GATEWAY</span>
+        <ArrowRight className="w-5 h-5 text-gray-600 group-hover:text-miransas-magenta group-hover:translate-x-1 transition-all" />
       </div>
 
-      <h3 className="text-2xl md:text-3xl font-semibold text-white mb-6 text-balance">
-        Deliver and secure APIs
+      <h3 className="text-3xl md:text-4xl font-black italic tracking-tight text-white mb-8 text-balance relative z-10">
+        Route and secure<br />your microservices.
       </h3>
 
-      <div className="flex justify-center">
-        <svg width="340" height="380" viewBox="0 0 340 380" fill="none">
+      <div className="flex justify-center flex-1 items-end relative z-10">
+        <svg width="100%" height="100%" viewBox="0 0 360 380" fill="none" className="max-w-[360px]">
           <defs>
-            <filter id="glow2" x="-50%" y="-50%" width="200%" height="200%">
-              <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+            <filter id="glowMag" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
               <feMerge>
                 <feMergeNode in="coloredBlur"/>
                 <feMergeNode in="SourceGraphic"/>
@@ -178,355 +152,184 @@ export function ApiGatewayCard() {
             </filter>
           </defs>
 
-          {/* Customer traffic badge */}
-          <g transform="translate(105, 0)">
-            <rect x="0" y="0" width="130" height="30" rx="6" fill="#18181b" stroke="#3f3f46" strokeWidth="1"/>
-            <text x="65" y="20" textAnchor="middle" fill="#d4d4d8" fontSize="12" fontFamily="monospace">Customer traffic</text>
+          {/* Global Requests badge */}
+          <g transform="translate(115, 0)">
+            <rect x="0" y="0" width="130" height="30" rx="6" fill="#111" stroke="#333" strokeWidth="1"/>
+            <text x="65" y="20" textAnchor="middle" fill="#a1a1aa" fontSize="12" fontFamily="monospace">Global Requests</text>
           </g>
 
-          {/* Line to central logo */}
-          <path d="M170 30 L170 70" stroke="#3f3f46" strokeWidth="1.5" fill="none"/>
-          <path d="M170 30 L170 70" stroke="#4ade80" strokeWidth="2" strokeDasharray="6 4" fill="none">
-            <animate attributeName="stroke-dashoffset" from="20" to="0" dur="0.8s" repeatCount="indefinite"/>
+          {/* Line to core */}
+          <path d="M180 30 L180 80" stroke="#222" strokeWidth="2" fill="none"/>
+          <path d="M180 30 L180 80" stroke="#ff00ff" strokeWidth="2.5" strokeDasharray="8 6" fill="none">
+            <animate attributeName="stroke-dashoffset" from="28" to="0" dur="0.7s" repeatCount="indefinite"/>
           </path>
           
-          {/* Multiple flowing particles */}
-          <circle r="4" fill="#4ade80" filter="url(#glow2)">
-            <animateMotion dur="1s" repeatCount="indefinite">
+          <circle r="4.5" fill="#ff00ff" filter="url(#glowMag)">
+            <animateMotion dur="0.8s" repeatCount="indefinite">
               <mpath href="#toLogoApi"/>
             </animateMotion>
           </circle>
-          <circle r="3" fill="#22c55e" filter="url(#glow2)">
-            <animateMotion dur="1s" repeatCount="indefinite" begin="0.5s">
-              <mpath href="#toLogoApi"/>
-            </animateMotion>
-          </circle>
-          <path id="toLogoApi" d="M170 30 L170 70" fill="none"/>
+          <path id="toLogoApi" d="M180 30 L180 80" fill="none"/>
 
-          {/* Central logo with pulse */}
-          <circle cx="170" cy="115" r="42" fill="#052e16" stroke="#4ade8060" strokeWidth="1.5"/>
-          <circle cx="170" cy="115" r="42" fill="none" stroke="#4ade80" strokeWidth="2" opacity="0.3">
-            <animate attributeName="r" values="42;55;42" dur="2.5s" repeatCount="indefinite"/>
-            <animate attributeName="opacity" values="0.3;0;0.3" dur="2.5s" repeatCount="indefinite"/>
+          {/* Central logo */}
+          <circle cx="180" cy="130" r="48" fill="#0a0a0a" stroke="#ff00ff" strokeWidth="1" strokeOpacity="0.4"/>
+          <circle cx="180" cy="130" r="48" fill="none" stroke="#ff00ff" strokeWidth="2" opacity="0.3">
+            <animate attributeName="r" values="48;65;48" dur="2s" repeatCount="indefinite"/>
+            <animate attributeName="opacity" values="0.3;0;0.3" dur="2s" repeatCount="indefinite"/>
           </circle>
-          <text x="170" y="132" textAnchor="middle" fill="#4ade80" fontSize="40" fontWeight="bold" fontFamily="system-ui">n</text>
+          <text x="180" y="150" textAnchor="middle" fill="#fff" fontSize="55" fontStyle="italic" fontWeight="900" style={{ filter: 'drop-shadow(0 0 10px rgba(255,0,255,0.5))' }}>B</text>
 
-          {/* Features on the right with animated icons */}
-          <g transform="translate(230, 80)">
-            {/* WAF */}
-            <g>
-              <rect x="0" y="0" width="16" height="16" rx="2" fill="none" stroke="#4ade80" strokeWidth="1.5">
-                <animate attributeName="stroke-opacity" values="1;0.5;1" dur="2s" repeatCount="indefinite"/>
-              </rect>
-              <line x1="4" y1="5" x2="12" y2="5" stroke="#4ade80" strokeWidth="1"/>
-              <line x1="4" y1="8" x2="12" y2="8" stroke="#4ade80" strokeWidth="1"/>
-              <line x1="4" y1="11" x2="12" y2="11" stroke="#4ade80" strokeWidth="1"/>
-              <text x="24" y="12" fill="#a1a1aa" fontSize="13" fontFamily="monospace">WAF</text>
-            </g>
-            {/* DDoS */}
-            <g transform="translate(0, 28)">
-              <path d="M8 0 L16 8 L8 16 L0 8 Z" fill="none" stroke="#4ade80" strokeWidth="1.5">
-                <animate attributeName="stroke" values="#4ade80;#22c55e;#4ade80" dur="1.5s" repeatCount="indefinite"/>
-              </path>
-              <text x="24" y="12" fill="#a1a1aa" fontSize="13" fontFamily="monospace">DDoS protection</text>
-            </g>
-            {/* Rate limiting */}
-            <g transform="translate(0, 56)">
-              <circle cx="8" cy="8" r="7" fill="none" stroke="#4ade80" strokeWidth="1.5"/>
-              <line x1="8" y1="4" x2="8" y2="8" stroke="#4ade80" strokeWidth="1.5">
-                <animateTransform attributeName="transform" type="rotate" from="0 8 8" to="360 8 8" dur="4s" repeatCount="indefinite"/>
-              </line>
-              <line x1="8" y1="8" x2="12" y2="10" stroke="#4ade80" strokeWidth="1.5">
-                <animateTransform attributeName="transform" type="rotate" from="0 8 8" to="360 8 8" dur="8s" repeatCount="indefinite"/>
-              </line>
-              <text x="24" y="12" fill="#a1a1aa" fontSize="13" fontFamily="monospace">Rate limiting</text>
+          {/* WAF & Limits */}
+          <g transform="translate(250, 90)">
+            <rect x="0" y="0" width="16" height="16" rx="2" fill="none" stroke="#ff00ff" strokeWidth="1.5"/>
+            <text x="26" y="12" fill="#a1a1aa" fontSize="12" fontFamily="monospace">WAF Shield</text>
+            
+            <g transform="translate(0, 30)">
+              <circle cx="8" cy="8" r="7" fill="none" stroke="#ff00ff" strokeWidth="1.5"/>
+              <line x1="8" y1="4" x2="8" y2="8" stroke="#ff00ff" strokeWidth="1.5"/>
+              <text x="26" y="12" fill="#a1a1aa" fontSize="12" fontFamily="monospace">Smart Limiter</text>
             </g>
           </g>
 
-          {/* Branching lines */}
-          <path id="leftBranch" d="M145 157 L145 185 Q145 200 110 210 L85 220" fill="none"/>
-          <path d="M145 157 L145 185 Q145 200 110 210 L85 220" stroke="#3f3f46" strokeWidth="1.5" fill="none"/>
-          <path d="M145 157 L145 185 Q145 200 110 210 L85 220" stroke="#4ade80" strokeWidth="2" strokeDasharray="6 4" fill="none">
-            <animate attributeName="stroke-dashoffset" from="20" to="0" dur="1s" repeatCount="indefinite" begin="0.2s"/>
+          {/* Routing Branches */}
+          <path d="M150 175 L150 200 Q150 215 110 225 L90 230" stroke="#222" strokeWidth="2" fill="none"/>
+          <path d="M150 175 L150 200 Q150 215 110 225 L90 230" stroke="#00ffd1" strokeWidth="2.5" strokeDasharray="8 6" fill="none">
+            <animate attributeName="stroke-dashoffset" from="28" to="0" dur="1s" repeatCount="indefinite" begin="0.2s"/>
           </path>
-          <circle r="4" fill="#4ade80" filter="url(#glow2)">
-            <animateMotion dur="1.2s" repeatCount="indefinite" begin="0.2s">
-              <mpath href="#leftBranch"/>
-            </animateMotion>
+          <circle r="4" fill="#00ffd1" filter="url(#glowMag)">
+            <animateMotion dur="1.2s" repeatCount="indefinite" begin="0.2s"><mpath href="#leftBranch"/></animateMotion>
           </circle>
+          <path id="leftBranch" d="M150 175 L150 200 Q150 215 110 225 L90 230" fill="none"/>
 
-          <path id="rightBranch" d="M195 157 L195 185 Q195 200 230 210 L255 220" fill="none"/>
-          <path d="M195 157 L195 185 Q195 200 230 210 L255 220" stroke="#3f3f46" strokeWidth="1.5" fill="none"/>
-          <path d="M195 157 L195 185 Q195 200 230 210 L255 220" stroke="#4ade80" strokeWidth="2" strokeDasharray="6 4" fill="none">
-            <animate attributeName="stroke-dashoffset" from="20" to="0" dur="1s" repeatCount="indefinite" begin="0.4s"/>
+          <path d="M210 175 L210 200 Q210 215 250 225 L270 230" stroke="#222" strokeWidth="2" fill="none"/>
+          <path d="M210 175 L210 200 Q210 215 250 225 L270 230" stroke="#ff00ff" strokeWidth="2.5" strokeDasharray="8 6" fill="none">
+            <animate attributeName="stroke-dashoffset" from="28" to="0" dur="1s" repeatCount="indefinite" begin="0.5s"/>
           </path>
-          <circle r="4" fill="#4ade80" filter="url(#glow2)">
-            <animateMotion dur="1.2s" repeatCount="indefinite" begin="0.4s">
-              <mpath href="#rightBranch"/>
-            </animateMotion>
+          <circle r="4" fill="#ff00ff" filter="url(#glowMag)">
+            <animateMotion dur="1.2s" repeatCount="indefinite" begin="0.5s"><mpath href="#rightBranch"/></animateMotion>
           </circle>
+          <path id="rightBranch" d="M210 175 L210 200 Q210 215 250 225 L270 230" fill="none"/>
 
-          {/* API endpoints */}
-          <g transform="translate(30, 220)">
-            <rect x="0" y="0" width="100" height="28" rx="6" fill="#18181b" stroke="#3f3f46" strokeWidth="1"/>
-            <text x="50" y="18" textAnchor="middle" fill="#d4d4d8" fontSize="11" fontFamily="monospace">/api/users</text>
+          {/* Endpoints */}
+          <g transform="translate(30, 230)">
+            <rect x="0" y="0" width="100" height="28" rx="6" fill="#111" stroke="#333" strokeWidth="1"/>
+            <text x="50" y="18" textAnchor="middle" fill="#00ffd1" fontSize="11" fontFamily="monospace">/api/core</text>
           </g>
-          <g transform="translate(200, 220)">
-            <rect x="0" y="0" width="110" height="28" rx="6" fill="#18181b" stroke="#3f3f46" strokeWidth="1"/>
-            <text x="55" y="18" textAnchor="middle" fill="#d4d4d8" fontSize="11" fontFamily="monospace">/api/products</text>
+          <g transform="translate(220, 230)">
+            <rect x="0" y="0" width="100" height="28" rx="6" fill="#111" stroke="#333" strokeWidth="1"/>
+            <text x="50" y="18" textAnchor="middle" fill="#ff00ff" fontSize="11" fontFamily="monospace">/api/data</text>
           </g>
 
-          {/* Lines to services */}
-          <path id="toUsers" d="M80 248 L80 275" fill="none"/>
-          <path d="M80 248 L80 275" stroke="#3f3f46" strokeWidth="1.5" fill="none"/>
-          <path d="M80 248 L80 275" stroke="#4ade80" strokeWidth="2" strokeDasharray="6 4" fill="none">
-            <animate attributeName="stroke-dashoffset" from="20" to="0" dur="0.8s" repeatCount="indefinite" begin="0.6s"/>
+          <path d="M80 258 L80 285" stroke="#00ffd1" strokeWidth="2.5" strokeDasharray="6 4" fill="none">
+             <animate attributeName="stroke-dashoffset" from="20" to="0" dur="0.8s" repeatCount="indefinite"/>
           </path>
-          <circle r="3" fill="#4ade80" filter="url(#glow2)">
-            <animateMotion dur="0.8s" repeatCount="indefinite" begin="0.6s">
-              <mpath href="#toUsers"/>
-            </animateMotion>
-          </circle>
-
-          <path id="toProducts" d="M255 248 L255 275" fill="none"/>
-          <path d="M255 248 L255 275" stroke="#3f3f46" strokeWidth="1.5" fill="none"/>
-          <path d="M255 248 L255 275" stroke="#4ade80" strokeWidth="2" strokeDasharray="6 4" fill="none">
-            <animate attributeName="stroke-dashoffset" from="20" to="0" dur="0.8s" repeatCount="indefinite" begin="0.8s"/>
+          <path d="M270 258 L270 285" stroke="#ff00ff" strokeWidth="2.5" strokeDasharray="6 4" fill="none">
+             <animate attributeName="stroke-dashoffset" from="20" to="0" dur="0.8s" repeatCount="indefinite"/>
           </path>
-          <circle r="3" fill="#4ade80" filter="url(#glow2)">
-            <animateMotion dur="0.8s" repeatCount="indefinite" begin="0.8s">
-              <mpath href="#toProducts"/>
-            </animateMotion>
-          </circle>
 
-          {/* Service boxes */}
-          <g transform="translate(10, 275)">
-            <rect x="0" y="0" width="140" height="65" rx="8" fill="#052e1640" stroke="#4ade8040" strokeWidth="1"/>
-            {/* Users icon animated */}
-            <g transform="translate(50, 8)">
-              <circle cx="20" cy="10" r="8" fill="none" stroke="#4ade80" strokeWidth="1.5"/>
-              <circle cx="20" cy="8" r="3" fill="none" stroke="#4ade80" strokeWidth="1"/>
-              <circle cx="8" cy="20" r="6" fill="none" stroke="#4ade80" strokeWidth="1" opacity="0.7">
-                <animate attributeName="opacity" values="0.7;1;0.7" dur="2s" repeatCount="indefinite"/>
-              </circle>
-              <circle cx="32" cy="20" r="6" fill="none" stroke="#4ade80" strokeWidth="1" opacity="0.7">
-                <animate attributeName="opacity" values="0.7;1;0.7" dur="2s" repeatCount="indefinite" begin="0.5s"/>
-              </circle>
-            </g>
-            <text x="70" y="55" textAnchor="middle" fill="#d4d4d8" fontSize="13" fontFamily="system-ui">Users service</text>
+          {/* Core Services */}
+          <g transform="translate(15, 285)">
+            <rect x="0" y="0" width="130" height="50" rx="8" fill="#111" stroke="#00ffd140" strokeWidth="1"/>
+            <text x="65" y="30" textAnchor="middle" fill="#d4d4d8" fontSize="13" fontFamily="system-ui">Core Service</text>
           </g>
-
-          <g transform="translate(185, 275)">
-            <rect x="0" y="0" width="145" height="65" rx="8" fill="#052e1640" stroke="#4ade8040" strokeWidth="1"/>
-            {/* Products icon animated */}
-            <g transform="translate(52, 8)">
-              <path d="M20 2 L38 12 L38 32 L20 42 L2 32 L2 12 Z" fill="none" stroke="#4ade80" strokeWidth="1.5">
-                <animate attributeName="stroke-dasharray" values="0 200;200 0" dur="3s" repeatCount="indefinite"/>
-              </path>
-              <line x1="20" y1="22" x2="20" y2="42" stroke="#4ade80" strokeWidth="1"/>
-              <line x1="2" y1="12" x2="20" y2="22" stroke="#4ade80" strokeWidth="1"/>
-              <line x1="38" y1="12" x2="20" y2="22" stroke="#4ade80" strokeWidth="1"/>
-            </g>
-            <text x="72" y="55" textAnchor="middle" fill="#d4d4d8" fontSize="13" fontFamily="system-ui">Products service</text>
+          <g transform="translate(205, 285)">
+            <rect x="0" y="0" width="130" height="50" rx="8" fill="#111" stroke="#ff00ff40" strokeWidth="1"/>
+            <text x="65" y="30" textAnchor="middle" fill="#d4d4d8" fontSize="13" fontFamily="system-ui">Data Service</text>
           </g>
-
-          {/* Cloud service label */}
-          <text x="170" y="365" textAnchor="middle" fill="#71717a" fontSize="12" fontFamily="monospace">Your cloud service</text>
         </svg>
       </div>
     </div>
   )
 }
 
-// AI Gateway Card
+// 3. AI Proxy Gateway Card
 export function AiGatewayCard() {
   return (
-    <div className="relative p-8 rounded-xl bg-zinc-900 border border-zinc-800 overflow-hidden group hover:border-yellow-500/50 transition-colors">
-      <div className="flex items-center justify-between mb-4">
-        <span className="text-yellow-400 font-mono text-sm tracking-wider">AI GATEWAY</span>
+    <div className="relative p-8 md:p-12 rounded-2xl bg-[#060606] border border-white/10 overflow-hidden group hover:border-purple-500/30 transition-colors duration-500 shadow-2xl mt-6">
+      <div className="absolute inset-0 bg-gradient-to-tr from-purple-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+      
+      <div className="flex items-center justify-between mb-6 relative z-10">
+        <span className="text-purple-400 font-mono text-xs font-bold tracking-[0.2em] uppercase">AI PROXY GATEWAY</span>
       </div>
 
-      <div className="flex flex-col lg:flex-row items-start gap-6">
+      <div className="flex flex-col lg:flex-row items-center gap-10 relative z-10">
         <div className="lg:w-2/5">
-          <h3 className="text-2xl md:text-3xl font-semibold text-white mb-4 text-balance">
-            Route, secure, and transform traffic to any AI model
+          <h3 className="text-3xl md:text-5xl font-black italic tracking-tight text-white mb-6 text-balance">
+            Load-balance across global AI nodes.
           </h3>
+          <p className="text-gray-500 text-lg">Route, cache, and secure your LLM inference calls through Miransas neural networks.</p>
         </div>
 
-        <div className="lg:w-3/5 flex justify-center">
-          <svg width="400" height="300" viewBox="0 0 400 300" fill="none">
+        <div className="lg:w-3/5 w-full flex justify-center">
+          <svg width="100%" height="100%" viewBox="0 0 420 320" fill="none" className="max-w-[420px]">
             <defs>
-              <filter id="glow3" x="-50%" y="-50%" width="200%" height="200%">
-                <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
-                <feMerge>
-                  <feMergeNode in="coloredBlur"/>
-                  <feMergeNode in="SourceGraphic"/>
-                </feMerge>
+              <filter id="glowPurp" x="-50%" y="-50%" width="200%" height="200%">
+                <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+                <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
               </filter>
-              <linearGradient id="yellowGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#facc15"/>
-                <stop offset="100%" stopColor="#eab308"/>
-              </linearGradient>
             </defs>
 
-            {/* Inference calls badge */}
-            <g transform="translate(130, 0)">
-              <rect x="0" y="0" width="150" height="30" rx="6" fill="#18181b" stroke="#3f3f46" strokeWidth="1"/>
-              <text x="75" y="20" textAnchor="middle" fill="#d4d4d8" fontSize="12" fontFamily="monospace">Your inference calls</text>
+            {/* Input Badge */}
+            <g transform="translate(135, 0)">
+              <rect x="0" y="0" width="150" height="30" rx="6" fill="#111" stroke="#333" strokeWidth="1"/>
+              <text x="75" y="20" textAnchor="middle" fill="#a1a1aa" fontSize="12" fontFamily="monospace">AI API Requests</text>
             </g>
 
-            {/* Line to logo with multiple particles */}
-            <path id="toAiLogo" d="M205 30 L205 65" fill="none"/>
-            <path d="M205 30 L205 65" stroke="#3f3f46" strokeWidth="1.5" fill="none"/>
-            <path d="M205 30 L205 65" stroke="#facc15" strokeWidth="2" strokeDasharray="6 4" fill="none">
-              <animate attributeName="stroke-dashoffset" from="20" to="0" dur="0.6s" repeatCount="indefinite"/>
+            {/* Main trunk */}
+            <path d="M210 30 L210 80" stroke="#222" strokeWidth="2" fill="none"/>
+            <path d="M210 30 L210 80" stroke="#a855f7" strokeWidth="2.5" strokeDasharray="8 6" fill="none">
+              <animate attributeName="stroke-dashoffset" from="28" to="0" dur="0.6s" repeatCount="indefinite"/>
             </path>
-            <circle r="4" fill="#facc15" filter="url(#glow3)">
-              <animateMotion dur="0.8s" repeatCount="indefinite">
-                <mpath href="#toAiLogo"/>
-              </animateMotion>
+            <circle r="4.5" fill="#a855f7" filter="url(#glowPurp)">
+              <animateMotion dur="0.8s" repeatCount="indefinite"><mpath href="#toAiLogo"/></animateMotion>
             </circle>
-            <circle r="3" fill="#fde047" filter="url(#glow3)">
-              <animateMotion dur="0.8s" repeatCount="indefinite" begin="0.4s">
-                <mpath href="#toAiLogo"/>
-              </animateMotion>
-            </circle>
+            <path id="toAiLogo" d="M210 30 L210 80" fill="none"/>
 
-            {/* Left features with animated icons */}
-            <g transform="translate(15, 75)">
-              {/* Traffic routing */}
-              <g>
-                <text x="90" y="12" textAnchor="end" fill="#a1a1aa" fontSize="12" fontFamily="monospace">Traffic routing</text>
-                <g transform="translate(98, 0)">
-                  <path d="M0 6 L16 6" stroke="#facc15" strokeWidth="1.5"/>
-                  <path d="M10 0 L16 6 L10 12" stroke="#facc15" strokeWidth="1.5" fill="none">
-                    <animate attributeName="opacity" values="1;0.4;1" dur="1s" repeatCount="indefinite"/>
-                  </path>
-                </g>
-              </g>
-              {/* Authentication */}
-              <g transform="translate(0, 28)">
-                <text x="90" y="12" textAnchor="end" fill="#a1a1aa" fontSize="12" fontFamily="monospace">Authentication</text>
-                <g transform="translate(98, -2)">
-                  <circle cx="8" cy="8" r="7" fill="none" stroke="#facc15" strokeWidth="1.5"/>
-                  <path d="M5 6 Q8 10 11 6" stroke="#facc15" strokeWidth="1" fill="none"/>
-                  <circle cx="6" cy="5" r="1" fill="#facc15">
-                    <animate attributeName="r" values="1;1.5;1" dur="2s" repeatCount="indefinite"/>
-                  </circle>
-                  <circle cx="10" cy="5" r="1" fill="#facc15">
-                    <animate attributeName="r" values="1;1.5;1" dur="2s" repeatCount="indefinite" begin="0.3s"/>
-                  </circle>
-                </g>
-              </g>
-              {/* PII redaction */}
-              <g transform="translate(0, 56)">
-                <text x="90" y="12" textAnchor="end" fill="#a1a1aa" fontSize="12" fontFamily="monospace">PII redaction</text>
-                <g transform="translate(98, 0)">
-                  <text fill="#facc15" fontSize="14" fontFamily="monospace">
-                    <tspan>|</tspan>
-                    <tspan>
-                      <animate attributeName="opacity" values="1;0;1" dur="0.8s" repeatCount="indefinite"/>
-                      **
-                    </tspan>
-                  </text>
-                </g>
-              </g>
+            {/* Central Hub */}
+            <circle cx="210" cy="130" r="48" fill="#0a0a0a" stroke="#a855f7" strokeWidth="1" strokeOpacity="0.4"/>
+            <circle cx="210" cy="130" r="55" fill="none" stroke="#a855f7" strokeWidth="1" strokeDasharray="4 8" opacity="0.5">
+              <animateTransform attributeName="transform" type="rotate" from="0 210 130" to="360 210 130" dur="15s" repeatCount="indefinite"/>
+            </circle>
+            <text x="210" y="150" textAnchor="middle" fill="#fff" fontSize="55" fontStyle="italic" fontWeight="900" style={{ filter: 'drop-shadow(0 0 10px rgba(168,85,247,0.5))' }}>B</text>
+
+            {/* Side Features */}
+            <g transform="translate(10, 95)">
+              <text x="100" y="12" textAnchor="end" fill="#a1a1aa" fontSize="12" fontFamily="monospace">Token Limiting</text>
+              <text x="100" y="42" textAnchor="end" fill="#a1a1aa" fontSize="12" fontFamily="monospace">Bearer Auth</text>
+            </g>
+            <g transform="translate(290, 95)">
+              <text x="10" y="12" fill="#a1a1aa" fontSize="12" fontFamily="monospace">Semantic Cache</text>
+              <text x="10" y="42" fill="#a1a1aa" fontSize="12" fontFamily="monospace">Live Analytics</text>
             </g>
 
-            {/* Central logo with animated ring */}
-            <circle cx="205" cy="110" r="42" fill="#422006" stroke="#facc1560" strokeWidth="1.5"/>
-            <circle cx="205" cy="110" r="42" fill="none" stroke="#facc15" strokeWidth="2" strokeDasharray="8 4" opacity="0.4">
-              <animateTransform attributeName="transform" type="rotate" from="0 205 110" to="360 205 110" dur="20s" repeatCount="indefinite"/>
-            </circle>
-            <circle cx="205" cy="110" r="50" fill="none" stroke="#facc15" strokeWidth="1" opacity="0.2">
-              <animate attributeName="r" values="50;60;50" dur="3s" repeatCount="indefinite"/>
-              <animate attributeName="opacity" values="0.2;0;0.2" dur="3s" repeatCount="indefinite"/>
-            </circle>
-            <text x="205" y="127" textAnchor="middle" fill="#facc15" fontSize="40" fontWeight="bold" fontFamily="system-ui">n</text>
-
-            {/* Right features with animated icons */}
-            <g transform="translate(265, 75)">
-              {/* Rate limiting */}
-              <g>
-                <circle cx="8" cy="8" r="7" fill="none" stroke="#facc15" strokeWidth="1.5"/>
-                <g>
-                  <line x1="8" y1="4" x2="8" y2="8" stroke="#facc15" strokeWidth="1.5"/>
-                  <animateTransform attributeName="transform" type="rotate" from="0 8 8" to="360 8 8" dur="3s" repeatCount="indefinite"/>
-                </g>
-                <text x="22" y="12" fill="#a1a1aa" fontSize="12" fontFamily="monospace">Rate limiting</text>
-              </g>
-              {/* Observability */}
-              <g transform="translate(0, 28)">
-                <circle cx="8" cy="8" r="7" fill="none" stroke="#facc15" strokeWidth="1.5"/>
-                <circle cx="8" cy="8" r="3" fill="#facc15">
-                  <animate attributeName="r" values="3;4;3" dur="1.5s" repeatCount="indefinite"/>
-                  <animate attributeName="opacity" values="1;0.6;1" dur="1.5s" repeatCount="indefinite"/>
-                </circle>
-                <text x="22" y="12" fill="#a1a1aa" fontSize="12" fontFamily="monospace">Observability</text>
-              </g>
-              {/* Custom logic */}
-              <g transform="translate(0, 56)">
-                <rect x="2" y="2" width="12" height="8" rx="1" fill="none" stroke="#facc15" strokeWidth="1.5"/>
-                <line x1="8" y1="10" x2="8" y2="14" stroke="#facc15" strokeWidth="1.5"/>
-                <circle cx="8" cy="16" r="2" fill="#facc15">
-                  <animate attributeName="fill-opacity" values="1;0.3;1" dur="1s" repeatCount="indefinite"/>
-                </circle>
-                <text x="22" y="12" fill="#a1a1aa" fontSize="12" fontFamily="monospace">Custom logic</text>
-              </g>
-            </g>
-
-            {/* Branching lines to AI models */}
-            <path id="aiLeft" d="M175 152 L175 180 Q175 195 130 205 L95 215" fill="none"/>
-            <path d="M175 152 L175 180 Q175 195 130 205 L95 215" stroke="#3f3f46" strokeWidth="1.5" fill="none"/>
-            <path d="M175 152 L175 180 Q175 195 130 205 L95 215" stroke="#facc15" strokeWidth="2" strokeDasharray="6 4" fill="none">
-              <animate attributeName="stroke-dashoffset" from="20" to="0" dur="1s" repeatCount="indefinite" begin="0.2s"/>
+            {/* Branches to LLMs */}
+            <path d="M175 170 L175 200 Q175 215 130 225 L95 235" stroke="#222" strokeWidth="2" fill="none"/>
+            <path d="M175 170 L175 200 Q175 215 130 225 L95 235" stroke="#a855f7" strokeWidth="2.5" strokeDasharray="8 6" fill="none">
+              <animate attributeName="stroke-dashoffset" from="28" to="0" dur="1s" repeatCount="indefinite" begin="0.2s"/>
             </path>
-            <circle r="4" fill="#facc15" filter="url(#glow3)">
-              <animateMotion dur="1.3s" repeatCount="indefinite" begin="0.2s">
-                <mpath href="#aiLeft"/>
-              </animateMotion>
-            </circle>
-
-            <path id="aiCenter" d="M205 152 L205 215" fill="none"/>
-            <path d="M205 152 L205 215" stroke="#3f3f46" strokeWidth="1.5" fill="none"/>
-            <path d="M205 152 L205 215" stroke="#facc15" strokeWidth="2" strokeDasharray="6 4" fill="none">
-              <animate attributeName="stroke-dashoffset" from="20" to="0" dur="1s" repeatCount="indefinite" begin="0.4s"/>
+            
+            <path d="M210 180 L210 235" stroke="#222" strokeWidth="2" fill="none"/>
+            <path d="M210 180 L210 235" stroke="#a855f7" strokeWidth="2.5" strokeDasharray="8 6" fill="none">
+              <animate attributeName="stroke-dashoffset" from="28" to="0" dur="1s" repeatCount="indefinite" begin="0.4s"/>
             </path>
-            <circle r="4" fill="#facc15" filter="url(#glow3)">
-              <animateMotion dur="1s" repeatCount="indefinite" begin="0.4s">
-                <mpath href="#aiCenter"/>
-              </animateMotion>
-            </circle>
 
-            <path id="aiRight" d="M235 152 L235 180 Q235 195 280 205 L315 215" fill="none"/>
-            <path d="M235 152 L235 180 Q235 195 280 205 L315 215" stroke="#3f3f46" strokeWidth="1.5" fill="none"/>
-            <path d="M235 152 L235 180 Q235 195 280 205 L315 215" stroke="#facc15" strokeWidth="2" strokeDasharray="6 4" fill="none">
-              <animate attributeName="stroke-dashoffset" from="20" to="0" dur="1s" repeatCount="indefinite" begin="0.6s"/>
+            <path d="M245 170 L245 200 Q245 215 290 225 L325 235" stroke="#222" strokeWidth="2" fill="none"/>
+            <path d="M245 170 L245 200 Q245 215 290 225 L325 235" stroke="#a855f7" strokeWidth="2.5" strokeDasharray="8 6" fill="none">
+              <animate attributeName="stroke-dashoffset" from="28" to="0" dur="1s" repeatCount="indefinite" begin="0.6s"/>
             </path>
-            <circle r="4" fill="#facc15" filter="url(#glow3)">
-              <animateMotion dur="1.3s" repeatCount="indefinite" begin="0.6s">
-                <mpath href="#aiRight"/>
-              </animateMotion>
-            </circle>
 
-            {/* AI Model boxes with animated borders */}
-            <g transform="translate(30, 215)">
-              <rect x="0" y="0" width="120" height="60" rx="8" fill="none" stroke="#facc1540" strokeWidth="1.5" strokeDasharray="8 4">
-                <animate attributeName="stroke-dashoffset" from="0" to="24" dur="2s" repeatCount="indefinite"/>
-              </rect>
-              <text x="60" y="35" textAnchor="middle" fill="#71717a" fontSize="11" fontFamily="monospace">AI Model</text>
+            {/* LLM Nodes */}
+            <g transform="translate(35, 235)">
+              <rect x="0" y="0" width="100" height="45" rx="8" fill="#111" stroke="#a855f740" strokeWidth="1"/>
+              <text x="50" y="27" textAnchor="middle" fill="#a855f7" fontSize="13" fontFamily="monospace" fontWeight="bold">LLM Node 1</text>
             </g>
-            <g transform="translate(145, 215)">
-              <rect x="0" y="0" width="120" height="60" rx="8" fill="none" stroke="#facc1540" strokeWidth="1.5" strokeDasharray="8 4">
-                <animate attributeName="stroke-dashoffset" from="0" to="24" dur="2s" repeatCount="indefinite" begin="0.5s"/>
-              </rect>
-              <text x="60" y="35" textAnchor="middle" fill="#71717a" fontSize="11" fontFamily="monospace">AI Model</text>
+            <g transform="translate(160, 235)">
+              <rect x="0" y="0" width="100" height="45" rx="8" fill="#111" stroke="#a855f740" strokeWidth="1"/>
+              <text x="50" y="27" textAnchor="middle" fill="#a855f7" fontSize="13" fontFamily="monospace" fontWeight="bold">LLM Node 2</text>
             </g>
-            <g transform="translate(260, 215)">
-              <rect x="0" y="0" width="120" height="60" rx="8" fill="none" stroke="#facc1540" strokeWidth="1.5" strokeDasharray="8 4">
-                <animate attributeName="stroke-dashoffset" from="0" to="24" dur="2s" repeatCount="indefinite" begin="1s"/>
-              </rect>
-              <text x="60" y="35" textAnchor="middle" fill="#71717a" fontSize="11" fontFamily="monospace">AI Model</text>
+            <g transform="translate(285, 235)">
+              <rect x="0" y="0" width="100" height="45" rx="8" fill="#111" stroke="#a855f740" strokeWidth="1"/>
+              <text x="50" y="27" textAnchor="middle" fill="#a855f7" fontSize="13" fontFamily="monospace" fontWeight="bold">LLM Node 3</text>
             </g>
           </svg>
         </div>
@@ -535,11 +338,11 @@ export function AiGatewayCard() {
   )
 }
 
-// Main Feature Cards Grid
+// 4. Main Wrapper
 export function FeatureCards() {
   return (
-    <section className="w-full max-w-7xl mx-auto px-4 py-12">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+    <section className="w-full max-w-7xl mx-auto px-6 py-12 bg-[#060606]">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <ShareLocalhostCard />
         <ApiGatewayCard />
       </div>

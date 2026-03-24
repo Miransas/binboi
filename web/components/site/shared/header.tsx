@@ -13,9 +13,7 @@ export default function Header() {
         
         {/* Logo */}
         <Link href="/" className="flex items-center space-x-2 group">
-          <div className="w-8 h-8 bg-miransas-cyan rounded-lg flex items-center justify-center shadow-[0_0_15px_rgba(0,255,209,0.4)] group-hover:rotate-12 transition-transform">
-            <span className="text-black font-black text-xl">B</span>
-          </div>
+          <img src="/logo.png" alt=""  className="w-14"/>
           <span className="text-white font-black italic text-2xl tracking-tighter">
             BIN<span className="text-miransas-cyan">BOI</span>
           </span>
