@@ -46,7 +46,7 @@ export default function DashboardSidebar({ user }: { user: any }) {
       <div className="h-16 flex items-center px-6 border-b border-white/5 overflow-hidden">
         <Link href="/" className="flex items-center gap-3 group whitespace-nowrap">
           <div className="w-8 h-8 bg-miransas-cyan rounded-lg flex items-center justify-center shrink-0 shadow-[0_0_15px_rgba(0,255,209,0.2)] group-hover:shadow-[0_0_20px_rgba(0,255,209,0.4)] transition-all">
-            <span className="text-black font-black text-xl italic">B</span>
+           <img src="./logo.png" alt="" />
           </div>
           <AnimatePresence>
             {!isCollapsed && (

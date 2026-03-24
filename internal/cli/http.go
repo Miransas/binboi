@@ -1,40 +1,83 @@
 package cli
 
 import (
+	"encoding/json"
+	"fmt"
+	"net"
 
-	"log"
-	"strconv"
-
-	"github.com/miransas/binboi/internal/config"
-    "github.com/miransas/binboi/internal/client"
-	"github.com/spf13/cobra"
+	"github.com/hashicorp/yamux"
+	"github.com/miransas/binboi/internal/client"
+	"github.com/miransas/binboi/internal/protocol"
+	"github.com/miransas/binboi/internal/server"
 )
 
-var httpCmd = &cobra.Command{
-	Use:   "http [port]",
-	Short: "Start a neural tunnel to a local HTTP server",
-	Args:  cobra.ExactArgs(1), // Port numarası zorunlu
-	Run: func(cmd *cobra.Command, args []string) {
-		// 1. Portun sayı olup olmadığını kontrol et
-		port, err := strconv.Atoi(args[0])
+func StartHttpTunnel(token string, port int, subdomain string) {
+	// Sunucu IP'sini kendi VPS IP'n ile değiştirmeyi unutma usta!
+	conn, err := net.Dial("tcp", "your-server-ip:8081")
+	if err != nil {
+		fmt.Println("❌ Server connection failed:", err)
+		return
+	}
+
+	// 1. Handshake (El Sıkışma) Paketini Gönder
+	hp := protocol.HandshakePayload{
+		AuthToken: token, 
+		Subdomain: subdomain, 
+		LocalPort: port,
+	}
+	payload, _ := json.Marshal(hp)
+	msg, _ := (&protocol.Message{Type: protocol.TypeHandshake, Payload: payload}).Encode()
+	_, _ = conn.Write(msg) // 'n' hatasını önlemek için _ kullandık
+
+	// 2. Sunucudan Gelen Onayı Bekle ve Oku
+	buf := make([]byte, 1024)
+	n, err := conn.Read(buf) // 'n' burada OKUNAN byte sayısını tutuyor
+	if err != nil {
+		fmt.Println("❌ Failed to read server response")
+		return
+	}
+
+	// Gelen mesajı çöz (Decode)
+	raw, err := protocol.Decode(buf[:n]) // 'n' değişkenini burada KULLANDIK!
+	if err != nil {
+		fmt.Println("❌ Protocol error")
+		return
+	}
+
+	var resp protocol.HandshakeResponse
+	err = json.Unmarshal(raw.Payload, &resp) // 'resp' değişkenini burada KULLANDIK!
+	if err != nil {
+		fmt.Println("❌ Failed to parse server response")
+		return
+	}
+
+	// Eğer sunucu reddettiyse dur
+	if resp.Status != "success" {
+		fmt.Printf("🔴 Connection Rejected: %s\n", resp.Message)
+		return
+	}
+
+	// 3. UI Göster ve Tüneli Ateşle
+	client.ShowWelcome("http://"+subdomain+".binboi.link", port, "Sardor Azimov", "eu-central")
+
+	// Yamux Client başlat
+	session, err := yamux.Client(conn, nil)
+	if err != nil {
+		return
+	}
+
+	for {
+		stream, err := session.Accept()
 		if err != nil {
-			log.Fatalf("🔴 Error: Port must be a valid number. Got: %s", args[0])
+			break
 		}
-
-		// 2. YAML Dosyasından Token'ı Oku
-		token, err := config.LoadToken()
-		if err != nil {
-			log.Fatalf("🔴 %v\nRun 'binboi config add-authtoken <token>' to authenticate.", err)
-		}
-
-		// 3. UI'ı Çiz (Terminali temizler ve neon kutuyu basar)
-		// Şimdilik domain kısmını statik veriyoruz, WebSocket bağlandığında Core sunucusu asıl domaini dönecek
-		client.ShowWelcome("https://your-node.binboi.link", port, "Miransas Network", "eu-central")
-
-		// 4. TODO: Token ile birlikte Binboi Core'a (8080) WebSocket bağlantısı aç...
-		// wsConn := connectToCore(token)
-		
-		// 5. Trafiği yönlendirmeye başla (relay.go'daki fonksiyonumuz)
-		// client.StartRelay(wsConn, port)
-	},
+		go func(s net.Conn) {
+			local, err := net.Dial("tcp", fmt.Sprintf("localhost:%d", port))
+			if err != nil {
+				s.Close()
+				return
+			}
+			server.Relay(s, local)
+		}(stream)
+	}
 }

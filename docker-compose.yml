@@ -1,30 +1,21 @@
 version: '3.8'
-
 services:
-  # Binboi Server Simülasyonu
-  binboi-server:
-    build: .
-    ports:
-      - "80:80"       # Public HTTP Router
-      - "8080:8080"   # Tunnel Listener
-    environment:
-      - AUTH_TOKEN=miransas-secret-2026
-      - DB_URL=postgres://user:pass@db:5432/binboi
-    networks:
-      - binboi-network
-
-  # İleride kuracağımız Veritabanı (Şimdiden hazır olsun)
   db:
     image: postgres:15-alpine
     environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: pass
-      POSTGRES_DB: binboi
+      POSTGRES_USER: binboi
+      POSTGRES_PASSWORD: your_password
+      POSTGRES_DB: binboi_db
     ports:
       - "5432:5432"
-    networks:
-      - binboi-network
 
-networks:
-  binboi-network:
-    driver: bridge
+  core:
+    build: .
+    ports:
+      - "8080:8080" # API
+      - "8081:8081" # Tunnel TCP
+      - "8000:8000" # Proxy HTTP
+    environment:
+      DATABASE_URL: postgres://binboi:your_password@db:5432/binboi_db
+    depends_on:
+      - db
