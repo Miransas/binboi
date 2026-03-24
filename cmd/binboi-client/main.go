@@ -2,57 +2,84 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"net"
+	"os"
+
 	"github.com/hashicorp/yamux"
+	"github.com/miransas/binboi/internal/config"
 	"github.com/miransas/binboi/internal/protocol"
 	"github.com/miransas/binboi/internal/server"
-	"github.com/charmbracelet/lipgloss"
+	
 )
 
 func main() {
-	// Client Config (Later move to config.yaml)
-	remoteAddr := "your-server-ip:8080"
-	localPort := 3000
+	localPort := flag.Int("port", 3000, "Local port to expose")
+	flag.Parse()
+
+	// 1. Config'den Token Okunuyor
+	token, err := config.LoadToken()
+	if err != nil {
+		fmt.Println("🔴 Authentication Required! Please run: binboi config add-authtoken <your-token>")
+		os.Exit(1)
+	}
+
+	remoteAddr := "127.0.0.1:8080" // Test için local sunucuna bağlansın
 	subdomain := "sazlab"
 
 	conn, err := net.Dial("tcp", remoteAddr)
 	if err != nil {
-		fmt.Println("❌ Could not connect to binboi server")
-		return
+		fmt.Println("❌ Could not connect to server")
+		os.Exit(1)
 	}
+	defer conn.Close()
 
-	// 1. Handshake
-	hp := protocol.HandshakePayload{Subdomain: subdomain, LocalPort: localPort}
+	// 👉 İŞTE TOKEN HATASININ ÇÖZÜMÜ: Token değişkenini burada kullandık!
+	hp := protocol.HandshakePayload{
+		Subdomain: subdomain,
+		LocalPort: *localPort,
+		AuthToken: token, // Go artık "kullanılmadı" diye kızmayacak
+	}
+	
 	payload, _ := json.Marshal(hp)
 	msg, _ := (&protocol.Message{Type: protocol.TypeHandshake, Payload: payload}).Encode()
 	conn.Write(msg)
 
-	// 2. Wait for Ack
 	buf := make([]byte, 1024)
 	n, _ := conn.Read(buf)
 	raw, _ := protocol.Decode(buf[:n])
+
 	var resp protocol.HandshakeResponse
 	json.Unmarshal(raw.Payload, &resp)
 
-	// 3. UI Presentation
-	renderUI(resp.URL, localPort)
+	// Fallback URL (Eğer sunucu boş dönerse diye)
+	if resp.URL == "" {
+		resp.URL = fmt.Sprintf("https://%s.binboi.link", subdomain)
+	}
 
-	// 4. Start Multiplexing
-	session, _ := yamux.Client(conn, nil)
+	// 2. SHOWWELCOME HATASININ ÇÖZÜMÜ İÇİN AŞAĞIDAKİ KOMUTU KULLANACAĞIZ
+	ShowWelcome(resp.URL, *localPort, "Sardor Azimov (Pro)", "eu-central")
+
+	// Yamux Multiplexing...
+	session, err := yamux.Client(conn, nil)
+	if err != nil {
+		return
+	}
+
 	for {
 		stream, err := session.Accept()
 		if err != nil {
 			break
 		}
 		go func(s net.Conn) {
-			local, _ := net.Dial("tcp", fmt.Sprintf("localhost:%d", localPort))
+			defer s.Close()
+			local, err := net.Dial("tcp", fmt.Sprintf("localhost:%d", *localPort))
+			if err != nil {
+				return
+			}
+			defer local.Close()
 			server.Relay(s, local)
 		}(stream)
 	}
-}
-
-func renderUI(url string, port int) {
-	style := lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).Padding(1, 4).BorderForeground(lipgloss.Color("#00FFD1"))
-	fmt.Println(style.Render(fmt.Sprintf("✨ MIRANSAS BINBOI ONLINE\n\n🔗 %s -> localhost:%d", url, port)))
 }

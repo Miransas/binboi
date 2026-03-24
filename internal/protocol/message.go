@@ -26,6 +26,8 @@ type HandshakePayload struct {
 	Subdomain     string `json:"subdomain"`
 	LocalPort     int    `json:"local_port"`
 	ClientVersion string `json:"version"`
+	AuthToken string `json:"auth_token"`
+	
 }
 
 // HandshakeResponse is the server's reply to the handshake

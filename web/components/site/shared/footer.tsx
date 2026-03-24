@@ -19,11 +19,9 @@ export function Footer() {
           {/* Brand column */}
           <div className="flex flex-col gap-4">
             <Link href="/" className="flex items-center gap-2.5 group w-fit">
-              <div className="relative w-8 h-8">
-                <div className="absolute inset-0 rounded-lg bg-violet-500/20 border border-violet-500/40 flex items-center justify-center group-hover:border-violet-400/60 transition-colors">
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                    <path d="M3 2 L3 10 M3 7 L8 3 M3 7 L8 11" stroke="#a78bfa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
+              <div className="relative w-14 h-14">
+                <div className="absolute inset-0  transition-colors">
+                  <img src="./logo.png" alt="" />
                 </div>
                 <div className="absolute inset-0 rounded-lg bg-violet-500/10 blur-md" />
               </div>
@@ -42,7 +40,7 @@ export function Footer() {
               >
                 Miransas Neural Node
               </a>
-              {" "}· Tashkent, UZ
+              {" "}· 
             </p>
           </div>
 
