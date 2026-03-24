@@ -1,10 +1,16 @@
-import React from 'react'
-import DashboardWelcone from '../../components/dashboard/welcome'
+/* eslint-disable react-hooks/rules-of-hooks */
+"use client"
+import { useEffect, useState } from 'react';
+import DashboardPage from '../../components/dashboard/dashboard'
+import TerminalLog from '../../components/dashboard/terminal-log';
 
 const page = () => {
+  
   return (
     <div>
-        <DashboardWelcone />
+        <DashboardPage />
+        
+        {/* <DashboardWelcone /> */}
     </div>
   )
 }

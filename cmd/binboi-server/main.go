@@ -5,15 +5,18 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math/rand"
 	"net"
 	"net/http"
 	"net/http/httputil"
 	"os"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/gorilla/websocket"
 	"github.com/hashicorp/yamux"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/miransas/binboi/internal/db"
@@ -138,3 +141,47 @@ func startProxyServer() {
 	})
 	http.ListenAndServe(":8000", nil)
 }
+
+// Stripe Checkout Session Oluşturma
+func CreateCheckoutSession(c *gin.Context) {
+	// Stripe SDK ile session oluştur...
+	// Kullanıcıyı Stripe ödeme sayfasına yönlendir.
+}
+
+// Stripe Webhook (Ödeme başarılı olduğunda tetiklenir)
+func HandleStripeWebhook(pool *pgxpool.Pool) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// 1. Stripe'dan gelen event'i doğrula
+		// 2. Eğer "checkout.session.completed" ise:
+		// UPDATE users SET plan_type = 'pro' WHERE id = user_id;
+		c.JSON(200, gin.H{"status": "success"})
+	}
+}
+
+var upgrader = websocket.Upgrader{
+	CheckOrigin: func(r *http.Request) bool { return true },
+}
+
+func handleStatsWS(c *gin.Context) {
+	ws, _ := upgrader.Upgrade(c.Writer, c.Request, nil)
+	defer ws.Close()
+
+	for {
+		// Tüm tünellerin anlık throughput verisini topla
+		stats := make(map[string]int64)
+		mu.RLock()
+		for sub, _ := range sessions {
+			// Burada son 1 saniyede geçen byte miktarını hesapla
+			stats[sub] = rand.Int63n(1000) // DEMO: Gerçekte RelayWithCounter'dan gelir
+		}
+		mu.RUnlock()
+
+		if err := ws.WriteJSON(stats); err != nil {
+			break
+		}
+		time.Sleep(1 * time.Second) // Saniyede 1 güncelleme gönder
+	}
+}
+
+// Gin Router içine ekle:
+// r.GET("/ws/stats", handleStatsWS)

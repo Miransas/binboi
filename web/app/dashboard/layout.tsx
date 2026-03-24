@@ -12,7 +12,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   }
 
   return (
-    <div className="flex h-screen bg-[#060606] text-white font-sans overflow-hidden">
+    <div className="flex h-screen  text-white font-sans overflow-hidden">
       
       {/* 📱 Ayrı Component Olarak Gelen Collapsible Sidebar */}
       <DashboardSidebar user={session.user} />

@@ -33,11 +33,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning className="selection:text-white selection:bg-red-700">
       <head />
       <body
         className={cn(
-          "min-h-screen bg-[#060606] text-white antialiased font-sans",
+          "min-h-screen bg-[#000000] text-white antialiased font-sans",
           figtree.variable,
           geistSans.variable,
           geistMono.variable

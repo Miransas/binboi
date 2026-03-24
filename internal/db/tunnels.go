@@ -72,3 +72,10 @@ func (s *TunnelStore) GetActiveTunnelsByUserID(ctx context.Context, userID strin
 	return tunnels, nil
 }
 
+// IncrementBandwidth: Tünelden geçen veriyi mevcut veriye ekler
+func (s *TunnelStore) IncrementBandwidth(ctx context.Context, subdomain string, bytes int64) error {
+	query := `UPDATE tunnels SET bytes_out = bytes_out + $1 WHERE subdomain = $2`
+	_, err := s.pool.Exec(ctx, query, bytes, subdomain)
+	return err
+}
+
