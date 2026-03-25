@@ -15,7 +15,8 @@ import {
   ChevronLeft,
   ChevronRight
 } from "lucide-react";
-import { DASHBOARD_LINKS } from "../../constants";
+import { DASHBOARD_LINKS } from "../../../constants";
+
 
 // İkon eşleştirme (Constants'tan gelen stringleri icon'a çeviriyoruz)
 

@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import Link from "next/link";
@@ -6,6 +7,7 @@ import { NAV_LINKS } from "@/constants";
 import { useSession, signIn, signOut } from "next-auth/react";
 import { LogOut, LayoutDashboard, Loader2,  } from "lucide-react";
 import { BsGithub } from "react-icons/bs";
+import { div } from "three/src/nodes/math/OperatorNode.js";
 
 export default function Header() {
   // NextAuth
@@ -50,18 +52,7 @@ export default function Header() {
           ) : session ? (
             // Kullanıcı giriş yapmışsa
             <div className="flex items-center gap-4">
-              {/* Kullanıcı Avatarı & İsmi (İsteğe bağlı) */}
-              <div className="hidden sm:flex items-center gap-2 mr-2">
-                {session.user?.image ? (
-                  <img src={session.user.image} alt="Avatar" className="w-8 h-8 rounded-full border border-white/10" />
-                ) : (
-                  <div className="w-8 h-8 rounded-full bg-miransas-cyan/20 flex items-center justify-center border border-miransas-cyan/50">
-                    <span className="text-miransas-cyan font-bold text-xs">
-                      {session.user?.name?.charAt(0) || "U"}
-                    </span>
-                  </div>
-                )}
-              </div>
+             
 
               {/* Dashboard Butonu */}
               <Link 
@@ -73,13 +64,13 @@ export default function Header() {
               </Link>
 
               {/* Çıkış Yap Butonu */}
-              <button 
+              {/* <button 
                 onClick={() => signOut()} 
                 className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors"
                 title="Sign out"
               >
                 <LogOut className="w-5 h-5" />
-              </button>
+              </button> */}
             </div>
           ) : (
             // Kullanıcı giriş yapmamışsa

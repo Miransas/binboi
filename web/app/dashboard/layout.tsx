@@ -1,7 +1,8 @@
 
 import { auth } from "@/auth"; // NextAuth v5 importu
 import { redirect } from "next/navigation";
-import DashboardSidebar from "../../components/dashboard/dashboard-sidebar";
+import DashboardSidebar from "../../components/dashboard/shared/dashboard-sidebar";
+
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   // Kullanıcı giriş yapmamışsa middleware yakalar ama çift güvenlik iyidir.
@@ -12,7 +13,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   }
 
   return (
-    <div className="flex h-screen  text-white font-sans overflow-hidden">
+    <div className="flex h-screen  text-white font-sans overflow-hidden ">
       
       {/* 📱 Ayrı Component Olarak Gelen Collapsible Sidebar */}
       <DashboardSidebar user={session.user} />
