@@ -19,6 +19,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/hashicorp/yamux"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/miransas/binboi/internal/cli"
 	"github.com/miransas/binboi/internal/db"
 	"github.com/miransas/binboi/internal/protocol"
 	cors "github.com/rs/cors/wrapper/gin"
@@ -82,6 +83,22 @@ func main() {
 
 	fmt.Println("🚀 Binboi Core Running...")
 	r.Run(":8080")
+	// ... (main fonksiyonu içinde)
+if os.Args[1] == "auth" {
+    if len(os.Args) < 3 {
+        fmt.Println("❌ Usage: binboi auth <your_api_key>")
+        return
+    }
+    
+    key := os.Args[2]
+    err := cli.SaveConfig(key)
+    if err != nil {
+        fmt.Println("🔴 Failed to save config:", err)
+        return
+    }
+
+    fmt.Println("🚀 [NEURAL_LINK]: API Key secured. You are ready to tunnel.")
+}
 }
 
 func handleCli(c net.Conn, store *db.TunnelStore) {
@@ -185,3 +202,18 @@ func handleStatsWS(c *gin.Context) {
 
 // Gin Router içine ekle:
 // r.GET("/ws/stats", handleStatsWS)
+
+
+func HandleGenericPayment(c *gin.Context) {
+    // Burası Lemon Squeezy veya başka bir servisin çağıracağı yer
+    var payload struct {
+        Email string `json:"customer_email"`
+        Status string `json:"status"`
+    }
+    
+    if err := c.ShouldBindJSON(&payload); err == nil && payload.Status == "paid" {
+        // DB'de kullanıcıyı yükselt
+        // tunnelStore.UpgradeToPro(context.Background(), payload.Email)
+        c.JSON(200, gin.H{"message": "Welcome to Pro, Operator."})
+    }
+}

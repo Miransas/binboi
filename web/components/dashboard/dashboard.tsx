@@ -58,7 +58,7 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-black text-white  font-mono  ">
       {/* Saf Siyah Grid Arka Plan */}
-
+     
 
       <main className="relative z-10 max-w-7xl mx-auto p-6 lg:p-12">
         {/* Header */}
@@ -78,8 +78,10 @@ export default function DashboardPage() {
           </div>
 
           <div className="flex items-center gap-4">
+
             <button className="p-3 bg-white/5 border border-white/10 cursor-pointer rounded-xl hover:bg-white/10 transition-all text-gray-400 hover:text-white">
               <TerminalIcon size={18} />
+
             </button>
             <button className="flex items-center gap-2 px-8 py-4 bg-miransas-cyan text-white cursor-pointer font-black italic rounded-xl shadow-[0_0_30px_rgba(0,255,209,0.3)] hover:scale-105 transition-all text-xs uppercase">
               <PlusIcon size={16} /> New Link
@@ -90,56 +92,59 @@ export default function DashboardPage() {
         {/* Stats Section */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
           <div className="md:col-span-2 relative group">
-            <BorderBeam
-              duration={6}
-              size={400}
-              className="from-transparent via-red-500 to-transparent"
-            />
-            <BorderBeam
-              duration={6}
-              delay={3}
-              size={400}
-              borderWidth={2}
-              className="from-transparent via-blue-500 to-transparent"
-            />
+
             <div className="relative h-full bg-[#080808] border border-white/10 rounded-2xl p-6 backdrop-blur-xl">
+              <BorderBeam
+                duration={6}
+                size={400}
+                className="from-transparent via-red-500 to-transparent"
+              />
+              <BorderBeam
+                duration={6}
+                delay={3}
+                size={400}
+                borderWidth={2}
+                className="from-transparent via-blue-500 to-transparent"
+              />
               <BandwidthChart currentUsage={activeCount > 0 ? 452.8 : 0} />
             </div>
           </div>
 
           <div className="relative group">
-            <BorderBeam
-              duration={6}
-              size={400}
-              className="from-transparent via-red-500 to-transparent"
-            />
-            <BorderBeam
-              duration={6}
-              delay={3}
-              size={400}
-              borderWidth={2}
-              className="from-transparent via-blue-500 to-transparent"
-            />
+
             <div className="relative h-full bg-[#080808] border border-white/10 rounded-2xl p-8 flex flex-col justify-between">
+              <BorderBeam
+                duration={6}
+                size={400}
+                className="from-transparent via-red-500 to-transparent"
+              />
+              <BorderBeam
+                duration={6}
+                delay={3}
+                size={400}
+                borderWidth={2}
+                className="from-transparent via-blue-500 to-transparent"
+              />
               <span className="text-[10px] text-gray-500 uppercase font-bold tracking-widest">Active Links</span>
               <div className="text-5xl font-black italic text-miransas-cyan">{activeCount.toString().padStart(2, '0')}</div>
             </div>
           </div>
 
           <div className="relative group">
-            <BorderBeam
-              duration={6}
-              size={400}
-              className="from-transparent via-red-500 to-transparent"
-            />
-            <BorderBeam
-              duration={6}
-              delay={3}
-              size={400}
-              borderWidth={2}
-              className="from-transparent via-blue-500 to-transparent"
-            />
+
             <div className="relative h-full bg-[#080808] border border-white/10 rounded-2xl p-8 flex flex-col justify-between ">
+              <BorderBeam
+                duration={6}
+                size={400}
+                className="from-transparent via-red-500 to-transparent"
+              />
+              <BorderBeam
+                duration={6}
+                delay={3}
+                size={400}
+                borderWidth={2}
+                className="from-transparent via-blue-500 to-transparent"
+              />
               <span className="text-[10px] text-gray-500 uppercase font-bold tracking-widest">Throughput</span>
               <div className="text-4xl font-black italic text-white">{(totalBandwidth / (1024 * 1024)).toFixed(1)} <span className="text-lg text-gray-600">MB</span></div>
             </div>
@@ -148,19 +153,20 @@ export default function DashboardPage() {
 
         {/* Tunnel Table */}
         <div className="relative group">
-          <BorderBeam
-            duration={6}
-            size={400}
-            className="from-transparent via-red-500 to-transparent"
-          />
-          <BorderBeam
-            duration={6}
-            delay={3}
-            size={400}
-            borderWidth={2}
-            className="from-transparent via-blue-500 to-transparent"
-          />
+
           <div className="relative bg-[#080808] border border-white/10 rounded-2xl overflow-hidden">
+            <BorderBeam
+              duration={6}
+              size={400}
+              className="from-transparent via-red-500 to-transparent"
+            />
+            <BorderBeam
+              duration={6}
+              delay={3}
+              size={400}
+              borderWidth={2}
+              className="from-transparent via-blue-500 to-transparent"
+            />
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-white/[0.02] text-[10px] text-gray-500 uppercase font-bold tracking-[0.2em]">
