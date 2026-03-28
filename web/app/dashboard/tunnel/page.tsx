@@ -1,146 +1,202 @@
 "use client";
-import { useState } from "react";
-import { motion } from "framer-motion";
-import { Plus, MoreHorizontal, Globe, Laptop, Activity, Search, ShieldCheck } from "lucide-react";
 
-// Mock Veri (Drizzle/SWR ile değişecek)
-const mockTunnels = [
-  { id: "tnl_1x89a", name: "lost-signal-api", domain: "sad.binboi.link", target: "localhost:8080", status: "online", traffic: "1.2 MB/s", createdAt: "2 mins ago" },
-  { id: "tnl_9z2b", name: "worktio-webhook", domain: "worktio.binboi.link", target: "localhost:3000", status: "online", traffic: "45 KB/s", createdAt: "1 hour ago" },
-  { id: "tnl_3c4d", name: "duru-temizlik-test", domain: "duru.binboi.link", target: "localhost:5173", status: "offline", traffic: "0 KB/s", createdAt: "2 days ago" },
-];
+import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { 
+  Zap, 
+  Shield, 
+  Trash2, 
+  ExternalLink, 
+  Search, 
+  Plus, 
+  Activity,
+  Globe,
+  RefreshCw
+} from "lucide-react";
+import { BorderBeam } from "@/components/ui/border-beam";
+import AddTunnelModal from "../../../components/dashboard/shared/add-tunnel-madal";
+
+// Tünel Tipi Tanımı
+interface Tunnel {
+  id: string;
+  subdomain: string;
+  target: string;
+  status: "ACTIVE" | "INACTIVE" | "ERROR";
+  region: string;
+  bytes_in: number;
+  bytes_out: number;
+  created_at: string;
+}
 
 export default function TunnelsPage() {
+  const [tunnels, setTunnels] = useState<Tunnel[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isModalOpen, setIsModalOpen] = useState(false)
+
+  // 1. Verileri Go Backend'den Çek
+  const fetchTunnels = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("http://localhost:8080/api/tunnels");
+      const data = await res.json();
+      setTunnels(data || []);
+    } catch (err) {
+      console.error("🔴 [SYSTEM_ERROR]: Connection to core failed.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchTunnels(); }, []);
+
+  // 2. Tünel Sonlandırma (Delete)
+  const terminateTunnel = async (id: string) => {
+    if (!confirm("⚠️ TERMINATE_LINK: Bu tüneli kalıcı olarak kapatmak istiyor musun?")) return;
+    
+    try {
+      const res = await fetch(`http://localhost:8080/api/tunnels/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        setTunnels(prev => prev.filter(t => t.id !== id));
+      }
+    } catch (err) {
+      alert("🔴 ERROR: Termination failed.");
+    }
+  };
+
+  const filteredTunnels = tunnels.filter(t => 
+    t.subdomain.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    t.target.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
-    <div className="p-8 max-w-7xl mx-auto font-sans">
-      
-      {/* 📝 Header Bölümü */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
+    <div className="p-6 lg:p-12 min-h-screen bg-black text-white font-mono">
+      {/* Header Section */}
+      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12">
         <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
-          <h1 className="text-3xl font-bold text-white tracking-tight">Endpoints & Tunnels</h1>
-          <p className="text-gray-400 text-sm mt-1">Manage your active introspections and routing policies.</p>
+          <h1 className="text-5xl font-black italic tracking-tighter uppercase">
+            Neural<span className="text-miransas-cyan">_</span>Links
+          </h1>
+          <p className="text-[10px] text-gray-500 mt-2 font-bold tracking-[0.3em] uppercase">
+            Active Tunnels: {tunnels.filter(t => t.status === 'ACTIVE').length} / {tunnels.length}
+          </p>
         </motion.div>
-        
-        <motion.button 
-          initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
-          className="flex items-center gap-2 bg-miransas-cyan text-black px-5 py-2.5 rounded-xl font-bold text-sm shadow-[0_0_15px_rgba(0,255,209,0.3)] hover:shadow-[0_0_25px_rgba(0,255,209,0.5)] transition-all"
-        >
-          <Plus className="w-4 h-4" /> Create Tunnel
-        </motion.button>
+
+        <div className="flex items-center gap-4 w-full md:w-auto">
+          <div className="relative flex-1 md:w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600" size={16} />
+            <input 
+              type="text"
+              placeholder="SEARCH_NODES..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-10 pr-4 text-xs focus:border-miransas-cyan outline-none transition-all"
+            />
+          </div>
+          <button 
+            onClick={fetchTunnels}
+            className="p-3 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 text-gray-400 bg-white transition-all"
+          >
+            <RefreshCw size={18} className={loading ? "animate-spin" : ""} />
+          </button>
+          <button onClick={() => setIsModalOpen(true)}
+            className="flex items-center gap-2 px-6 py-3 bg-miransas-cyan text-black font-black italic rounded-xl text-xs uppercase hover:scale-105 transition-all shadow-[0_0_20px_rgba(0,255,209,0.3)]">
+            <Plus size={16} /> New_Link
+          </button>
+        </div>
+      </header>
+
+      {/* Grid Layout */}
+      <div className="grid grid-cols-1 gap-4">
+        <AnimatePresence mode="popLayout">
+          {loading ? (
+            <div className="py-20 text-center text-miransas-cyan animate-pulse italic tracking-[0.5em]">
+              SCANNING_NEURAL_LAYERS...
+            </div>
+          ) : filteredTunnels.length === 0 ? (
+            <div className="py-20 text-center border border-dashed border-white/10 rounded-3xl text-gray-600 italic">
+              NO_ACTIVE_TUNNELS_FOUND_IN_THIS_SECTOR
+            </div>
+          ) : filteredTunnels.map((tunnel) => (
+            <motion.div
+              key={tunnel.id}
+              layout
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="group relative bg-[#080808] border border-white/5 rounded-2xl p-6 hover:border-white/10 transition-all overflow-hidden"
+            >
+              <BorderBeam size={300} duration={12} className="opacity-0 group-hover:opacity-100" />
+              
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                {/* Left: Domain & ID */}
+                <div className="flex items-center gap-5">
+                  <div className={`p-4 rounded-2xl border ${
+                    tunnel.status === 'ACTIVE' 
+                    ? 'bg-miransas-cyan/5 border-miransas-cyan/20 text-miransas-cyan' 
+                    : 'bg-red-950/20 border-red-900/50 text-red-500'
+                  }`}>
+                    <Globe size={24} />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-black italic group-hover:text-miransas-cyan transition-colors">
+                      {tunnel.subdomain}<span className="text-gray-600">.binboi.link</span>
+                    </h3>
+                    <div className="flex items-center gap-3 mt-1">
+                      <span className="text-[9px] font-bold text-gray-500 uppercase tracking-tighter">ID: {tunnel.id.slice(0,8)}</span>
+                      <span className="h-1 w-1 bg-gray-800 rounded-full" />
+                      <span className="text-[9px] font-bold text-gray-500 uppercase tracking-tighter">Region: {tunnel.region || 'US_EAST'}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Middle: Stats */}
+                <div className="flex items-center gap-8 px-8 border-x border-white/5 hidden lg:flex">
+                  <div className="text-center">
+                    <p className="text-[9px] text-gray-600 font-bold uppercase mb-1">Target</p>
+                    <p className="text-xs font-mono text-gray-300 italic">{tunnel.target}</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-[9px] text-gray-600 font-bold uppercase mb-1">Traffic_Out</p>
+                    <p className="text-xs font-mono text-miransas-cyan">{(tunnel.bytes_out / 1024).toFixed(1)} KB</p>
+                  </div>
+                </div>
+
+                {/* Right: Actions */}
+                <div className="flex items-center gap-3 w-full md:w-auto justify-end">
+                  <a 
+                    href={`http://${tunnel.subdomain}.binboi.link:8000`} 
+                    target="_blank"
+                    className="p-3 bg-white/5 border border-white/10 rounded-xl text-gray-400 hover:text-white hover:bg-white/10 transition-all"
+                  >
+                    <ExternalLink size={18} />
+                  </a>
+                  <button 
+                    onClick={() => terminateTunnel(tunnel.id)}
+                    className="p-3 bg-red-500/5 border border-red-500/10 rounded-xl text-red-500/50 hover:text-red-500 hover:bg-red-500/10 transition-all"
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Status Bar */}
+              <div className="absolute bottom-0 left-0 h-[2px] bg-miransas-cyan transition-all duration-500" 
+                   style={{ width: tunnel.status === 'ACTIVE' ? '100%' : '0%', opacity: 0.3 }} />
+            </motion.div>
+          ))}
+        </AnimatePresence>
+        <AddTunnelModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={fetchTunnels} />
       </div>
 
-      {/* 🔍 Filtreleme ve Arama Çubuğu */}
-      <motion.div 
-        initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-        className="flex items-center gap-3 mb-6 bg-[#0e0e0e] border border-white/10 p-2 rounded-xl"
-      >
-        <div className="flex items-center gap-2 px-3 flex-1">
-          <Search className="w-4 h-4 text-gray-500" />
-          <input 
-            type="text" 
-            placeholder="Search domains or targets..." 
-            className="w-full bg-transparent border-none text-sm text-white focus:outline-none placeholder-gray-600 font-mono"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
+      {/* Footer Info */}
+      <footer className="mt-12 flex items-center justify-between border-t border-white/5 pt-6 text-[9px] text-gray-600 font-bold uppercase tracking-widest">
+        <div className="flex items-center gap-4">
+          <span className="flex items-center gap-1"><Activity size={10} /> Latency: 24ms</span>
+          <span className="flex items-center gap-1"><Shield size={10} /> Security: TLS_v1.3</span>
         </div>
-      </motion.div>
-
-      {/* 📊 Tüneller Tablosu */}
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-        className="bg-[#0e0e0e] border border-white/10 rounded-2xl overflow-hidden shadow-2xl"
-      >
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            
-            {/* Tablo Başlıkları */}
-            <thead className="bg-[#111] border-b border-white/5 text-[11px] uppercase tracking-widest text-gray-500 font-bold">
-              <tr>
-                <th className="px-6 py-4 font-medium">Status</th>
-                <th className="px-6 py-4 font-medium">Domain (Public)</th>
-                <th className="px-6 py-4 font-medium">Target (Local)</th>
-                <th className="px-6 py-4 font-medium">Traffic</th>
-                <th className="px-6 py-4 font-medium">Security</th>
-                <th className="px-6 py-4 text-right"></th>
-              </tr>
-            </thead>
-
-            {/* Tablo Gövdesi */}
-            <tbody className="text-sm">
-              {mockTunnels.map((tunnel, index) => (
-                <motion.tr 
-                  key={tunnel.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 * index }}
-                  className="border-b border-white/5 hover:bg-white/[0.02] transition-colors group"
-                >
-                  {/* Status Indicator */}
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2 bg-[#161616] w-fit px-3 py-1.5 rounded-full border border-white/5">
-                      <span className="relative flex h-2 w-2">
-                        {tunnel.status === 'online' && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-miransas-cyan opacity-75"></span>}
-                        <span className={`relative inline-flex rounded-full h-2 w-2 ${tunnel.status === 'online' ? 'bg-miransas-cyan' : 'bg-gray-600'}`}></span>
-                      </span>
-                      <span className="text-gray-300 capitalize text-[11px] font-mono tracking-wider">{tunnel.status}</span>
-                    </div>
-                  </td>
-
-                  {/* Public Domain */}
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2">
-                      <Globe className="w-4 h-4 text-gray-500 group-hover:text-miransas-cyan transition-colors" />
-                      <a href={`https://${tunnel.domain}`} target="_blank" className="font-mono text-white hover:text-miransas-cyan transition-colors">
-                        {tunnel.domain}
-                      </a>
-                    </div>
-                  </td>
-
-                  {/* Local Target */}
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2 text-gray-400 font-mono text-xs bg-white/5 w-fit px-2 py-1 rounded border border-white/5">
-                      <Laptop className="w-3.5 h-3.5" />
-                      {tunnel.target}
-                    </div>
-                  </td>
-
-                  {/* Traffic Stats */}
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2 text-gray-400 font-mono text-xs">
-                      <Activity className={`w-3.5 h-3.5 ${tunnel.status === 'online' ? 'text-miransas-magenta' : 'text-gray-600'}`} />
-                      {tunnel.traffic}
-                    </div>
-                  </td>
-
-                  {/* Security (WAF) */}
-                  <td className="px-6 py-4">
-                    <div title="WAF & Rate Limiting Active">
-                      <ShieldCheck className="w-4 h-4 text-green-500" />
-                    </div>
-                  </td>
-
-                  {/* Actions Menüsü */}
-                  <td className="px-6 py-4 text-right">
-                    <button className="p-2 text-gray-500 hover:text-white hover:bg-white/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100">
-                      <MoreHorizontal className="w-5 h-5" />
-                    </button>
-                  </td>
-                </motion.tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        
-        {/* Tablo Alt Bilgisi */}
-        <div className="px-6 py-4 bg-[#111] border-t border-white/5 text-xs text-gray-500 flex justify-between">
-          <span>Showing {mockTunnels.length} active tunnels</span>
-          <span className="font-mono">Proxy: proxy.ts (Active)</span>
-        </div>
-      </motion.div>
-
+        <div>Neural_Core_v1.0.4</div>
+      </footer>
     </div>
   );
 }
