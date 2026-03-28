@@ -10,6 +10,10 @@ import (
 )
 
 var Pool *pgxpool.Pool
+type TokenStats struct {
+	LastUsed    string
+	ActiveCount int
+}
 
 func ConnectDB() {
 	// Sunucuyu aldığımızda buraya Neon/Postgres URL'ini koyacağız
