@@ -1,216 +1,142 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable react-hooks/purity */
 "use client";
 
-import React, { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Globe, Cloud, MapPin, Ban, Shield, ListFilter, Shrink, CornerUpRight, RefreshCw, Edit3, List, Activity, Zap } from "lucide-react";
+import { Terminal, Activity, ArrowRight, ShieldCheck, Globe } from "lucide-react";
+
+interface LogEntry {
+  id: string;
+  timestamp: string;
+  method: string;
+  path: string;
+  status: number;
+  latency: string;
+}
 
 export default function TrafficPolicy() {
-  const flowDuration = 1.8; // Suyun akış hızı (Neon çizgiler)
-  
-  //  Miransas Siberpunk Renk Paleti
-  const colors = {
-    cyan: "#00ffd1",       // İnternet Girişi
-    red: "#ff003c",        // WAF / Block
-    orange: "#ff5e00",     // Rate Limit
-    blue: "#00b8ff",       // Headers
-    magenta: "#ff00ff",    // Compression
-    yellow: "#facc15",     // Forwarding
-    green: "#39ff14",      // Target Cloud
-    gray: "#222222"        // Pasif
-  };
+  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [connected, setConnected] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
-  // 📍 Milimetrik SVG Yolları (Kavisli / Beizer Curves eklendi)
-  const segments = [
-    { color: colors.cyan, d: "M 160 120 L 260 120 C 270 120, 280 130, 280 140" },
-    { color: colors.red, d: "M 280 140 L 280 176" },
-    { color: colors.orange, d: "M 280 176 L 280 212" },
-    { color: colors.blue, d: "M 280 212 L 280 248" },
-    { color: colors.magenta, d: "M 280 248 L 280 284" },
-    { color: colors.yellow, d: "M 280 284 L 280 320" },
-    { color: colors.yellow, d: "M 280 320 L 280 328 C 280 338, 290 338, 300 338 L 540 338 C 550 338, 560 328, 560 318 L 560 188 C 560 178, 560 168, 570 168 L 580 168" },
-    { color: colors.green, d: "M 580 168 L 740 168 C 760 168, 800 120, 840 120" }
-  ];
+  useEffect(() => {
+    // 📡 WebSocket Bağlantısı
+    const socket = new WebSocket("ws://localhost:8080/ws/logs");
 
-  // ⚡ Tek parça akan veri otoyolu
-  const masterPath = "M 160 120 L 260 120 C 270 120, 280 130, 280 140 L 280 328 C 280 338, 290 338, 300 338 L 540 338 C 550 338, 560 328, 560 318 L 560 188 C 560 178, 560 168, 570 168 L 740 168 C 760 168, 800 120, 840 120";
+    socket.onopen = () => setConnected(true);
+    socket.onclose = () => setConnected(false);
+    
+    socket.onmessage = (event) => {
+      // Örnek gelen veri formatı: "GET /api/v1/users 200 12ms"
+      const rawData = event.data;
+      const parts = rawData.split(" ");
+      
+      const newLog: LogEntry = {
+        id: Math.random().toString(36).substr(2, 9),
+        timestamp: new Date().toLocaleTimeString(),
+        method: parts[0] || "GET",
+        path: parts[1] || "/",
+        status: parseInt(parts[2]) || 200,
+        latency: parts[3] || "0ms",
+      };
+
+      setLogs((prev) => [newLog, ...prev].slice(0, 50)); // Son 50 logu tut
+    };
+
+    return () => socket.close();
+  }, []);
 
   return (
-    <div className="w-full max-w-6xl mx-auto px-4 py-20 bg-[#060606] font-sans select-none">
-
-      {/* 📝 ÜST METİNLER (Binboi Ruhuna Uygun) */}
-      <div className="text-center mb-16">
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/10 bg-white/5 mb-6">
-          <Activity className="w-3.5 h-3.5 text-miransas-magenta animate-pulse" />
-          <span className="text-[10px] font-mono tracking-widest text-gray-400 uppercase">Neural Routing Core</span>
-        </motion.div>
-        <h2 className="text-4xl md:text-5xl font-black italic tracking-tight text-white mb-4">Programmable Traffic.</h2>
-        <p className="text-gray-500 text-lg max-w-2xl mx-auto leading-relaxed">
-          Inject intelligence at the edge. Binboi executes WebAssembly policies in sub-milliseconds as traffic flows down the neural stack.
-        </p>
-      </div>
-
-      {/* 📦 THE MAIN DIAGRAM CONTAINER */}
-      <div className="relative w-full aspect-[2/1] max-w-[1000px] mx-auto border border-white/5 rounded-3xl bg-[#0a0a0a] shadow-[0_0_50px_rgba(0,0,0,0.8)] overflow-hidden">
-
-        {/* --- 🌌 Arka Plan Parlaması --- */}
-        <div className="absolute top-1/2 left-1/3 w-[500px] h-[300px] bg-miransas-cyan/5 blur-[120px] rounded-full -translate-y-1/2 -z-10 pointer-events-none" />
-
-        {/* Üst Etiket (Cyberpunk) */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 bg-[#111] border-b border-x border-white/10 px-6 py-1.5 rounded-b-xl text-[10px] text-gray-500 tracking-widest font-mono z-30 flex items-center gap-2 shadow-lg">
-          <Zap className="w-3 h-3 text-miransas-cyan" /> L7 TRAFFIC PIPELINE
+    <div className="bg-[#080808] border border-white/10 rounded-3xl overflow-hidden flex flex-col h-[600px]">
+      {/* Header */}
+      <div className="p-6 border-b border-white/5 flex justify-between items-center bg-white/[0.02]">
+        <div className="flex items-center gap-3">
+          <div className={`w-2 h-2 rounded-full animate-pulse ${connected ? 'bg-miransas-cyan shadow-[0_0_10px_#00ffd1]' : 'bg-red-500'}`} />
+          <h3 className="text-xl font-black italic tracking-tighter uppercase text-white">Neural_Traffic_Inspector</h3>
         </div>
-
-        {/* --- 🔗 Z-0: SVG YOLLARI VE NEON ANİMASYON --- */}
-        <svg className="absolute inset-0 w-full h-full z-0" viewBox="0 0 1000 500">
-          <defs>
-            {/* ✨ Parçacık Maskesi (Veri paketleri gibi akan çizgiler) */}
-            <mask id="dashMaskFlow">
-              <motion.path
-                d={masterPath}
-                stroke="white"
-                strokeWidth="4"
-                fill="none"
-                strokeDasharray="20 40"
-                initial={{ strokeDashoffset: 120 }}
-                animate={{ strokeDashoffset: 0 }}
-                transition={{ duration: flowDuration, repeat: Infinity, ease: "linear" }}
-              />
-            </mask>
-          </defs>
-
-          {/* 1. Katman: Ana Kablo Yatağı (Koyu) */}
-          <path d={masterPath} stroke="#161616" strokeWidth="6" fill="none" />
-          
-          {/* 2. Katman: Renkli İz (Soluk) */}
-          <g opacity="0.3">
-            {segments.map((seg, i) => (
-              <path key={`bg-${i}`} d={seg.d} stroke={seg.color} strokeWidth="2" fill="none" />
-            ))}
-          </g>
-
-          {/* 3. Katman: Canlı Akan Neon Veriler (Sihirli Kısım) */}
-          <g mask="url(#dashMaskFlow)">
-            {segments.map((seg, i) => (
-              <path key={`active-${i}`} d={seg.d} stroke={seg.color} strokeWidth="4" fill="none" style={{ filter: `drop-shadow(0 0 8px ${seg.color})` }} />
-            ))}
-          </g>
-
-          {/* 4. Katman: Düğümler (Nodes) */}
-          <GlowingNode cx="160" cy="120" color={colors.cyan} />
-          <GlowingNode cx="280" cy="120" color={colors.cyan} />
-          <GlowingNode cx="280" cy="158" color={colors.red} />
-          <GlowingNode cx="280" cy="194" color={colors.orange} />
-          <GlowingNode cx="280" cy="230" color={colors.blue} />
-          <GlowingNode cx="280" cy="266" color={colors.magenta} />
-          <GlowingNode cx="280" cy="302" color={colors.yellow} />
-          <GlowingNode cx="560" cy="168" color={colors.yellow} />
-          <GlowingNode cx="740" cy="168" color={colors.green} />
-          <GlowingNode cx="840" cy="120" color={colors.green} />
-
-        </svg>
-
-        {/* --- 🧱 Z-10: GLASSMORPHISM KUTULARI --- */}
-        <div className="absolute inset-0 z-10 text-xs pointer-events-none">
-
-          {/* SÜTUN BAŞLIKLARI */}
-          <div className="absolute top-[8%] w-[20%] left-[0%] flex flex-col items-center text-gray-500 gap-2">
-            <Globe className="w-5 h-5 text-gray-400" />
-            <span className="text-[10px] font-mono tracking-widest uppercase">Public Web</span>
-          </div>
-          <div className="absolute top-[8%] w-[40%] left-[30%] flex flex-col items-center text-gray-500 gap-2">
-            <div className="w-8 h-8 rounded-lg bg-[#111] border border-white/10 flex items-center justify-center">
-              <span className="text-xl font-black italic text-white">B</span>
-            </div>
-            <span className="text-[10px] font-mono tracking-widest text-miransas-cyan uppercase">Binboi Neural Hub</span>
-          </div>
-          <div className="absolute top-[8%] w-[20%] left-[80%] flex flex-col items-center text-gray-500 gap-2">
-            <Cloud className="w-5 h-5 text-gray-400" />
-            <span className="text-[10px] font-mono tracking-widest uppercase">Local Network</span>
-          </div>
-
-          {/* SOL SÜTUN (İstekler) */}
-          <Pill style={{ left: '4%', top: '20.8%', width: '12%', height: '6.4%' }} text="GET /api/v1" isActive color={colors.cyan} />
-          <Pill style={{ left: '4%', top: '49.6%', width: '12%', height: '6.4%' }} text="POST /auth" />
-
-          {/* ORTA SÜTUN 1: MAIN NEURAL STACK */}
-          <div className="absolute bg-[#0d0d0d]/80 backdrop-blur-md border border-white/10 rounded-2xl shadow-2xl flex flex-col pointer-events-auto overflow-hidden" style={{ left: '26%', top: '20%', width: '22%', height: '48%' }}>
-            <div className="flex items-center pl-[40px] text-white font-mono font-bold text-[10px] tracking-widest border-b border-white/10 bg-[#161616]" style={{ height: '16%' }}>
-              api.binboi.link
-            </div>
-            <Rule text="WAF Shield" icon={<Shield />} color={colors.red} />
-            <Rule text="Rate Limiter" icon={<Ban />} color={colors.orange} />
-            <Rule text="Inject Headers" icon={<ListFilter />} color={colors.blue} />
-            <Rule text="Brotli Compress" icon={<Shrink />} color={colors.magenta} />
-            <Rule text="L7 Forwarding" icon={<CornerUpRight />} color={colors.yellow} />
-          </div>
-
-          {/* ORTA SÜTUN 2: INTERNAL RESOLUTION */}
-          <div className="absolute bg-[#0d0d0d]/80 backdrop-blur-md border border-white/10 rounded-2xl shadow-2xl flex flex-col pointer-events-auto overflow-hidden" style={{ left: '54%', top: '29.6%', width: '22%', height: '14%' }}>
-            <div className="flex items-center pl-[40px] text-white font-mono font-bold text-[10px] tracking-widest border-b border-white/10 bg-[#161616]" style={{ height: '52.6%' }}>
-              localhost:8080
-            </div>
-            <Rule text="Traffic Inspector" icon={<Activity />} color={colors.green} height="47.4%" />
-          </div>
-
-          {/* SAĞ SÜTUN (Hedefler) */}
-          <Pill style={{ left: '84%', top: '20.8%', width: '12%', height: '6.4%' }} text="Core API" isActive color={colors.green} />
-          <Pill style={{ left: '84%', top: '49.6%', width: '12%', height: '6.4%' }} text="Auth Service" />
-
+        <div className="flex items-center gap-4 text-[10px] font-bold text-gray-500 uppercase">
+          <span className="flex items-center gap-1"><Activity size={12} /> Live_Stream</span>
+          <span className="text-gray-800">|</span>
+          <span>Buffer: {logs.length}/50</span>
         </div>
       </div>
 
+      {/* Table Header */}
+      <div className="grid grid-cols-12 gap-4 px-8 py-4 bg-white/[0.01] text-[10px] font-black text-gray-600 uppercase tracking-widest border-b border-white/5">
+        <div className="col-span-2 text-miransas-cyan">Timestamp</div>
+        <div className="col-span-1 text-center">Method</div>
+        <div className="col-span-5">Neural_Path</div>
+        <div className="col-span-2 text-center">Status</div>
+        <div className="col-span-2 text-right">Latency</div>
+      </div>
+
+      {/* Logs Area */}
+      <div className="flex-1 overflow-y-auto custom-scrollbar p-2" ref={scrollRef}>
+        <div className="space-y-1">
+          <AnimatePresence initial={false}>
+            {logs.map((log) => (
+              <motion.div
+                key={log.id}
+                initial={{ opacity: 0, x: -20, backgroundColor: "rgba(0, 255, 209, 0.1)" }}
+                animate={{ opacity: 1, x: 0, backgroundColor: "rgba(0, 0, 0, 0)" }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.4 }}
+                className="grid grid-cols-12 gap-4 px-6 py-3 rounded-xl hover:bg-white/5 transition-colors items-center group font-mono"
+              >
+                <div className="col-span-2 text-[10px] text-gray-500">{log.timestamp}</div>
+                
+                <div className="col-span-1 flex justify-center">
+                  <span className={`px-2 py-0.5 rounded text-[9px] font-black ${
+                    log.method === 'POST' ? 'bg-purple-500/10 text-purple-400' : 'bg-miransas-cyan/10 text-miransas-cyan'
+                  }`}>
+                    {log.method}
+                  </span>
+                </div>
+
+                <div className="col-span-5 text-xs text-gray-300 truncate italic">
+                  {log.path}
+                </div>
+
+                <div className="col-span-2 flex justify-center">
+                  <span className={`text-[10px] font-bold flex items-center gap-1 ${
+                    log.status >= 400 ? 'text-red-500' : 'text-miransas-cyan'
+                  }`}>
+                    {log.status >= 400 ? '●' : '○'} {log.status}
+                  </span>
+                </div>
+
+                <div className="col-span-2 text-right text-[10px] font-bold text-gray-600 group-hover:text-miransas-cyan transition-colors">
+                  {log.latency}
+                </div>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+
+          {logs.length === 0 && (
+            <div className="h-full flex flex-col items-center justify-center py-40 text-gray-700 opacity-20 italic">
+              <Terminal size={48} className="mb-4" />
+              <p className="uppercase tracking-[0.3em] font-black text-xs">Waiting_for_Neural_Traffic...</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Footer Info */}
+      <div className="p-4 bg-black border-t border-white/5 flex justify-between items-center px-8">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 text-[9px] text-gray-600 font-bold uppercase">
+             <ShieldCheck size={12} className="text-miransas-cyan" /> Encryption: Active
+          </div>
+          <div className="flex items-center gap-2 text-[9px] text-gray-600 font-bold uppercase">
+             <Globe size={12} /> Gateway: US-East-1
+          </div>
+        </div>
+        <button 
+          onClick={() => setLogs([])}
+          className="text-[9px] font-black text-gray-600 hover:text-white uppercase transition-colors"
+        >
+          Clear_Buffer
+        </button>
+      </div>
     </div>
-  );
-}
-
-// --- YARDIMCI BİLEŞENLER ---
-
-function Pill({ style, text, isActive, color }: any) {
-  return (
-    <div
-      className={`absolute flex items-center justify-center rounded-xl font-mono text-[10px] font-bold tracking-wider transition-all duration-500`}
-      style={{
-        ...style,
-        backgroundColor: isActive ? '#111' : 'transparent',
-        borderColor: isActive ? `${color}40` : 'rgba(255,255,255,0.05)',
-        borderWidth: 1,
-        color: isActive ? 'white' : '#666',
-        boxShadow: isActive ? `0 0 20px ${color}20` : 'none'
-      }}
-    >
-      {text}
-    </div>
-  );
-}
-
-// Neural Node Rules
-function Rule({ text, icon, color, height = "16.8%" }: any) {
-  const isActive = color !== "transparent";
-  return (
-    <div className={`flex items-center justify-between pl-[40px] pr-4 w-full font-mono text-[10px] transition-colors group ${isActive ? 'hover:bg-white/5 text-gray-300' : 'text-gray-600'}`} style={{ height }}>
-      <span className={isActive ? "group-hover:text-white transition-colors tracking-wide" : ""}>{text}</span>
-      <span style={{ color: isActive ? color : '#404040' }} className={`w-3.5 h-3.5 ${isActive ? 'group-hover:scale-110 transition-transform' : ''}`}>
-        {icon}
-      </span>
-    </div>
-  );
-}
-
-// Parıldayan Sinir Uçları (Glowing Nodes)
-function GlowingNode({ cx, cy, color }: any) {
-  return (
-    <g>
-      {/* Sabit Dış Halka */}
-      <circle cx={cx} cy={cy} r="6" fill="#050505" stroke={color} strokeWidth="1.5" opacity="0.5" />
-      {/* Yanıp Sönen İç Çekirdek */}
-      <motion.circle 
-        cx={cx} cy={cy} r="3" fill={color}
-        animate={{ opacity: [0.3, 1, 0.3], scale: [1, 1.3, 1] }}
-        transition={{ duration: 1.5 + Math.random(), repeat: Infinity, ease: "easeInOut" }}
-        style={{ filter: `drop-shadow(0 0 5px ${color})` }}
-      />
-    </g>
   );
 }

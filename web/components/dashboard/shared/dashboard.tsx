@@ -1,4 +1,4 @@
-/* eslint-disable react-hooks/exhaustive-deps */
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
@@ -16,9 +16,9 @@ import TokenManager from "./token-manager";
 export default function DashboardPage() {
   const { theme } = useTheme();
   const { data: session } = useSession();
-  
+
   // Tünelleri Go Backend'den çekiyoruz
-  const { tunnels, isLoading, mutate } = useTunnels(session?.user?.id || "");
+  const { tunnels, isLoading, refresh } = useTunnels(session?.user?.id || "");
 
   const activeCount = tunnels ? tunnels.filter((t: any) => t.status === "ACTIVE").length : 0;
   const totalBandwidth = tunnels ? tunnels.reduce((acc: number, t: any) => acc + (t.bytes_out || 0), 0) : 0;
@@ -29,7 +29,7 @@ export default function DashboardPage() {
       try {
         const res = await fetch(`http://localhost:8080/api/tunnels/${id}`, { method: 'DELETE' });
         if (res.ok) {
-          mutate(); // Tabloyu yenile
+          refresh(); // ✅ doğru
         }
       } catch (err) {
         console.error("Deletion failed:", err);
@@ -40,7 +40,7 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-black text-white font-mono selection:bg-miransas-cyan/30">
       <main className="relative z-10 max-w-7xl mx-auto p-6 lg:p-12">
-        
+
         {/* --- HEADER --- */}
         <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8 mb-16">
           <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
@@ -120,7 +120,7 @@ export default function DashboardPage() {
                     </td>
                   </tr>
                 ) : tunnels?.length === 0 ? (
-                    <tr>
+                  <tr>
                     <td colSpan={4} className="p-12 text-center text-gray-600 text-xs italic">
                       NO_ACTIVE_TUNNELS_FOUND
                     </td>
@@ -136,11 +136,10 @@ export default function DashboardPage() {
                       </div>
                     </td>
                     <td className="p-6">
-                      <div className={`flex items-center gap-2 px-3 py-1 rounded-md border w-fit font-black text-[9px] ${
-                        tunnel.status === 'ACTIVE'
-                        ? 'bg-miransas-cyan/5 text-miransas-cyan border-miransas-cyan/20 animate-pulse'
-                        : 'bg-red-950/20 text-red-500 border-red-900/50'
-                      }`}>
+                      <div className={`flex items-center gap-2 px-3 py-1 rounded-md border w-fit font-black text-[9px] ${tunnel.status === 'ACTIVE'
+                          ? 'bg-miransas-cyan/5 text-miransas-cyan border-miransas-cyan/20 animate-pulse'
+                          : 'bg-red-950/20 text-red-500 border-red-900/50'
+                        }`}>
                         {tunnel.status}
                       </div>
                     </td>

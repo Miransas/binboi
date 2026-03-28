@@ -5,6 +5,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence, Variants, cubicBezier } from 'framer-motion';
 import { ArrowRight, Zap, Globe, ShieldCheck, Activity, Lock, TerminalSquare, Cpu } from 'lucide-react';
+import { BorderBeam } from '../../ui/border-beam';
 
 // ==========================================
 // 1. GLOBAL ANİMASYON VARYANTLARI
@@ -36,17 +37,17 @@ const MODULES = [
 ];
 
 const SLOTS = [
-    { id: 'top', y: 135, portY: 180 }, 
-    { id: 'mid', y: 255, portY: 300 }, 
-    { id: 'bot', y: 375, portY: 420 }, 
+    { id: 'top', y: 135, portY: 180 },
+    { id: 'mid', y: 255, portY: 300 },
+    { id: 'bot', y: 375, portY: 420 },
 ];
 
 const LAYOUTS = [
-    [1],       
-    [0, 2],    
-    [0, 1, 2], 
-    [0],       
-    [2],       
+    [1],
+    [0, 2],
+    [0, 1, 2],
+    [0],
+    [2],
 ];
 
 const generateRandomScenario = (prevModuleId: string | null = null) => {
@@ -66,13 +67,13 @@ const generateRandomScenario = (prevModuleId: string | null = null) => {
             sub: `Port ${Math.floor(Math.random() * 8000) + 1000} tunneling...`,
             x: 520,
             y: slot.y,
-            delay: i * 0.1 
+            delay: i * 0.1
         });
 
         paths.push({
             id: `in-${slot.id}-${Date.now()}`,
             d: `M 300 280 C 410 280, 410 ${slot.portY}, 520 ${slot.portY}`,
-            delay: Math.random() * 0.4 
+            delay: Math.random() * 0.4
         });
 
         paths.push({
@@ -80,7 +81,7 @@ const generateRandomScenario = (prevModuleId: string | null = null) => {
             d: slot.portY === 300
                 ? `M 780 300 L 850 300`
                 : `M 780 ${slot.portY} C 820 ${slot.portY}, 810 300, 850 300`,
-            delay: Math.random() * 0.4 + 0.3 
+            delay: Math.random() * 0.4 + 0.3
         });
     });
 
@@ -213,16 +214,16 @@ export default function HeroBinboiEngine() {
                 <div className="text-center max-w-5xl px-6 relative z-10 mb-16">
                     <motion.div variants={fadeUp} initial="hidden" animate="visible" className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-white/10 bg-white/5 text-xs font-mono tracking-widest text-gray-300 backdrop-blur-md mb-8 shadow-lg uppercase">
                         <span className="relative flex h-2 w-2">
-                           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-miransas-cyan opacity-75"></span>
-                           <span className="relative inline-flex rounded-full h-2 w-2 bg-miransas-cyan"></span>
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-miransas-cyan opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-miransas-cyan"></span>
                         </span>
                         Binboi Node v0.2.0
                     </motion.div>
-                    
+
                     <motion.h1 variants={staggerContainer} initial="hidden" animate="visible" className="text-6xl md:text-8xl font-black italic tracking-tighter leading-[0.95] text-transparent bg-clip-text bg-gradient-to-br from-white via-white to-gray-500 mb-8">
                         EXPOSE YOUR <br /> LOCAL WORLD.
                     </motion.h1>
-                    
+
                     <motion.p variants={fadeUp} initial="hidden" animate="visible" transition={{ delay: 0.2 }} className="text-lg md:text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed font-medium">
                         Hyper-speed introspection tunnels for modern engineers. Securely bypass NATs, firewalls, and route traffic to your localhost instantly.
                     </motion.p>
@@ -273,7 +274,7 @@ export default function HeroBinboiEngine() {
 
                                 {/* Binboi "B" Harfi */}
                                 <span className="absolute z-30 text-8xl font-black italic text-white drop-shadow-[0_0_30px_rgba(255,255,255,0.4)]">B</span>
-                                
+
                                 <div className="absolute inset-0 bg-gradient-to-tr from-white/10 via-transparent to-transparent pointer-events-none mix-blend-overlay rounded-[60px]"></div>
                             </div>
 
@@ -324,15 +325,30 @@ export default function HeroBinboiEngine() {
             <section className="w-full py-32 bg-[#060606] relative z-20 border-t border-white/5">
                 <div className="max-w-6xl mx-auto px-6">
                     <h2 className="text-4xl font-bold mb-16 text-center italic tracking-tight">Engineered for the Edge</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 ">
+
                         {[
                             { icon: <Zap className="w-8 h-8" />, title: "Sub-millisecond routing", desc: "Built with Go and Rust for instantaneous data tunneling." },
                             { icon: <Globe className="w-8 h-8" />, title: "NAT & Firewall Bypass", desc: "Expose any local port to the public web safely and instantly." },
                             { icon: <Lock className="w-8 h-8" />, title: "Bank-grade security", desc: "End-to-end encryption with dynamic WAF and Rate Limiting." },
                         ].map((item, i) => (
-                            <motion.div key={i} whileHover={{ y: -10 }} className="bg-[#0a0a0c] border border-white/10 p-10 rounded-3xl shadow-2xl hover:shadow-[0_20px_40px_rgba(0,255,209,0.1)] transition-all group">
-                                <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center mb-6 text-gray-400 group-hover:text-miransas-cyan transition-colors">{item.icon}</div>
-                                <h3 className="text-2xl font-bold mb-3 text-white">{item.title}</h3>
+                            <motion.div
+                                key={i}
+                                whileHover={{ y: -10 }}
+                                /* BURAYA DİKKAT: relative ve overflow-hidden eklendi */
+                                className="relative overflow-hidden bg-[#0a0a0c] border border-white/10 p-10 rounded-3xl shadow-2xl hover:shadow-[0_20px_40px_rgba(0,255,209,0.1)] transition-all group"
+                            >
+                                <BorderBeam
+                                    duration={4}
+                                    size={300}
+                                    reverse
+                                    className="from-transparent via-miransas-cyan to-transparent" // Burayı bizim turkuaza çektim usta ;)
+                                />
+
+                                <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center mb-6 text-gray-400 group-hover:text-miransas-cyan transition-colors">
+                                    {item.icon}
+                                </div>
+                                <h3 className="text-2xl font-bold mb-3 text-white italic tracking-tighter uppercase">{item.title}</h3>
                                 <p className="text-gray-500 text-sm leading-relaxed">{item.desc}</p>
                             </motion.div>
                         ))}
