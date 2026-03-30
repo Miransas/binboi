@@ -1,15 +1,15 @@
 const plans = [
   {
-    name: "Community",
+    name: "Free",
     price: "$0",
-    description: "For local development and single-operator self-hosting.",
-    features: ["HTTP tunnels", "Instance token auth", "SQLite control plane", "Manual edge TLS"],
+    description: "For local development, small teams, and self-hosted control planes getting started.",
+    features: ["HTTP tunnels", "Access tokens", "3 active tokens", "3 tunnel slots"],
   },
   {
-    name: "Team",
+    name: "Pro",
     price: "$19",
-    description: "A future hosted plan for teams that want managed relay infrastructure.",
-    features: ["Managed relay nodes", "Custom domains", "Shared dashboards", "Usage analytics"],
+    description: "A plan foundation for larger teams that want more credentials, more tunnels, and future managed infrastructure.",
+    features: ["Higher token limits", "Higher tunnel limits", "Custom domains", "Usage analytics foundations"],
     featured: true,
   },
   {
@@ -28,7 +28,7 @@ export default function PricingPage() {
           <p className="text-sm font-semibold uppercase tracking-[0.25em] text-miransas-cyan">Pricing</p>
           <h1 className="mt-4 text-5xl font-black tracking-tight">Simple plans for a focused product</h1>
           <p className="mt-5 text-sm leading-7 text-zinc-400">
-            The current repository is best treated as a self-hosted MVP. Hosted pricing stays on the page as a product direction, not as a promise that every feature already exists.
+            The current repository is best treated as a self-hosted MVP, but the dashboard and API now expose real Free and Pro foundations instead of a single flat access model.
           </p>
         </div>
 

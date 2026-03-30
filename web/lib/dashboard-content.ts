@@ -3,7 +3,7 @@ export const dashboardPageContent = {
     eyebrow: "Traffic intelligence",
     title: "AI inspection is not part of the MVP yet",
     description:
-      "The current Binboi MVP focuses on reliable HTTP tunneling, instance tokens, and a stable control plane. AI traffic inspection should only ship after the relay lifecycle and audit trail are complete.",
+      "The current Binboi MVP focuses on reliable HTTP tunneling, personal access tokens, and a stable control plane. AI traffic inspection should only ship after the relay lifecycle and audit trail are complete.",
     highlights: [
       { label: "Status", value: "Planned", note: "No inline request mutation or model routing is running in production code." },
       { label: "Safe fallback", value: "Logs only", note: "Use the request log stream and event feed to inspect tunnel behavior today." },
@@ -16,7 +16,7 @@ export const dashboardPageContent = {
         bullets: [
           "Live WebSocket logs from the relay.",
           "Persistent tunnel records stored by the backend.",
-          "Instance-level audit events for connect, disconnect, and token actions.",
+          "Audit events for connect, disconnect, and token actions.",
         ],
       },
       {
@@ -72,7 +72,7 @@ export const dashboardPageContent = {
         description: "These are the assumptions the CLI, proxy, and dashboard now share.",
         bullets: [
           "A tunnel subdomain can be reserved in the dashboard before the agent connects.",
-          "The agent authenticates with a single instance token.",
+          "The agent authenticates with a dashboard-issued access token.",
           "The relay marks a tunnel ACTIVE only when a live session is attached.",
         ],
       },
@@ -89,26 +89,26 @@ export const dashboardPageContent = {
   },
   identities: {
     eyebrow: "Agent identity",
-    title: "Instance token and agent identity",
+    title: "Account tokens and agent identity",
     description:
-      "The MVP uses one instance token for the whole control plane. That keeps the first self-hosted flow simple: reserve a tunnel, copy the token, and connect the CLI agent.",
+      "The MVP now separates dashboard users from CLI credentials. Create an account, mint a personal access token, and use that token with `binboi login` on each machine that should open tunnels.",
     highlights: [
-      { label: "Auth mode", value: "Instance token", note: "There is one active token used by all CLI agents that connect to this relay." },
-      { label: "Rotation", value: "Manual", note: "Generate a new token from the dashboard when you need to rotate access." },
-      { label: "Revocation", value: "Immediate", note: "The revoke action closes all active tunnel sessions." },
+      { label: "Auth mode", value: "Access tokens", note: "Each CLI machine can use its own revocable credential instead of a shared relay secret." },
+      { label: "Storage", value: "Prefix + hash", note: "The dashboard stores only token prefixes, hashes, and usage timestamps." },
+      { label: "Revocation", value: "Immediate", note: "A revoked token can no longer authenticate new CLI sessions." },
     ],
     panels: [
       {
         title: "Why this is acceptable for the MVP",
-        description: "A single-instance token fits self-hosted teams and avoids building a half-finished user and machine identity model.",
+        description: "The first release now has the right product shape: people sign in to the dashboard, machines use access tokens, and the relay validates those tokens without storing raw secrets.",
       },
       {
         title: "What should come next",
         description: "If Binboi grows into a multi-user SaaS, the next layer should separate operator accounts from machine credentials.",
         bullets: [
-          "Per-user API tokens.",
           "Scoped machine identities per agent.",
           "Audit trails for token creation and rotation.",
+          "Role-based permissions for team workspaces.",
         ],
       },
     ],
@@ -164,11 +164,11 @@ export const dashboardPageContent = {
     eyebrow: "Secrets",
     title: "Secret handling in the MVP",
     description:
-      "Binboi stores one instance token and control-plane state in the backend database. It does not yet manage application secrets, environment sync, or secret delivery to agents.",
+      "Binboi stores hashed access tokens plus control-plane state. It does not yet manage application secrets, environment sync, or secret delivery to agents.",
     highlights: [
-      { label: "Stored today", value: "Instance token", note: "The relay persists the active token and tunnel records in SQLite." },
+      { label: "Stored today", value: "Token hashes", note: "The dashboard persists access token prefixes, hashes, and usage timestamps." },
       { label: "Not stored", value: "App secrets", note: "Your local service secrets stay wherever your app already keeps them." },
-      { label: "Guidance", value: "External vault", note: "Use your existing secret manager for anything beyond the relay token." },
+      { label: "Guidance", value: "External vault", note: "Use your existing secret manager for anything beyond Binboi access tokens." },
     ],
     panels: [
       {

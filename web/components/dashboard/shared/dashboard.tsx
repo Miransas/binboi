@@ -68,7 +68,7 @@ export default function DashboardPage() {
           <div className="rounded-2xl border border-white/10 bg-[#080808] p-6">
             <BandwidthChart currentUsage={activeCount > 0 ? 452.8 : 0} />
           </div>
-          <TokenManager initialToken="" />
+          <TokenManager />
         </div>
 
         <div className="mb-12 grid gap-6 md:grid-cols-3">
@@ -141,8 +141,8 @@ export default function DashboardPage() {
             </div>
             <ol className="mt-6 space-y-4 text-sm leading-7 text-gray-400">
               <li>1. Start the relay with <span className="text-miransas-cyan">./binboi-server</span>.</li>
-              <li>2. Save a token with <span className="text-miransas-cyan">binboi auth &lt;token&gt;</span>.</li>
-              <li>3. Expose your app using <span className="text-miransas-cyan">binboi start 3000 my-app</span>.</li>
+              <li>2. Create an access token in the dashboard and save it with <span className="text-miransas-cyan">binboi login --token &lt;token&gt;</span>.</li>
+              <li>3. Verify with <span className="text-miransas-cyan">binboi whoami</span> and expose your app using <span className="text-miransas-cyan">binboi start 3000 my-app</span>.</li>
             </ol>
           </aside>
         </div>

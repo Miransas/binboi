@@ -48,27 +48,29 @@ var (
 )
 
 type Config struct {
-	APIAddr      string
-	TunnelAddr   string
-	ProxyAddr    string
-	BaseDomain   string
-	PublicScheme string
-	PublicPort   int
-	DatabasePath string
-	InstanceName string
-	DefaultRegion string
+	APIAddr         string
+	TunnelAddr      string
+	ProxyAddr       string
+	BaseDomain      string
+	PublicScheme    string
+	PublicPort      int
+	DatabasePath    string
+	InstanceName    string
+	DefaultRegion   string
+	AuthDatabaseURL string
 }
 
 func LoadConfigFromEnv() Config {
 	cfg := Config{
-		APIAddr:      envOrDefault("BINBOI_API_ADDR", defaultAPIAddr),
-		TunnelAddr:   envOrDefault("BINBOI_TUNNEL_ADDR", defaultTunnelAddr),
-		ProxyAddr:    envOrDefault("BINBOI_PROXY_ADDR", defaultProxyAddr),
-		BaseDomain:   envOrDefault("BINBOI_BASE_DOMAIN", defaultBaseDomain),
-		PublicScheme: envOrDefault("BINBOI_PUBLIC_SCHEME", "http"),
-		DatabasePath: envOrDefault("BINBOI_DATABASE_PATH", defaultDatabase),
-		InstanceName: envOrDefault("BINBOI_INSTANCE_NAME", defaultInstance),
-		DefaultRegion: envOrDefault("BINBOI_DEFAULT_REGION", defaultRegion),
+		APIAddr:         envOrDefault("BINBOI_API_ADDR", defaultAPIAddr),
+		TunnelAddr:      envOrDefault("BINBOI_TUNNEL_ADDR", defaultTunnelAddr),
+		ProxyAddr:       envOrDefault("BINBOI_PROXY_ADDR", defaultProxyAddr),
+		BaseDomain:      envOrDefault("BINBOI_BASE_DOMAIN", defaultBaseDomain),
+		PublicScheme:    envOrDefault("BINBOI_PUBLIC_SCHEME", "http"),
+		DatabasePath:    envOrDefault("BINBOI_DATABASE_PATH", defaultDatabase),
+		InstanceName:    envOrDefault("BINBOI_INSTANCE_NAME", defaultInstance),
+		DefaultRegion:   envOrDefault("BINBOI_DEFAULT_REGION", defaultRegion),
+		AuthDatabaseURL: envOrDefault("BINBOI_AUTH_DATABASE_URL", strings.TrimSpace(os.Getenv("DATABASE_URL"))),
 	}
 
 	if port, err := strconv.Atoi(envOrDefault("BINBOI_PUBLIC_PORT", strconv.Itoa(portFromAddr(cfg.ProxyAddr, 8000)))); err == nil {
@@ -102,31 +104,31 @@ func portFromAddr(addr string, fallback int) int {
 }
 
 type InstanceToken struct {
-	ID        uint `gorm:"primaryKey"`
-	Value     string `gorm:"uniqueIndex"`
+	ID         uint   `gorm:"primaryKey"`
+	Value      string `gorm:"uniqueIndex"`
 	LastUsedAt *time.Time
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
 }
 
 type TunnelRecord struct {
-	ID               string `gorm:"primaryKey"`
-	Subdomain        string `gorm:"uniqueIndex"`
-	Target           string
-	TargetPort       int
-	Status           string
-	Region           string
-	LastError        string
-	RequestCount     int64
-	BytesTransferred int64
-	LastConnectedAt  *time.Time
+	ID                 string `gorm:"primaryKey"`
+	Subdomain          string `gorm:"uniqueIndex"`
+	Target             string
+	TargetPort         int
+	Status             string
+	Region             string
+	LastError          string
+	RequestCount       int64
+	BytesTransferred   int64
+	LastConnectedAt    *time.Time
 	LastDisconnectedAt *time.Time
-	CreatedAt        time.Time
-	UpdatedAt        time.Time
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
 }
 
 type DomainRecord struct {
-	ID          uint `gorm:"primaryKey"`
+	ID          uint   `gorm:"primaryKey"`
 	Name        string `gorm:"uniqueIndex"`
 	Type        string
 	Status      string
@@ -137,22 +139,23 @@ type DomainRecord struct {
 }
 
 type EventRecord struct {
-	ID             uint `gorm:"primaryKey"`
-	Level          string
-	Message        string
+	ID              uint `gorm:"primaryKey"`
+	Level           string
+	Message         string
 	TunnelSubdomain string
-	CreatedAt      time.Time
+	CreatedAt       time.Time
 }
 
 type activeSession struct {
-	session    *yamux.Session
-	remoteAddr string
+	session     *yamux.Session
+	remoteAddr  string
 	connectedAt time.Time
 }
 
 type Service struct {
-	cfg Config
-	db  *gorm.DB
+	cfg          Config
+	db           *gorm.DB
+	authProvider *authProvider
 
 	mu       sync.RWMutex
 	sessions map[string]*activeSession
@@ -192,10 +195,10 @@ type NodeResponse struct {
 }
 
 type EventResponse struct {
-	Level          string    `json:"level"`
-	Message        string    `json:"message"`
-	TunnelSubdomain string   `json:"tunnel_subdomain,omitempty"`
-	CreatedAt      time.Time `json:"created_at"`
+	Level           string    `json:"level"`
+	Message         string    `json:"message"`
+	TunnelSubdomain string    `json:"tunnel_subdomain,omitempty"`
+	CreatedAt       time.Time `json:"created_at"`
 }
 
 type InstanceResponse struct {
@@ -229,6 +232,12 @@ func NewService(cfg Config) (*Service, error) {
 		clients:  make(map[*websocket.Conn]struct{}),
 		backlog:  make([]string, 0, maxLogBacklog),
 	}
+
+	authProvider, err := newAuthProvider(cfg.AuthDatabaseURL)
+	if err != nil {
+		return nil, err
+	}
+	service.authProvider = authProvider
 
 	if err := service.ensureDefaults(); err != nil {
 		return nil, err
@@ -301,6 +310,9 @@ func (s *Service) RegisterRoutes(r *gin.Engine) {
 	api.GET("/domains", s.handleListDomains)
 	api.POST("/domains", s.handleCreateDomain)
 	api.POST("/domains/verify", s.handleVerifyDomain)
+
+	apiV1 := r.Group("/api/v1")
+	apiV1.GET("/auth/me", s.handleAuthMe)
 }
 
 func (s *Service) HandleTunnelConnection(conn net.Conn) {
@@ -341,7 +353,8 @@ func (s *Service) HandleTunnelConnection(conn net.Conn) {
 		return
 	}
 
-	if err := s.validateInstanceToken(authToken); err != nil {
+	identity, err := s.authenticateToken(authToken)
+	if err != nil {
 		s.writeHandshakeError(conn, "token rejected")
 		s.broadcastLog("warn", fmt.Sprintf("Rejected tunnel connection for %s", subdomain), subdomain)
 		return
@@ -379,7 +392,7 @@ func (s *Service) HandleTunnelConnection(conn net.Conn) {
 	s.attachSession(subdomain, session, conn.RemoteAddr().String())
 	defer s.detachSession(subdomain)
 
-	s.broadcastLog("info", fmt.Sprintf("Tunnel %s connected from %s", subdomain, conn.RemoteAddr().String()), subdomain)
+	s.broadcastLog("info", fmt.Sprintf("Tunnel %s connected from %s as %s", subdomain, conn.RemoteAddr().String(), identity.Email), subdomain)
 	<-session.CloseChan()
 }
 
@@ -536,6 +549,11 @@ func (s *Service) handleDeleteTunnel(c *gin.Context) {
 }
 
 func (s *Service) handleCurrentToken(c *gin.Context) {
+	if s.authProvider.Enabled() {
+		c.JSON(http.StatusConflict, gin.H{"error": "Personal access tokens are managed through the dashboard API."})
+		return
+	}
+
 	token, err := s.currentToken()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load token"})
@@ -544,23 +562,34 @@ func (s *Service) handleCurrentToken(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"token":        token.Value,
+		"created_at":   formatTime(&token.CreatedAt),
 		"last_used_at": formatTime(token.LastUsedAt),
 		"active_nodes": s.activeTunnelCount(),
 	})
 }
 
 func (s *Service) handleGenerateToken(c *gin.Context) {
+	if s.authProvider.Enabled() {
+		c.JSON(http.StatusConflict, gin.H{"error": "Personal access tokens are managed through the dashboard API."})
+		return
+	}
+
 	token, err := s.rotateToken()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to rotate token"})
 		return
 	}
 
-	s.broadcastLog("info", "Generated a new instance token", "")
+	s.broadcastLog("info", "Generated a new preview relay token", "")
 	c.JSON(http.StatusOK, gin.H{"status": "success", "token": token})
 }
 
 func (s *Service) handleRevokeSessions(c *gin.Context) {
+	if s.authProvider.Enabled() {
+		c.JSON(http.StatusConflict, gin.H{"error": "Personal access tokens are managed through the dashboard API."})
+		return
+	}
+
 	if err := s.closeAllSessions("token revoke requested from dashboard"); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to revoke sessions"})
 		return
@@ -647,6 +676,44 @@ func (s *Service) validateInstanceToken(raw string) error {
 	return s.db.Model(token).Update("last_used_at", &now).Error
 }
 
+func (s *Service) authenticateToken(raw string) (*AuthIdentity, error) {
+	if s.authProvider != nil && s.authProvider.Enabled() {
+		return s.authProvider.ValidateAccessToken(context.Background(), raw)
+	}
+
+	if err := s.validateInstanceToken(raw); err != nil {
+		return nil, err
+	}
+
+	return &AuthIdentity{
+		UserID:      "local-operator",
+		Name:        "Local Operator",
+		Email:       "operator@binboi.local",
+		Plan:        "PRO",
+		TokenPrefix: auth.SafeTokenLabel(raw),
+		AuthMode:    "instance-token-preview",
+	}, nil
+}
+
+func (s *Service) handleAuthMe(c *gin.Context) {
+	identity, err := s.authenticateToken(extractBearerToken(c.Request))
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid or missing access token"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"user": gin.H{
+			"id":    identity.UserID,
+			"name":  identity.Name,
+			"email": identity.Email,
+			"plan":  identity.Plan,
+		},
+		"token_prefix": identity.TokenPrefix,
+		"auth_mode":    identity.AuthMode,
+	})
+}
+
 func (s *Service) rotateToken() (string, error) {
 	token, err := s.currentToken()
 	if err != nil {
@@ -655,7 +722,7 @@ func (s *Service) rotateToken() (string, error) {
 
 	newValue := auth.GenerateSecureToken()
 	if err := s.db.Model(token).Updates(map[string]any{
-		"value":       newValue,
+		"value":        newValue,
 		"last_used_at": nil,
 	}).Error; err != nil {
 		return "", err
@@ -730,12 +797,12 @@ func (s *Service) upsertTunnelOnConnect(subdomain string, localPort int) error {
 	err := s.db.Where("subdomain = ?", subdomain).First(&record).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		record = TunnelRecord{
-			ID:          uuid.NewString(),
-			Subdomain:   subdomain,
-			Target:      target,
-			TargetPort:  localPort,
-			Status:      "ACTIVE",
-			Region:      s.cfg.DefaultRegion,
+			ID:              uuid.NewString(),
+			Subdomain:       subdomain,
+			Target:          target,
+			TargetPort:      localPort,
+			Status:          "ACTIVE",
+			Region:          s.cfg.DefaultRegion,
 			LastConnectedAt: &now,
 		}
 		return s.db.Create(&record).Error
@@ -969,10 +1036,10 @@ func (s *Service) listEvents(limit int) ([]EventResponse, error) {
 	response := make([]EventResponse, 0, len(records))
 	for _, record := range records {
 		response = append(response, EventResponse{
-			Level:          record.Level,
-			Message:        record.Message,
+			Level:           record.Level,
+			Message:         record.Message,
 			TunnelSubdomain: record.TunnelSubdomain,
-			CreatedAt:      record.CreatedAt,
+			CreatedAt:       record.CreatedAt,
 		})
 	}
 	return response, nil
@@ -981,16 +1048,24 @@ func (s *Service) listEvents(limit int) ([]EventResponse, error) {
 func (s *Service) instanceResponse() InstanceResponse {
 	var total int64
 	_ = s.db.Model(&TunnelRecord{}).Count(&total).Error
+
+	databaseMode := "sqlite"
+	authMode := "instance-token-preview"
+	if s.authProvider != nil && s.authProvider.Enabled() {
+		databaseMode = "sqlite + postgres"
+		authMode = "personal-access-token"
+	}
+
 	return InstanceResponse{
 		InstanceName:     s.cfg.InstanceName,
-		Database:         "sqlite",
+		Database:         databaseMode,
 		DatabasePath:     s.cfg.DatabasePath,
 		ManagedDomain:    s.cfg.BaseDomain,
 		PublicURLExample: s.BuildPublicURL("my-app"),
 		APIAddr:          s.cfg.APIAddr,
 		TunnelAddr:       s.cfg.TunnelAddr,
 		ProxyAddr:        s.cfg.ProxyAddr,
-		AuthMode:         "instance-token",
+		AuthMode:         authMode,
 		ActiveTunnels:    s.activeTunnelCount(),
 		ReservedTunnels:  total,
 	}
@@ -1010,6 +1085,10 @@ func (s *Service) renderProxyLanding(w http.ResponseWriter) {
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	authCopy := `Create an access token in the dashboard, run <code>binboi login --token &lt;token&gt;</code>, and then expose your local app with <code>binboi start 3000 your-subdomain</code>.`
+	if s.authProvider == nil || !s.authProvider.Enabled() {
+		authCopy = `This local preview mode uses one instance token in SQLite. Save it with <code>binboi login --token &lt;token&gt;</code> and then expose your local app with <code>binboi start 3000 your-subdomain</code>.`
+	}
 	fmt.Fprintf(w, `<!doctype html>
 <html>
   <head>
@@ -1032,12 +1111,12 @@ func (s *Service) renderProxyLanding(w http.ResponseWriter) {
       <span class="pill">HTTP proxy</span>
       <h1>%s</h1>
       <p>Send traffic to a tunnel subdomain such as <code>%s</code>. The dashboard is available on <code>http://localhost:3000/dashboard</code> during local development.</p>
-      <p>This self-hosted MVP uses a single instance token and a local SQLite control-plane database. Reserve a subdomain in the dashboard, then connect your CLI agent with <code>binboi auth &lt;token&gt;</code> and <code>binboi start 3000 your-subdomain</code>.</p>
+      <p>%s</p>
       <table>
         <thead>
           <tr><th>Subdomain</th><th>Status</th><th>Target</th><th>Public URL</th></tr>
         </thead>
-        <tbody>`, s.cfg.InstanceName, s.cfg.InstanceName, s.BuildPublicURL("my-app"))
+        <tbody>`, s.cfg.InstanceName, s.cfg.InstanceName, s.BuildPublicURL("my-app"), authCopy)
 
 	if len(tunnels) == 0 {
 		fmt.Fprint(w, `<tr><td colspan="4">No tunnels have been reserved yet.</td></tr>`)
@@ -1068,8 +1147,8 @@ func (s *Service) broadcastLog(level, message, subdomain string) {
 	s.logMu.Unlock()
 
 	_ = s.db.Create(&EventRecord{
-		Level:          strings.ToLower(level),
-		Message:        message,
+		Level:           strings.ToLower(level),
+		Message:         message,
 		TunnelSubdomain: subdomain,
 	}).Error
 }
@@ -1142,6 +1221,14 @@ func extractSubdomain(hostHeader, baseDomain string) string {
 	}
 
 	return strings.TrimSuffix(host, "."+baseDomain)
+}
+
+func extractBearerToken(r *http.Request) string {
+	authHeader := strings.TrimSpace(r.Header.Get("Authorization"))
+	if strings.HasPrefix(strings.ToLower(authHeader), "bearer ") {
+		return strings.TrimSpace(authHeader[7:])
+	}
+	return strings.TrimSpace(r.Header.Get("X-Binboi-Token"))
 }
 
 func normalizeSubdomain(raw string) (string, error) {

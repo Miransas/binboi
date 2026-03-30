@@ -2,19 +2,21 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Check, Copy, Download, TerminalSquare, Waypoints } from "lucide-react";
-import { fetchControlPlane, type ControlPlaneInstance, type ControlPlaneTokenState } from "@/lib/controlplane";
+import { fetchControlPlane, type ControlPlaneInstance } from "@/lib/controlplane";
 import { DashboardPageShell } from "@/components/dashboard/shared/page-shell";
 
 type SetupState = {
   instance: ControlPlaneInstance | null;
-  token: ControlPlaneTokenState | null;
+  tokenCount: number;
+  plan: "FREE" | "PRO";
   error: string | null;
 };
 
 export default function SetupPage() {
   const [state, setState] = useState<SetupState>({
     instance: null,
-    token: null,
+    tokenCount: 0,
+    plan: "FREE",
     error: null,
   });
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
@@ -24,19 +26,33 @@ export default function SetupPage() {
 
     async function load() {
       try {
-        const [instance, token] = await Promise.all([
+        const [instance, tokensResponse] = await Promise.all([
           fetchControlPlane<ControlPlaneInstance>("/api/instance"),
-          fetchControlPlane<ControlPlaneTokenState>("/api/tokens/current"),
+          fetch("/api/v1/tokens", { cache: "no-store" }).then(async (response) => {
+            const body = (await response.json()) as {
+              limits?: { plan?: "FREE" | "PRO"; tokens_used?: number };
+            };
+            if (!response.ok) {
+              throw new Error("Could not load token state.");
+            }
+            return body;
+          }),
         ]);
 
         if (!cancelled) {
-          setState({ instance, token, error: null });
+          setState({
+            instance,
+            tokenCount: tokensResponse.limits?.tokens_used ?? 0,
+            plan: tokensResponse.limits?.plan ?? "FREE",
+            error: null,
+          });
         }
       } catch (error) {
         if (!cancelled) {
           setState({
             instance: null,
-            token: null,
+            tokenCount: 0,
+            plan: "FREE",
             error: error instanceof Error ? error.message : "Could not load setup data.",
           });
         }
@@ -50,7 +66,6 @@ export default function SetupPage() {
   }, []);
 
   const steps = useMemo(() => {
-    const tokenValue = state.token?.token || "binboi_live_replace_me";
     const publicUrl = state.instance?.public_url_example || "http://my-app.binboi.localhost:8000";
 
     return [
@@ -61,9 +76,15 @@ export default function SetupPage() {
         icon: Download,
       },
       {
-        title: "Authenticate the agent",
-        description: "Save the instance token once on each machine that should open tunnels.",
-        command: `binboi auth ${tokenValue}`,
+        title: "Create an access token",
+        description: "Open the Access Tokens page, create a token, and copy it immediately. The full value is only shown once.",
+        command: "Open /dashboard/access-tokens in your browser",
+        icon: TerminalSquare,
+      },
+      {
+        title: "Log the CLI in",
+        description: "Save the token into the local CLI config and verify the account before exposing traffic.",
+        command: "binboi login --token <paste-token-from-dashboard> && binboi whoami",
         icon: TerminalSquare,
       },
       {
@@ -73,7 +94,7 @@ export default function SetupPage() {
         icon: Waypoints,
       },
     ];
-  }, [state.instance, state.token]);
+  }, [state.instance]);
 
   const copyCommand = async (command: string, index: number) => {
     await navigator.clipboard.writeText(command);
@@ -85,7 +106,7 @@ export default function SetupPage() {
     <DashboardPageShell
       eyebrow="Onboarding"
       title="Set up the relay and your first agent"
-      description="This page now reflects the actual MVP flow: build the CLI, save the instance token, and start an HTTP tunnel against the self-hosted relay."
+      description="This page reflects the working Binboi auth flow: build the CLI, create a dashboard access token, log in once per machine, and then start an HTTP tunnel."
       highlights={[
         {
           label: "Managed domain",
@@ -94,23 +115,23 @@ export default function SetupPage() {
         },
         {
           label: "Auth mode",
-          value: state.instance?.auth_mode || "instance-token",
-          note: "The first release keeps authentication intentionally simple and instance-scoped.",
+          value: state.instance?.auth_mode || "personal-access-token",
+          note: "The dashboard and CLI now share the same access token model.",
         },
         {
-          label: "Relay state",
-          value: state.error ? "Offline" : "Ready",
-          note: state.error || "If the control plane is online, the commands below are ready to use.",
+          label: "Plan & tokens",
+          value: `${state.plan} / ${state.tokenCount}`,
+          note: state.error || "This combines the current plan foundation with the number of active CLI tokens.",
         },
       ]}
       panels={[
         {
           title: "How the setup flow works",
-          description: "Reserve a subdomain in the dashboard if you want a predictable URL, then connect the CLI with the instance token. The relay marks the tunnel active when the agent attaches successfully.",
+          description: "Reserve a subdomain in the dashboard if you want a predictable URL, then connect the CLI with a personal access token. The relay marks the tunnel active when the authenticated agent attaches successfully.",
         },
         {
           title: "Environment variables worth knowing",
-          description: "The CLI reads BINBOI_SERVER_ADDR for the tunnel listener address. The relay uses BINBOI_API_ADDR, BINBOI_TUNNEL_ADDR, BINBOI_PROXY_ADDR, BINBOI_BASE_DOMAIN, and BINBOI_DATABASE_PATH.",
+          description: "The CLI reads BINBOI_API_URL for login and whoami, BINBOI_SERVER_ADDR for tunnel traffic, and BINBOI_AUTH_TOKEN for non-interactive environments. The relay uses BINBOI_API_ADDR, BINBOI_TUNNEL_ADDR, BINBOI_PROXY_ADDR, BINBOI_BASE_DOMAIN, and BINBOI_DATABASE_PATH.",
         },
       ]}
     >

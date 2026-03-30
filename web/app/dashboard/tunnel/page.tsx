@@ -72,7 +72,7 @@ export default function TunnelPage() {
     <DashboardPageShell
       eyebrow="Tunnels"
       title="Reserve, connect, and monitor tunnels"
-      description="This page now reflects the real MVP lifecycle. A tunnel can exist in an inactive reserved state, then become active when a CLI agent connects with the correct instance token."
+      description="This page reflects the real MVP lifecycle. A tunnel can exist in an inactive reserved state, then become active when a CLI agent connects with a valid access token."
       highlights={[
         {
           label: "Reserved tunnels",

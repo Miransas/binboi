@@ -6,10 +6,10 @@ const posts = [
       "We removed blank pages, clarified the backend data model, and narrowed the product to reliable HTTP tunneling instead of a grab bag of unfinished experiments.",
   },
   {
-    title: "Why the first release is instance-token based",
+    title: "Why Binboi now uses personal access tokens",
     date: "March 24, 2026",
     summary:
-      "A single instance token keeps the self-hosted story clear while the control plane and relay lifecycle mature.",
+      "Users now create account-backed access tokens in the dashboard while the relay still keeps the runtime control plane intentionally small.",
   },
 ];
 

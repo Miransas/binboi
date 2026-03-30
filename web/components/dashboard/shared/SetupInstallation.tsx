@@ -29,18 +29,18 @@ export default function SetupInstallation({ authToken }: { authToken: string }) 
   const steps = {
     macos: [
       { title: "Install via Homebrew", cmd: "brew install binboi/tap/binboi", desc: "Run this command to install the Binboi agent on your Mac." },
-      { title: "Authenticate Agent", cmd: `binboi config add-authtoken ${authToken}`, desc: "Connect the agent to your Miransas account." },
-      { title: "Start your first tunnel", cmd: "binboi http 3000", desc: "Expose your local port 3000 to the world." }
+      { title: "Log in with an access token", cmd: `binboi login --token ${authToken}`, desc: "Connect the agent to your Binboi account." },
+      { title: "Start your first tunnel", cmd: "binboi start 3000", desc: "Expose your local port 3000 to the world." }
     ],
     windows: [
       { title: "Install via Scoop", cmd: "scoop install binboi", desc: "Install the Binboi binary using Scoop package manager." },
-      { title: "Authenticate Agent", cmd: `binboi config add-authtoken ${authToken}`, desc: "Save your token to the local config file." },
-      { title: "Start your first tunnel", cmd: "binboi http 80", desc: "Expose your local web server." }
+      { title: "Log in with an access token", cmd: `binboi login --token ${authToken}`, desc: "Save your token to the local config file." },
+      { title: "Start your first tunnel", cmd: "binboi start 80", desc: "Expose your local web server." }
     ],
     linux: [
       { title: "Install via Snap", cmd: "sudo snap install binboi", desc: "Universal Linux installation via Snapcraft." },
-      { title: "Authenticate Agent", cmd: `binboi config add-authtoken ${authToken}`, desc: "Configure your CLI for Miransas neural nodes." },
-      { title: "Start your first tunnel", cmd: "binboi http 8080", desc: "Launch your introspection tunnel." }
+      { title: "Log in with an access token", cmd: `binboi login --token ${authToken}`, desc: "Configure your CLI for the Binboi relay." },
+      { title: "Start your first tunnel", cmd: "binboi start 8080", desc: "Launch your HTTP tunnel." }
     ]
   };
 
@@ -51,7 +51,7 @@ export default function SetupInstallation({ authToken }: { authToken: string }) 
       <section className="space-y-4">
         <h1 className="text-5xl font-black italic tracking-tighter text-white">Setup & Installation</h1>
         <p className="text-gray-500 text-lg max-w-2xl leading-relaxed">
-          Binboi is your app’s front door—a globally distributed reverse proxy that secures and accelerates your local services.
+          Binboi is your app’s front door: a tunnel relay, dashboard, and CLI flow that stays simple enough to self-host without losing product polish.
         </p>
       </section>
 

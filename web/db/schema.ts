@@ -9,15 +9,16 @@ import {
 } from "drizzle-orm/pg-core";
 import type { AdapterAccount } from "next-auth/adapters";
 
-// Mevcut kullanıcı tablonu Auth.js ile uyumlu hale getiriyoruz
+export type UserPlan = "FREE" | "PRO";
+export type AccessTokenStatus = "ACTIVE" | "REVOKED";
+
 export const users = pgTable("user", {
   id: text("id").notNull().primaryKey(),
   name: text("name"),
   email: text("email").notNull().unique(),
   emailVerified: timestamp("emailVerified", { mode: "date" }),
   image: text("image"),
-  // Binboi özel alanları
-  token: text("token").unique(), 
+  plan: text("plan").$type<UserPlan>().notNull().default("FREE"),
   isActive: boolean("is_active").default(true),
 });
 
@@ -65,22 +66,34 @@ export const verificationTokens = pgTable(
   })
 );
 
-// 🚀 Tunnels Table: Aktif ve rezerve subdomainler
+export const accessTokens = pgTable("access_token", {
+  id: text("id").notNull().primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  prefix: text("prefix").notNull().unique(),
+  tokenHash: text("token_hash").notNull(),
+  status: text("status").$type<AccessTokenStatus>().notNull().default("ACTIVE"),
+  lastUsedAt: timestamp("last_used_at", { mode: "date" }),
+  revokedAt: timestamp("revoked_at", { mode: "date" }),
+  createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+});
+
 export const tunnels = pgTable("tunnels", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }),
+  userId: text("user_id").references(() => users.id, { onDelete: "cascade" }),
   subdomain: text("subdomain").unique().notNull(),
   targetPort: integer("target_port").notNull(),
   isOnline: boolean("is_online").default(false),
-  lastActiveAt: timestamp("last_active_at"),
+  lastActiveAt: timestamp("last_active_at", { mode: "date" }),
 });
 
-// 📊 Activity Logs: Kim, ne zaman, hangi IP ile bağlandı?
 export const activityLogs = pgTable("activity_logs", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").references(() => users.id),
+  userId: text("user_id").references(() => users.id),
   subdomain: text("subdomain").notNull(),
   ipAddress: text("ip_address"),
-  action: text("action").notNull(), // 'CONNECTED', 'DISCONNECTED'
-  createdAt: timestamp("created_at").defaultNow(),
+  action: text("action").notNull(),
+  createdAt: timestamp("created_at", { mode: "date" }).defaultNow(),
 });

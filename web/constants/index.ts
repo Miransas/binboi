@@ -28,7 +28,7 @@ export const DASHBOARD_LINKS = [
     items: [
       {label: "Welcome", href: "/dashboard", icon: FiHome },
       { label: "Setup & Installation", href: "/dashboard/setup", icon: FiHome },
-      { label: "Your Authtoken", href: "/dashboard/authtoken", icon: FiKey },
+      { label: "Access Tokens", href: "/dashboard/access-tokens", icon: FiKey },
       { label: "Tunnel", href: "/dashboard/tunnel", icon: FiSliders },
     ],
   },

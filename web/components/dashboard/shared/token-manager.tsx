@@ -1,103 +1,91 @@
 "use client";
+
 import { useEffect, useState } from "react";
-import { Copy, RefreshCcw, Eye, EyeOff, Check } from "lucide-react";
-import { buildApiUrl } from "@/lib/binboi";
+import Link from "next/link";
+import { ArrowRight, KeyRound, RefreshCcw } from "lucide-react";
 
-export default function TokenManager({ initialToken }: { initialToken: string }) {
-  const [token, setToken] = useState(initialToken || "TOKEN_NOT_SET");
-  const [isVisible, setIsVisible] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+type TokenSummary = {
+  auth_mode: "account" | "preview";
+  user: {
+    email: string;
+    plan: "FREE" | "PRO";
+  };
+  limits: {
+    max_tokens: number;
+    tokens_used: number;
+    max_tunnels: number;
+  };
+};
 
-  useEffect(() => {
-    if (initialToken) {
-      return;
-    }
+export default function TokenManager() {
+  const [summary, setSummary] = useState<TokenSummary | null>(null);
+  const [loading, setLoading] = useState(true);
 
-    let cancelled = false;
-    async function loadCurrentToken() {
-      try {
-        const res = await fetch(buildApiUrl("/api/tokens/current"));
-        if (!res.ok) return;
-        const data = await res.json();
-        if (!cancelled && data?.token) {
-          setToken(data.token);
-        }
-      } catch {
-      }
-    }
-
-    loadCurrentToken();
-    return () => {
-      cancelled = true;
-    };
-  }, [initialToken]);
-
-  const generateNewToken = async () => {
+  const load = async () => {
     setLoading(true);
-    setError(null);
     try {
-      const res = await fetch(buildApiUrl("/api/tokens/generate"), { 
-        method: "POST" 
-      });
-
-      if (!res.ok) throw new Error("SERVER_CONNECTION_FAILED");
-
-      const data = await res.json();
-      
-      setToken(data.token);
-    } catch (err) {
-      console.error("🔴 [AUTH_ERROR]:", err);
-      setError("The control plane is unavailable. Start the relay and try again.");
+      const response = await fetch("/api/v1/tokens", { cache: "no-store" });
+      const body = (await response.json()) as TokenSummary;
+      if (response.ok) {
+        setSummary(body);
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(token);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
+  useEffect(() => {
+    load();
+  }, []);
 
   return (
-    <div className="p-6 bg-[#080808] border border-white/10 rounded-2xl relative overflow-hidden group">
-      <div className="flex justify-between items-center mb-6">
-        <h3 className="text-[10px] text-gray-500 uppercase font-bold tracking-[0.2em]">Instance Token</h3>
-        
-        <button 
-          onClick={generateNewToken}
-          disabled={loading}
-          className="p-2 hover:bg-white/5 rounded-lg transition-all group/btn"
+    <div className="rounded-2xl border border-white/10 bg-[#080808] p-6">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <KeyRound className="h-5 w-5 text-miransas-cyan" />
+          <div>
+            <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-500">
+              Access tokens
+            </h3>
+            <p className="mt-2 text-sm text-white">
+              {loading
+                ? "Loading token policy..."
+                : `${summary?.limits.tokens_used ?? 0} of ${summary?.limits.max_tokens ?? 0} active`}
+            </p>
+          </div>
+        </div>
+
+        <button
+          onClick={load}
+          className="rounded-xl border border-white/10 bg-white/5 p-2 text-zinc-400 transition hover:bg-white/10 hover:text-white"
         >
-          <RefreshCcw 
-            size={16} 
-            className={`text-miransas-cyan transition-transform duration-700 ${loading ? 'animate-spin' : 'group-hover/btn:rotate-180'}`} 
-          />
+          <RefreshCcw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
         </button>
       </div>
 
-      <div className="flex items-center gap-4 bg-black/40 p-4 rounded-xl border border-white/5 font-mono">
-        <div className="flex-1 text-sm truncate text-gray-300">
-          {isVisible ? token : "••••••••••••••••••••••••••••••••"}
-        </div>
-        
-        <div className="flex items-center gap-2">
-          <button onClick={() => setIsVisible(!isVisible)} className="p-2 text-gray-600 hover:text-white transition-colors">
-            {isVisible ? <EyeOff size={18} /> : <Eye size={18} />}
-          </button>
-          
-          <button onClick={copyToClipboard} className="p-2 text-gray-600 hover:text-miransas-cyan transition-colors">
-            {copied ? <Check size={18} className="text-green-500" /> : <Copy size={18} />}
-          </button>
-        </div>
-      </div>
-
-      <p className="mt-4 text-[9px] text-gray-600 italic leading-relaxed">
-        Use this token with the CLI: <span className="text-miransas-cyan">binboi auth [token]</span>
+      <p className="mt-5 text-sm leading-7 text-zinc-400">
+        {loading
+          ? "Checking the current plan and token limits."
+          : `${summary?.user.plan || "FREE"} plan foundations are active for ${summary?.user.email || "your workspace"}. Full tokens are only shown once at creation time.`}
       </p>
-      {error && <p className="mt-3 text-xs text-red-400">{error}</p>}
+
+      <div className="mt-6 flex items-center justify-between rounded-2xl border border-white/8 bg-black/30 p-4">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500">
+            Recommended next step
+          </p>
+          <p className="mt-2 text-sm text-white">
+            Create a CLI token, then run <span className="font-mono text-miransas-cyan">binboi login --token &lt;token&gt;</span>.
+          </p>
+        </div>
+        <Link
+          href="/dashboard/access-tokens"
+          className="inline-flex items-center gap-2 rounded-xl bg-miransas-cyan px-4 py-2 text-sm font-semibold text-black transition hover:brightness-110"
+        >
+          Open page
+          <ArrowRight className="h-4 w-4" />
+        </Link>
+      </div>
     </div>
   );
 }

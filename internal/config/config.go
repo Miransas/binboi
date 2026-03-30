@@ -11,7 +11,7 @@ import (
 // 📦 Config Şeması: YAML dosyamızın tam karşılığı
 type BinboiConfig struct {
 	AuthToken string `yaml:"authtoken"`
-	// 
+	//
 	// Region    string `yaml:"region,omitempty"`
 	// LogLevel  string `yaml:"log_level,omitempty"`
 }
@@ -25,7 +25,7 @@ func getConfigPath() (string, error) {
 
 	// Klasör yolu: ~/.binboi
 	configDir := filepath.Join(homeDir, ".binboi")
-	
+
 	// Klasör yoksa oluştur (Sadece okuma/yazma/çalıştırma izni kullanıcıya ait: 0700)
 	if err := os.MkdirAll(configDir, 0700); err != nil {
 		return "", fmt.Errorf("failed to create config directory: %w", err)
@@ -77,7 +77,7 @@ func LoadToken() (string, error) {
 	fileBytes, err := os.ReadFile(configPath)
 	if err != nil {
 		// Dosya yoksa veya okunamıyorsa kullanıcıyı uyar
-		return "", fmt.Errorf("config file not found. Please run 'binboi config add-authtoken <token>' first")
+		return "", fmt.Errorf("config file not found. Please run 'binboi login --token <token>' first")
 	}
 
 	var cfg BinboiConfig
@@ -86,7 +86,7 @@ func LoadToken() (string, error) {
 	}
 
 	if cfg.AuthToken == "" {
-		return "", fmt.Errorf("auth token is empty in config file")
+		return "", fmt.Errorf("access token is empty in config file")
 	}
 
 	return cfg.AuthToken, nil

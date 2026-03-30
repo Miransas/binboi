@@ -24,10 +24,10 @@ func StartHttpTunnel(token string, port int, subdomain string) error {
 	}
 
 	hp := protocol.HandshakePayload{
-		AuthToken: token,
-		Subdomain: subdomain,
-		LocalPort: port,
-		ClientVersion: "0.3.0",
+		AuthToken:     token,
+		Subdomain:     subdomain,
+		LocalPort:     port,
+		ClientVersion: Version,
 	}
 	payload, _ := json.Marshal(hp)
 	msg, _ := (&protocol.Message{Type: protocol.TypeHandshake, Payload: payload}).Encode()

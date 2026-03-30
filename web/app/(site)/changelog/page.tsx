@@ -1,5 +1,14 @@
 const logs = [
   {
+    v: "v0.4.0",
+    date: "2026-03-30",
+    changes: [
+      "Added account-backed access tokens with prefix-plus-hash storage.",
+      "Implemented binboi login, whoami, and config-based CLI authentication.",
+      "Added Homebrew-ready version output and release artifact documentation.",
+    ],
+  },
+  {
     v: "v0.3.0",
     date: "2026-03-30",
     changes: [

@@ -5,11 +5,11 @@ const sections = [
   },
   {
     title: "How the MVP works",
-    body: "Reserve a subdomain in the dashboard, save the instance token with the CLI, then start a tunnel for your local port. The relay marks the tunnel active when the agent connects successfully.",
+    body: "Create an account in the dashboard, mint an access token, save it with `binboi login --token <token>`, and then start a tunnel for your local port. The relay marks the tunnel active when the authenticated agent connects successfully.",
   },
   {
     title: "What is intentionally out of scope",
-    body: "Raw TCP exposure, in-core TLS certificate management, AI inspection, and per-user machine identities are not yet finished product features.",
+    body: "Raw TCP exposure, in-core TLS certificate management, AI inspection, and scoped machine identities are not yet finished product features.",
   },
 ];
 

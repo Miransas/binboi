@@ -55,7 +55,7 @@ export default function LoginPage() {
             Welcome to <span className="italic">BINBOI</span>
           </h1>
           <p className="text-sm text-gray-400">
-            Log in to manage your introspection tunnels and API gateways.
+            Create an account or sign in to manage tunnels, domains, and CLI access tokens.
           </p>
         </div>
 

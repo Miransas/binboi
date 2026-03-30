@@ -21,7 +21,7 @@ const featureCards = [
 
 const quickStart = [
   "Start the relay server on your VPS or local machine.",
-  "Authenticate the CLI with your Binboi token.",
+  "Create an access token in the dashboard and log the CLI in.",
   "Open a tunnel to your local app and share the generated URL.",
 ];
 
