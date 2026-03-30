@@ -137,7 +137,7 @@ export function PremiumSurface({
   return (
     <div
       className={cn(
-        "group relative overflow-hidden  bg-[#060608]/84 shadow-[0_34px_110px_rgba(0,0,0,0.44)] backdrop-blur-xl",
+        "group relative overflow-hidden rounded-[2rem]  bg-[#060608]/84 shadow-[0_34px_110px_rgba(0,0,0,0.44)] backdrop-blur-xl",
         palette.border,
         className,
       )}

@@ -10,7 +10,7 @@ type TokenSummary = {
   auth_mode: "account" | "preview";
   user: {
     email: string;
-    plan: "FREE" | "PRO";
+    plan: "FREE" | "PRO" | "SCALE";
   };
   limits: {
     max_tokens: number;

@@ -93,18 +93,17 @@ Dashboard:
 
 - `NEXT_PUBLIC_BINBOI_API_BASE`
 - `NEXT_PUBLIC_BINBOI_WS_BASE`
+- `DATABASE_URL`
+- `AUTH_SECRET`
+- `PADDLE_API_KEY`
+- `PADDLE_CLIENT_TOKEN`
+- `PADDLE_WEBHOOK_SECRET`
+- `PADDLE_PRO_PRICE_ID`
+- `PADDLE_SCALE_PRICE_ID`
 
 ## Docker
 
 The included `Dockerfile` and `docker-compose.yml` reflect the SQLite-backed relay MVP. Add Postgres separately when you want real website accounts and hashed access tokens instead of local preview auth.
-
-## CLI releases
-
-Use `make build-cli` for a local binary and `make release-cli VERSION=0.4.0` for release archives.
-
-- Release naming: `binboi_<version>_<os>_<arch>.tar.gz`
-- Homebrew formula template: `packaging/homebrew/binboi.rb`
-- Release notes and artifact expectations: `docs/releasing-cli.md`
 
 ## CLI releases
 
@@ -123,6 +122,9 @@ Working:
 - Agent handshake and tunnel activation
 - Public URL generation from the managed domain
 - Access token creation, listing, and revocation
+- Paddle hosted checkout for Pro and Scale subscriptions
+- Billing page with upgrade and cancel flows
+- Paddle webhook-driven plan synchronization
 - Domain registration and DNS verification
 - Event log streaming to the dashboard
 

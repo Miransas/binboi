@@ -115,7 +115,7 @@ export default function DashboardSidebar({ user }: { user: any }) {
                     </span>
                     {nextPlan ? (
                       <Link
-                        href={`/pricing?focus=${nextPlan.toLowerCase()}`}
+                        href="/dashboard/billing"
                         className="rounded-full border border-miransas-cyan/18 bg-miransas-cyan/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-miransas-cyan transition hover:border-miransas-cyan/28 hover:bg-miransas-cyan/14"
                       >
                         {nextPlan === "PRO" ? "Upgrade" : "Scale"}

@@ -73,12 +73,20 @@ export class AccessTokenRouteError extends Error {
 }
 
 const PLAN_LIMITS: Record<UserPlan, { maxTokens: number; maxTunnels: number }> = {
-  FREE: { maxTokens: 3, maxTunnels: 3 },
+  FREE: { maxTokens: 3, maxTunnels: 1 },
   PRO: { maxTokens: 25, maxTunnels: 25 },
+  SCALE: { maxTokens: 100, maxTunnels: 100 },
 };
 
 function normalizePlan(plan: string | null | undefined): UserPlan {
-  return String(plan).toUpperCase() === "PRO" ? "PRO" : "FREE";
+  const value = String(plan).toUpperCase();
+  if (value === "SCALE") {
+    return "SCALE";
+  }
+  if (value === "PRO") {
+    return "PRO";
+  }
+  return "FREE";
 }
 
 function sanitizeTokenName(raw: string | null | undefined): string {

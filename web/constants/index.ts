@@ -10,6 +10,7 @@ import {
   FiShield,
   FiSlash,
   FiSliders,
+  FiCreditCard,
 } from "react-icons/fi"
 import { MdOutlineSettingsInputComposite } from "react-icons/md";
 
@@ -32,6 +33,7 @@ export const DASHBOARD_LINKS = [
       {label: "Welcome", href: "/dashboard", icon: FiHome },
       { label: "Setup & Installation", href: "/dashboard/setup", icon: MdOutlineSettingsInputComposite },
       { label: "Access Tokens", href: "/dashboard/access-tokens", icon: FiKey },
+      { label: "Billing", href: "/dashboard/billing", icon: FiCreditCard },
       { label: "Tunnel", href: "/dashboard/tunnel", icon: FiSliders },
     ],
   },

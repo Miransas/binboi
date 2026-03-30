@@ -53,7 +53,7 @@ export default function DashboardHeader() {
               </div>
               {nextPlan ? (
                 <Link
-                  href={`/pricing?focus=${nextPlan.toLowerCase()}`}
+                  href="/dashboard/billing"
                   className="inline-flex items-center gap-2 rounded-full border border-miransas-cyan/18 bg-miransas-cyan/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-miransas-cyan transition hover:border-miransas-cyan/30 hover:bg-miransas-cyan/14"
                 >
                   {nextPlan === "PRO" ? "Upgrade" : "Go Scale"}

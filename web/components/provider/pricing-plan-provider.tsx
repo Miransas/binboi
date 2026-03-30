@@ -36,6 +36,7 @@ type PricingPlanContextValue = {
   setPlan: (plan: BillingPlan) => void;
   clearPlanOverride: () => void;
   consumeAiExplain: () => boolean;
+  refreshPlan: () => Promise<void>;
 };
 
 const STORAGE_PLAN_KEY = "binboi-plan-override";
@@ -91,18 +92,36 @@ export function PricingPlanProvider({ children }: { children: ReactNode }) {
     }
   });
 
+  const refreshPlan = useCallback(async () => {
+    try {
+      const response = await fetch("/api/billing", { cache: "no-store" });
+      const body = (await response.json().catch(() => null)) as
+        | { subscription?: { plan?: string }; user?: { plan?: string } }
+        | null;
+
+      if (response.ok) {
+        setDetectedPlan(
+          normalizeBillingPlan(body?.subscription?.plan || body?.user?.plan),
+        );
+      }
+    } catch {
+    }
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
 
     const detectPlan = async () => {
       try {
-        const response = await fetch("/api/v1/tokens", { cache: "no-store" });
+        const response = await fetch("/api/billing", { cache: "no-store" });
         const body = (await response.json().catch(() => null)) as
-          | { limits?: { plan?: string } }
+          | { subscription?: { plan?: string }; user?: { plan?: string } }
           | null;
 
         if (!cancelled && response.ok) {
-          setDetectedPlan(normalizeBillingPlan(body?.limits?.plan));
+          setDetectedPlan(
+            normalizeBillingPlan(body?.subscription?.plan || body?.user?.plan),
+          );
         }
       } catch {
       }
@@ -174,6 +193,7 @@ export function PricingPlanProvider({ children }: { children: ReactNode }) {
       setPlan,
       clearPlanOverride,
       consumeAiExplain,
+      refreshPlan,
     }),
     [
       activePlan,
@@ -183,6 +203,7 @@ export function PricingPlanProvider({ children }: { children: ReactNode }) {
       detectedPlan,
       overridePlan,
       planConfig,
+      refreshPlan,
       setPlan,
       clearPlanOverride,
       usage,

@@ -1,5 +1,6 @@
 import { Check, Sparkles } from "lucide-react";
 
+import { BillingCheckoutButton } from "@/components/pricing/billing-checkout-button";
 import { PricingActionButton } from "@/components/pricing/pricing-action-button";
 import { getPricingPlan, type PricingPlan } from "@/lib/pricing";
 import { cn } from "@/lib/utils";
@@ -70,13 +71,22 @@ export function PricingCard({ plan }: { plan: PricingPlan }) {
           ))}
         </div>
 
-        <PricingActionButton
-          plan={plan.id}
-          href={href}
-          label={plan.ctaLabel}
-          className="mt-6 w-full"
-          variant={plan.featured ? "primary" : "secondary"}
-        />
+        {plan.id === "FREE" ? (
+          <PricingActionButton
+            plan={plan.id}
+            href={href}
+            label={plan.ctaLabel}
+            className="mt-6 w-full"
+            variant={plan.featured ? "primary" : "secondary"}
+          />
+        ) : (
+          <BillingCheckoutButton
+            plan={plan.id}
+            label={plan.ctaLabel}
+            className="mt-6 w-full"
+            variant={plan.featured ? "primary" : "secondary"}
+          />
+        )}
       </div>
     </section>
   );

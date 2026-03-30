@@ -22,10 +22,10 @@ type AccessTokenResponse = {
     id: string;
     name: string;
     email: string;
-    plan: "FREE" | "PRO";
+    plan: "FREE" | "PRO" | "SCALE";
   };
   limits: {
-    plan: "FREE" | "PRO";
+    plan: "FREE" | "PRO" | "SCALE";
     max_tokens: number;
     max_tunnels: number;
     tokens_used: number;
@@ -99,9 +99,11 @@ export default function AccessTokensPage() {
         label: "Plan",
         value: plan,
         note:
-          plan === "PRO"
-            ? "Pro foundations are wired in for higher token and tunnel limits."
-            : "Free plan foundations are active with conservative default limits.",
+          plan === "SCALE"
+            ? "Scale keeps the token surface wide open for heavier teams and future API-heavy workflows."
+            : plan === "PRO"
+              ? "Pro foundations are wired in for higher token and tunnel limits."
+              : "Free plan foundations are active with conservative default limits.",
       },
       {
         label: "Access tokens",

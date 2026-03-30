@@ -319,6 +319,17 @@ const routeContextCatalog: Record<string, RouteAssistantContext> = {
       },
     },
   },
+  "/dashboard/billing": {
+    label: "Billing",
+    context: {
+      currentPage: {
+        path: "/dashboard/billing",
+        title: "Billing",
+        area: "dashboard",
+        summary: "Current plan, Paddle subscription status, upgrade paths, and cancellation controls.",
+      },
+    },
+  },
   "/dashboard/tunnel": {
     label: "Tunnels",
     context: {

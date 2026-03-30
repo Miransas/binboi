@@ -13,7 +13,7 @@ import {
 type SetupState = {
   instance: ControlPlaneInstance | null;
   tokenCount: number;
-  plan: "FREE" | "PRO";
+  plan: "FREE" | "PRO" | "SCALE";
   error: string | null;
 };
 
@@ -35,7 +35,7 @@ export default function SetupPage() {
           fetchControlPlane<ControlPlaneInstance>("/api/instance"),
           fetch("/api/v1/tokens", { cache: "no-store" }).then(async (response) => {
             const body = (await response.json()) as {
-              limits?: { plan?: "FREE" | "PRO"; tokens_used?: number };
+              limits?: { plan?: "FREE" | "PRO" | "SCALE"; tokens_used?: number };
             };
             if (!response.ok) {
               throw new Error("Could not load token state.");

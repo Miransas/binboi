@@ -9,8 +9,15 @@ import {
 } from "drizzle-orm/pg-core";
 import type { AdapterAccount } from "next-auth/adapters";
 
-export type UserPlan = "FREE" | "PRO";
+export type UserPlan = "FREE" | "PRO" | "SCALE";
 export type AccessTokenStatus = "ACTIVE" | "REVOKED";
+export type SubscriptionStatus =
+  | "FREE"
+  | "TRIALING"
+  | "ACTIVE"
+  | "PAST_DUE"
+  | "PAUSED"
+  | "CANCELED";
 
 export const users = pgTable("user", {
   id: text("id").notNull().primaryKey(),
@@ -20,6 +27,7 @@ export const users = pgTable("user", {
   image: text("image"),
   plan: text("plan").$type<UserPlan>().notNull().default("FREE"),
   isActive: boolean("is_active").default(true),
+  paddleCustomerId: text("paddle_customer_id").unique(),
 });
 
 export const accounts = pgTable(
@@ -96,4 +104,21 @@ export const activityLogs = pgTable("activity_logs", {
   ipAddress: text("ip_address"),
   action: text("action").notNull(),
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow(),
+});
+
+export const billingSubscriptions = pgTable("billing_subscriptions", {
+  id: serial("id").primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  provider: text("provider").notNull().default("PADDLE"),
+  plan: text("plan").$type<UserPlan>().notNull().default("FREE"),
+  status: text("status").$type<SubscriptionStatus>().notNull().default("FREE"),
+  paddleSubscriptionId: text("paddle_subscription_id").unique(),
+  paddleCustomerId: text("paddle_customer_id"),
+  paddlePriceId: text("paddle_price_id"),
+  renewsAt: timestamp("renews_at", { mode: "date" }),
+  cancelAtPeriodEnd: boolean("cancel_at_period_end").notNull().default(false),
+  createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
 });
