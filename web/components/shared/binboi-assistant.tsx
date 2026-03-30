@@ -246,13 +246,16 @@ export function BinboiAssistant({
     .reverse()
     .find((message) => message.role === "assistant");
   const latestResponse = latestAssistantMessage?.response ?? null;
+  const panelMode: "idle" | "conversation" = messages.length > 0 || loading ? "conversation" : "idle";
 
   return (
     <section className={cn(variantClasses[variant], "min-w-0 overflow-hidden", className)}>
       <div className="flex h-full min-h-0 flex-col overflow-hidden">
         <AssistantPanelHeader
+          mode={panelMode}
           title={activeTitle}
           description={activeDescription}
+          response={latestResponse}
           onClear={clearHistory}
         />
 
@@ -264,20 +267,29 @@ export function BinboiAssistant({
               </div>
             )}
 
-            <div className="grid min-h-0 flex-1 gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(21rem,0.9fr)]">
+            <div
+              className={cn(
+                "grid min-h-0 flex-1 gap-4 transition-[grid-template-columns] duration-300 ease-out",
+                panelMode === "conversation"
+                  ? "xl:grid-cols-[minmax(0,1fr)_0fr]"
+                  : "xl:grid-cols-[minmax(0,1.08fr)_minmax(21rem,0.92fr)]",
+              )}
+            >
               <AssistantTranscript
+                mode={panelMode}
                 messages={messages}
                 loading={loading}
                 transcriptRef={transcriptRef}
                 endRef={transcriptEndRef}
               />
 
-              <AssistantInsights response={latestResponse} />
+              <AssistantInsights mode={panelMode} response={latestResponse} />
             </div>
           </div>
         </div>
 
         <AssistantComposer
+          mode={panelMode}
           query={query}
           onQueryChange={setQuery}
           onSubmit={() => {

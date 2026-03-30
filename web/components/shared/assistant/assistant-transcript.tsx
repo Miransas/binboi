@@ -1,6 +1,7 @@
 import type { RefObject } from "react";
-import { History, Loader2 } from "lucide-react";
+import { History, Loader2, MessageSquareMore } from "lucide-react";
 
+import { AssistantEmptyState } from "@/components/shared/assistant/assistant-empty-state";
 import type { AssistantResponsePayload } from "@/lib/assistant-types";
 import { cn } from "@/lib/utils";
 
@@ -12,6 +13,7 @@ type AssistantTranscriptMessage = {
 };
 
 type AssistantTranscriptProps = {
+  mode: "idle" | "conversation";
   messages: AssistantTranscriptMessage[];
   loading: boolean;
   transcriptRef: RefObject<HTMLDivElement | null>;
@@ -19,22 +21,29 @@ type AssistantTranscriptProps = {
 };
 
 export function AssistantTranscript({
+  mode,
   messages,
   loading,
   transcriptRef,
   endRef,
 }: AssistantTranscriptProps) {
+  const conversationActive = mode === "conversation";
+
   return (
     <article className="grid h-full min-h-0 overflow-hidden rounded-[1.75rem] border border-white/10 bg-black/35 grid-rows-[auto,minmax(0,1fr)]">
       <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
         <div className="flex items-center gap-2">
-          <History className="h-4 w-4 text-miransas-cyan" />
+          {conversationActive ? (
+            <MessageSquareMore className="h-4 w-4 text-miransas-cyan" />
+          ) : (
+            <History className="h-4 w-4 text-miransas-cyan" />
+          )}
           <h3 className="text-sm font-semibold uppercase tracking-[0.22em] text-zinc-300">
-            Conversation
+            {conversationActive ? "Active conversation" : "Conversation"}
           </h3>
         </div>
         <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs text-zinc-500">
-          Session history
+          {conversationActive ? "Chat-first mode" : "Session history"}
         </span>
       </div>
 
@@ -43,38 +52,7 @@ export function AssistantTranscript({
         className="custom-scrollbar min-h-0 space-y-4 overflow-y-auto overscroll-y-contain px-5 py-5"
       >
         {messages.length === 0 ? (
-          <div className="grid gap-4 lg:grid-cols-2">
-            <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.03] p-5">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
-                What this MVP does well
-              </p>
-              <div className="mt-4 space-y-3 text-sm leading-7 text-zinc-300">
-                <p>
-                  Search docs and product pages for tunnels, CLI auth, requests, logs, and webhook
-                  debugging.
-                </p>
-                <p>
-                  Merge page context and live control-plane data when available, then explain
-                  missing context honestly when it is not.
-                </p>
-                <p>
-                  Use OpenAI only on the server side, with a deterministic fallback when
-                  credentials are not configured.
-                </p>
-              </div>
-            </div>
-            <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.03] p-5">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
-                Good first prompts
-              </p>
-              <div className="mt-4 space-y-3 text-sm leading-7 text-zinc-300">
-                <p>Why is my Stripe signature failing locally?</p>
-                <p>What does `binboi whoami` verify?</p>
-                <p>How do logs differ from request inspection?</p>
-                <p>What should I check if the tunnel URL returns 404?</p>
-              </div>
-            </div>
-          </div>
+          <AssistantEmptyState />
         ) : (
           messages.map((message) => (
             <div

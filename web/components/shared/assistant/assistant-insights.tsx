@@ -2,14 +2,26 @@ import Link from "next/link";
 import { ArrowRight, TerminalSquare, Waypoints } from "lucide-react";
 
 import type { AssistantResponsePayload } from "@/lib/assistant-types";
+import { cn } from "@/lib/utils";
 
 type AssistantInsightsProps = {
+  mode: "idle" | "conversation";
   response: AssistantResponsePayload | null;
 };
 
-export function AssistantInsights({ response }: AssistantInsightsProps) {
+export function AssistantInsights({ mode, response }: AssistantInsightsProps) {
+  const conversationActive = mode === "conversation";
+
   return (
-    <div className="custom-scrollbar hidden min-h-0 flex-col gap-4 overflow-y-auto overscroll-y-contain pr-1 xl:flex">
+    <div
+      className={cn(
+        "custom-scrollbar hidden min-h-0 flex-col gap-4 overflow-y-auto overscroll-y-contain pr-1 transition-all duration-300 ease-out xl:flex",
+        conversationActive
+          ? "w-0 translate-x-4 opacity-0 pointer-events-none"
+          : "w-full translate-x-0 opacity-100",
+      )}
+      aria-hidden={conversationActive}
+    >
       <article className="rounded-[1.75rem] border border-white/10 bg-black/35 p-5">
         <div className="flex items-center gap-2">
           <Waypoints className="h-4 w-4 text-miransas-cyan" />

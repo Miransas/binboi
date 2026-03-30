@@ -3,6 +3,7 @@ import { Loader2, Search, Sparkles } from "lucide-react";
 import type { RefObject } from "react";
 
 type AssistantComposerProps = {
+  mode: "idle" | "conversation";
   query: string;
   onQueryChange: (value: string) => void;
   onSubmit: () => void;
@@ -13,6 +14,7 @@ type AssistantComposerProps = {
 };
 
 export function AssistantComposer({
+  mode,
   query,
   onQueryChange,
   onSubmit,
@@ -21,6 +23,8 @@ export function AssistantComposer({
   loading,
   inputRef,
 }: AssistantComposerProps) {
+  const conversationActive = mode === "conversation";
+
   return (
     <form
       className="sticky bottom-0 z-10 border-t border-white/10 bg-[linear-gradient(180deg,rgba(7,7,9,0.9),rgba(3,3,4,0.98))] px-4 py-4 backdrop-blur sm:px-5"
@@ -37,7 +41,11 @@ export function AssistantComposer({
               ref={inputRef}
               value={query}
               onChange={(event) => onQueryChange(event.target.value)}
-              placeholder="Ask about tunnels, webhook signatures, request failures, or logs"
+              placeholder={
+                conversationActive
+                  ? "Ask a follow-up about the request, webhook, tunnel, or docs guidance"
+                  : "Ask about tunnels, webhook signatures, request failures, or logs"
+              }
               className="w-full min-w-0 bg-transparent text-sm text-white outline-none placeholder:text-zinc-500"
             />
           </label>
@@ -48,22 +56,29 @@ export function AssistantComposer({
             className="inline-flex items-center justify-center gap-2 rounded-[1.25rem] bg-miransas-cyan px-5 py-3 text-sm font-semibold text-black transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-70"
           >
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-            {loading ? "Thinking" : "Ask Binboi"}
+            {loading ? "Thinking" : conversationActive ? "Send" : "Ask Binboi"}
           </button>
         </div>
 
-        <div className="mt-3 flex flex-wrap gap-2">
-          {suggestions.map((suggestion) => (
-            <button
-              key={suggestion}
-              type="button"
-              onClick={() => onSuggestionClick(suggestion)}
-              className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs text-zinc-300 transition hover:border-white/20 hover:bg-white/[0.06] hover:text-white"
-            >
-              {suggestion}
-            </button>
-          ))}
-        </div>
+        {conversationActive ? (
+          <p className="mt-3 text-xs text-zinc-500">
+            Conversation mode keeps the transcript in focus. Ask follow-ups, paste an error, or
+            compare runtime clues against the latest answer.
+          </p>
+        ) : (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {suggestions.map((suggestion) => (
+              <button
+                key={suggestion}
+                type="button"
+                onClick={() => onSuggestionClick(suggestion)}
+                className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs text-zinc-300 transition hover:border-white/20 hover:bg-white/[0.06] hover:text-white"
+              >
+                {suggestion}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     </form>
   );
