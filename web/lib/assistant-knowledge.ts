@@ -111,7 +111,7 @@ export const assistantDocuments: AssistantDocument[] = [
     excerpt:
       "Request inspection should show inbound metadata, headers, payload previews, durations, statuses, and the target service.",
     body:
-      "Binboi is moving from relay events toward a richer request view. Even in the MVP, the product should help answer whether a request arrived, which tunnel received it, what local service handled it, and whether the failure was auth, transport, or application level.",
+      "Binboi now captures a lightweight request inspection stream in the control plane. The MVP request view helps answer whether a request arrived, which tunnel received it, which local service handled it, what the response status was, and whether the failure was auth, transport, or application level.",
     keywords: ["requests", "headers", "payload", "response preview", "status", "duration", "inspection"],
   },
   {
@@ -203,9 +203,20 @@ export const assistantDocuments: AssistantDocument[] = [
     keywords: ["dashboard", "access tokens", "token manager", "revoke", "plan limits", "last used"],
   },
   {
+    id: "dashboard-requests",
+    title: "Requests workbench",
+    href: "/dashboard/requests",
+    kind: "dashboard",
+    excerpt:
+      "Inspect live request records with method, path, status, latency, previews, and AI-assisted error explanation.",
+    body:
+      "The requests workbench is the fastest way to validate the core Binboi loop: public traffic reaches the tunnel, the relay forwards it, and the dashboard captures the resulting request metadata for debugging.",
+    keywords: ["dashboard", "requests", "inspection", "latency", "status", "explain error", "headers"],
+  },
+  {
     id: "dashboard-webhook-debugger",
-    title: "Webhook debugger",
-    href: "/dashboard/endpoints",
+    title: "Webhooks",
+    href: "/dashboard/webhooks",
     kind: "dashboard",
     excerpt:
       "Inspect provider deliveries, retries, payload previews, response previews, and AI-assisted failure explanations.",

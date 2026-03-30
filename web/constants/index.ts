@@ -1,5 +1,6 @@
 // constants/index.ts
 import {
+  FiActivity,
   FiHome,
   FiKey,
   FiGlobe,
@@ -37,7 +38,8 @@ export const DASHBOARD_LINKS = [
   {
     title: "Universal Gateway",
     items: [
-      { label: "Webhook Debugger", href: "/dashboard/endpoints", icon: FiGlobe },
+      { label: "Requests", href: "/dashboard/requests", icon: FiActivity },
+      { label: "Webhooks", href: "/dashboard/webhooks", icon: FiGlobe },
       { label: "AI Assistant", href: "/dashboard/ai", icon: Sparkles, badge: "New" },
       { label: "Domains", href: "/dashboard/domains", icon: FiLink },
       { label: "TCP Addresses", href: "/dashboard/tcp", icon: FiLink },

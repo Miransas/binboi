@@ -12,6 +12,7 @@ import {
   DashboardTimeline,
 } from "@/components/dashboard/shared/dashboard-primitives";
 import { useRegisterAssistantContext } from "@/components/shared/assistant-context";
+import { useRequests } from "@/hooks/useRequests";
 import { useTunnels } from "@/hooks/useTunnels";
 
 import TerminalLog from "./terminal-log";
@@ -20,6 +21,7 @@ import TokenManager from "./token-manager";
 export default function DashboardPage() {
   const { data: session } = useSession();
   const { tunnels, isLoading, isError } = useTunnels();
+  const { requests } = useRequests();
 
   const activeCount = tunnels ? tunnels.filter((t: any) => t.status === "ACTIVE").length : 0;
   const totalBandwidth = tunnels
@@ -36,12 +38,12 @@ export default function DashboardPage() {
       area: "dashboard",
       summary: isError
         ? "The overview is in a degraded state because the control plane is currently unreachable."
-        : `The overview reports ${activeCount} active tunnels and ${(totalBandwidth / (1024 * 1024)).toFixed(1)} MB of observed throughput.`,
+        : `The overview reports ${activeCount} active tunnels, ${(totalBandwidth / (1024 * 1024)).toFixed(1)} MB of observed throughput, and ${requests.length} recent request records.`,
     },
     logContext: {
       summary: isError
         ? "The main dashboard could not load tunnel data from the control plane."
-        : "The overview is connected to tunnel metrics and relay stream visibility.",
+        : "The overview is connected to tunnel metrics, recent request inspection, and relay stream visibility.",
     },
   });
 
@@ -95,6 +97,7 @@ export default function DashboardPage() {
       meta: requestVolume > 0 ? `${requestVolume} requests` : "Waiting",
     },
   ] as const;
+  const recentRequests = requests.slice(0, 5);
 
   return (
     <div className="relative px-4 pb-12 pt-6 text-white sm:px-6 lg:px-8">
@@ -227,6 +230,105 @@ export default function DashboardPage() {
             title="How the live tunnel workflow progresses"
             items={setupTimeline}
             className="h-full"
+          />
+        </div>
+
+        <div className="mt-8 grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(24rem,0.85fr)]">
+          <DashboardSurface accent="neutral" className="overflow-hidden p-0">
+            <div className="flex items-center justify-between border-b border-white/10 px-6 py-5">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-zinc-500">
+                  Recent traffic
+                </p>
+                <h2 className="mt-2 text-xl font-semibold text-white">
+                  The newest request records flowing through the relay
+                </h2>
+              </div>
+              <p className="text-xs uppercase tracking-[0.22em] text-zinc-500">
+                {recentRequests.length > 0 ? `${recentRequests.length} live rows` : "Waiting"}
+              </p>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-left">
+                <thead>
+                  <tr className="text-[10px] font-semibold uppercase tracking-[0.24em] text-zinc-500">
+                    <th className="border-b border-white/10 px-6 py-4">Path</th>
+                    <th className="border-b border-white/10 px-6 py-4">Status</th>
+                    <th className="border-b border-white/10 px-6 py-4">Latency</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/10">
+                  {recentRequests.length === 0 ? (
+                    <tr>
+                      <td colSpan={3} className="px-6 py-16 text-center text-sm text-zinc-500">
+                        New requests will appear here once public traffic reaches an active tunnel.
+                      </td>
+                    </tr>
+                  ) : (
+                    recentRequests.map((request) => (
+                      <tr key={request.id} className="transition-colors hover:bg-white/[0.03]">
+                        <td className="px-6 py-5">
+                          <div className="text-sm font-semibold text-white">
+                            {request.method} {request.path}
+                          </div>
+                          <div className="mt-1 text-[10px] uppercase tracking-[0.22em] text-zinc-600">
+                            {request.tunnel_subdomain}
+                          </div>
+                        </td>
+                        <td className="px-6 py-5">
+                          <span
+                            className={`inline-flex rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] ${
+                              request.status >= 500
+                                ? "border-rose-300/18 bg-rose-400/10 text-rose-100"
+                                : request.status >= 400
+                                  ? "border-amber-300/18 bg-amber-400/10 text-amber-100"
+                                  : "border-emerald-300/18 bg-emerald-400/10 text-emerald-100"
+                            }`}
+                          >
+                            {request.status}
+                          </span>
+                        </td>
+                        <td className="px-6 py-5 text-sm text-zinc-400">
+                          {request.duration_ms} ms
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </DashboardSurface>
+
+          <DashboardTimeline
+            eyebrow="Product loop"
+            title="How the core tunnel flow now behaves"
+            items={[
+              {
+                label: "CLI",
+                title: "Authenticate and attach the local agent",
+                description:
+                  "Run binboi login, then open a tunnel so the relay can attach the session and mark it active.",
+                status: activeCount > 0 ? "complete" : "active",
+                meta: activeCount > 0 ? "Connected" : "Pending",
+              },
+              {
+                label: "Traffic",
+                title: "Public requests are captured into request inspection",
+                description:
+                  "Each proxy hit now records method, path, status, duration, preview, and headers for the requests page.",
+                status: recentRequests.length > 0 ? "complete" : "waiting",
+                meta: recentRequests.length > 0 ? `${recentRequests.length} rows` : "Waiting",
+              },
+              {
+                label: "Debug",
+                title: "Failures can be explained from one surface",
+                description:
+                  "Request and webhook failures can be opened, inspected, and sent to the assistant for likely-cause analysis.",
+                status: recentRequests.some((request) => request.status >= 400) ? "active" : "waiting",
+                meta: recentRequests.some((request) => request.status >= 400) ? "Explainable" : "Ready",
+              },
+            ]}
           />
         </div>
 

@@ -38,6 +38,22 @@ type RuntimeInstance = {
   active_tunnels?: number;
 };
 
+type RuntimeRequest = {
+  id?: string;
+  tunnel_subdomain?: string;
+  kind?: string;
+  provider?: string;
+  event_type?: string;
+  method?: string;
+  path?: string;
+  status?: number;
+  duration_ms?: number;
+  error_type?: string;
+  destination?: string;
+  response_preview?: string;
+  created_at?: string;
+};
+
 const MAX_QUERY_LENGTH = 320;
 const MAX_MESSAGES = 10;
 const MAX_MESSAGE_LENGTH = 1200;
@@ -371,6 +387,7 @@ function buildRuntimeHits(input: {
   instance: RuntimeInstance | null;
   tunnels: RuntimeTunnel[] | null;
   events: RuntimeEvent[] | null;
+  requests: RuntimeRequest[] | null;
 }): AssistantRuntimeHit[] {
   const terms = tokenize(
     [
@@ -455,6 +472,48 @@ function buildRuntimeHits(input: {
       detail: `${event.message || "No event message."}${
         event.tunnel_subdomain ? ` Tunnel: ${event.tunnel_subdomain}.` : ""
       }`,
+    });
+  }
+
+  const matchedRequests =
+    input.requests?.filter((request) => {
+      if (!terms.length) {
+        return false;
+      }
+
+      const haystack = [
+        request.kind,
+        request.provider,
+        request.event_type,
+        request.method,
+        request.path,
+        request.error_type,
+        request.destination,
+        request.response_preview,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return terms.some((term) => haystack.includes(term));
+    }) ?? [];
+  const recentRequests =
+    matchedRequests.length > 0 ? matchedRequests : (input.requests ?? []).slice(0, 4);
+  for (const request of recentRequests.slice(0, 4)) {
+    pushRuntimeHit(hits, {
+      kind: request.kind === "WEBHOOK" ? "webhook" : "request",
+      title: [request.method, request.path].filter(Boolean).join(" ") || "Request",
+      detail: [
+        request.provider ? `Provider: ${request.provider}.` : undefined,
+        typeof request.status === "number" ? `Status: ${request.status}.` : undefined,
+        typeof request.duration_ms === "number"
+          ? `Duration: ${request.duration_ms}ms.`
+          : undefined,
+        request.destination ? `Destination: ${request.destination}.` : undefined,
+        request.error_type ? `Error type: ${request.error_type}.` : undefined,
+        request.response_preview ? `Response preview: ${request.response_preview}.` : undefined,
+      ]
+        .filter(Boolean)
+        .join(" "),
     });
   }
 
@@ -704,19 +763,21 @@ export async function runAssistantAssist(
   });
   const suggestions = buildTroubleshootingHints(query, context).slice(0, 4);
 
-  const [instance, tunnels, events] = await Promise.all([
+  const [instance, tunnels, events, requests] = await Promise.all([
     fetchJson<RuntimeInstance>("/api/instance"),
     fetchJson<RuntimeTunnel[]>("/api/tunnels"),
     fetchJson<RuntimeEvent[]>("/api/events"),
+    fetchJson<RuntimeRequest[]>("/api/requests"),
   ]);
 
-  const runtimeAvailable = Boolean(instance || tunnels || events);
+  const runtimeAvailable = Boolean(instance || tunnels || events || requests);
   const runtimeHits = buildRuntimeHits({
     query,
     context,
     instance,
     tunnels,
     events,
+    requests,
   });
 
   const fallbackMessage = buildFallbackMessage({

@@ -42,6 +42,29 @@ export type ControlPlaneEvent = {
   created_at: string;
 };
 
+export type ControlPlaneRequest = {
+  id: string;
+  tunnel_id: string;
+  tunnel_subdomain: string;
+  kind: "REQUEST" | "WEBHOOK" | string;
+  provider?: string;
+  event_type?: string;
+  method: string;
+  path: string;
+  status: number;
+  duration_ms: number;
+  source?: string;
+  target?: string;
+  destination?: string;
+  error_type?: string;
+  request_headers?: string[];
+  response_headers?: string[];
+  request_preview?: string;
+  payload_preview?: string;
+  response_preview?: string;
+  created_at: string;
+};
+
 export type ControlPlaneInstance = {
   instance_name: string;
   database: string;

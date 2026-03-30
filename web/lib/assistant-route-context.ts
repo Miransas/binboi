@@ -330,6 +330,30 @@ const routeContextCatalog: Record<string, RouteAssistantContext> = {
       },
     },
   },
+  "/dashboard/requests": {
+    label: "Requests",
+    context: {
+      currentPage: {
+        path: "/dashboard/requests",
+        title: "Requests",
+        area: "dashboard",
+        summary:
+          "Request inspection surface with method, path, status, duration, previews, and AI-powered failure explanation.",
+      },
+    },
+  },
+  "/dashboard/webhooks": {
+    label: "Webhooks",
+    context: {
+      currentPage: {
+        path: "/dashboard/webhooks",
+        title: "Webhooks",
+        area: "dashboard",
+        summary:
+          "Webhook delivery investigation surface with provider filtering, previews, retries, and AI-powered failure explanation.",
+      },
+    },
+  },
   "/dashboard/endpoints": {
     label: "Webhook debugger",
     context: {

@@ -1,16 +1,20 @@
 package controlplane
 
 import (
+	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"net/http"
 	"net/http/httputil"
 	"os"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -29,15 +33,18 @@ import (
 )
 
 const (
-	defaultAPIAddr     = ":8080"
-	defaultTunnelAddr  = ":8081"
-	defaultProxyAddr   = ":8000"
-	defaultBaseDomain  = "binboi.localhost"
-	defaultDatabase    = "binboi.db"
-	defaultInstance    = "Binboi Self-Hosted"
-	defaultRegion      = "local"
-	maxLogBacklog      = 100
-	maxRecentEventRows = 50
+	defaultAPIAddr       = ":8080"
+	defaultTunnelAddr    = ":8081"
+	defaultProxyAddr     = ":8000"
+	defaultBaseDomain    = "binboi.localhost"
+	defaultDatabase      = "binboi.db"
+	defaultInstance      = "Binboi Self-Hosted"
+	defaultRegion        = "local"
+	maxLogBacklog        = 100
+	maxRecentEventRows   = 50
+	maxRecentRequestRows = 80
+	maxHeaderPreviewRows = 10
+	maxBodyPreviewBytes  = 4096
 )
 
 var (
@@ -146,6 +153,30 @@ type EventRecord struct {
 	CreatedAt       time.Time
 }
 
+type RequestRecord struct {
+	ID              string `gorm:"primaryKey"`
+	TunnelID        string `gorm:"index"`
+	TunnelSubdomain string `gorm:"index"`
+	Kind            string
+	Provider        string
+	EventType       string
+	Method          string
+	Path            string
+	Status          int
+	DurationMs      int64
+	Source          string
+	Target          string
+	Destination     string
+	ErrorType       string
+	RequestHeaders  string `gorm:"type:text"`
+	ResponseHeaders string `gorm:"type:text"`
+	RequestPreview  string `gorm:"type:text"`
+	PayloadPreview  string `gorm:"type:text"`
+	ResponsePreview string `gorm:"type:text"`
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+}
+
 type activeSession struct {
 	session     *yamux.Session
 	remoteAddr  string
@@ -201,6 +232,29 @@ type EventResponse struct {
 	CreatedAt       time.Time `json:"created_at"`
 }
 
+type RequestResponse struct {
+	ID              string    `json:"id"`
+	TunnelID        string    `json:"tunnel_id"`
+	TunnelSubdomain string    `json:"tunnel_subdomain"`
+	Kind            string    `json:"kind"`
+	Provider        string    `json:"provider,omitempty"`
+	EventType       string    `json:"event_type,omitempty"`
+	Method          string    `json:"method"`
+	Path            string    `json:"path"`
+	Status          int       `json:"status"`
+	DurationMs      int64     `json:"duration_ms"`
+	Source          string    `json:"source,omitempty"`
+	Target          string    `json:"target,omitempty"`
+	Destination     string    `json:"destination,omitempty"`
+	ErrorType       string    `json:"error_type,omitempty"`
+	RequestHeaders  []string  `json:"request_headers,omitempty"`
+	ResponseHeaders []string  `json:"response_headers,omitempty"`
+	RequestPreview  string    `json:"request_preview,omitempty"`
+	PayloadPreview  string    `json:"payload_preview,omitempty"`
+	ResponsePreview string    `json:"response_preview,omitempty"`
+	CreatedAt       time.Time `json:"created_at"`
+}
+
 type InstanceResponse struct {
 	InstanceName     string `json:"instance_name"`
 	Database         string `json:"database"`
@@ -221,7 +275,7 @@ func NewService(cfg Config) (*Service, error) {
 		return nil, fmt.Errorf("open sqlite database: %w", err)
 	}
 
-	if err := db.AutoMigrate(&InstanceToken{}, &TunnelRecord{}, &DomainRecord{}, &EventRecord{}); err != nil {
+	if err := db.AutoMigrate(&InstanceToken{}, &TunnelRecord{}, &DomainRecord{}, &EventRecord{}, &RequestRecord{}); err != nil {
 		return nil, fmt.Errorf("migrate sqlite database: %w", err)
 	}
 
@@ -300,6 +354,7 @@ func (s *Service) RegisterRoutes(r *gin.Engine) {
 		}
 		c.JSON(http.StatusOK, events)
 	})
+	api.GET("/requests", s.handleListRequests)
 	api.GET("/tunnels", s.handleListTunnels)
 	api.GET("/tunnels/:scope", s.handleListTunnels)
 	api.POST("/tunnels", s.handleCreateTunnel)
@@ -409,7 +464,28 @@ func (s *Service) ServeProxy() http.Handler {
 			http.Error(w, "Tunnel not found", http.StatusNotFound)
 			return
 		}
+		requestSnapshot := captureRequestSnapshot(r)
 		if active == nil {
+			_ = s.recordObservedRequest(tunnel, requestObservation{
+				Kind:           requestSnapshot.Kind,
+				Provider:       requestSnapshot.Provider,
+				EventType:      requestSnapshot.EventType,
+				Method:         r.Method,
+				Path:           requestSnapshot.Path,
+				Status:         http.StatusBadGateway,
+				DurationMs:     0,
+				Source:         requestSnapshot.Source,
+				Target:         tunnel.Target,
+				Destination:    tunnel.Target,
+				ErrorType:      "TUNNEL_OFFLINE",
+				RequestHeaders: requestSnapshot.HeaderLines,
+				ResponseHeaders: []string{
+					"content-type: text/plain; charset=utf-8",
+				},
+				RequestPreview:  requestSnapshot.RequestPreview,
+				PayloadPreview:  requestSnapshot.PayloadPreview,
+				ResponsePreview: "Tunnel is currently offline.",
+			})
 			http.Error(w, "Tunnel is currently offline", http.StatusBadGateway)
 			return
 		}
@@ -417,6 +493,26 @@ func (s *Service) ServeProxy() http.Handler {
 		stream, err := active.session.Open()
 		if err != nil {
 			s.broadcastLog("error", fmt.Sprintf("Could not open stream for %s: %v", subdomain, err), subdomain)
+			_ = s.recordObservedRequest(tunnel, requestObservation{
+				Kind:           requestSnapshot.Kind,
+				Provider:       requestSnapshot.Provider,
+				EventType:      requestSnapshot.EventType,
+				Method:         r.Method,
+				Path:           requestSnapshot.Path,
+				Status:         http.StatusServiceUnavailable,
+				DurationMs:     0,
+				Source:         requestSnapshot.Source,
+				Target:         tunnel.Target,
+				Destination:    tunnel.Target,
+				ErrorType:      "STREAM_UNAVAILABLE",
+				RequestHeaders: requestSnapshot.HeaderLines,
+				ResponseHeaders: []string{
+					"content-type: text/plain; charset=utf-8",
+				},
+				RequestPreview:  requestSnapshot.RequestPreview,
+				PayloadPreview:  requestSnapshot.PayloadPreview,
+				ResponsePreview: "Tunnel stream unavailable.",
+			})
 			http.Error(w, "Tunnel stream unavailable", http.StatusServiceUnavailable)
 			return
 		}
@@ -425,6 +521,7 @@ func (s *Service) ServeProxy() http.Handler {
 			_ = s.recordProxyTraffic(subdomain, total)
 		})
 
+		captureWriter := newStatusCapturingResponseWriter(w)
 		proxy := &httputil.ReverseProxy{
 			Director: func(req *http.Request) {
 				req.URL.Scheme = "http"
@@ -446,8 +543,29 @@ func (s *Service) ServeProxy() http.Handler {
 		}
 
 		s.broadcastLog("info", fmt.Sprintf("%s %s -> %s", r.Method, r.URL.Path, tunnel.Target), subdomain)
+		startedAt := time.Now().UTC()
 		_ = s.incrementRequestCount(subdomain)
-		proxy.ServeHTTP(w, r)
+		proxy.ServeHTTP(captureWriter, r)
+
+		durationMs := time.Since(startedAt).Milliseconds()
+		_ = s.recordObservedRequest(tunnel, requestObservation{
+			Kind:            requestSnapshot.Kind,
+			Provider:        requestSnapshot.Provider,
+			EventType:       requestSnapshot.EventType,
+			Method:          r.Method,
+			Path:            requestSnapshot.Path,
+			Status:          captureWriter.Status(),
+			DurationMs:      durationMs,
+			Source:          requestSnapshot.Source,
+			Target:          tunnel.Target,
+			Destination:     tunnel.Target,
+			ErrorType:       classifyRequestError(captureWriter.Status(), requestSnapshot.Kind, captureWriter.BodyPreview(), requestSnapshot.ResponsePreviewHint),
+			RequestHeaders:  requestSnapshot.HeaderLines,
+			ResponseHeaders: formatHeadersForPreview(captureWriter.Header()),
+			RequestPreview:  requestSnapshot.RequestPreview,
+			PayloadPreview:  requestSnapshot.PayloadPreview,
+			ResponsePreview: fallbackString(captureWriter.BodyPreview(), requestSnapshot.ResponsePreviewHint),
+		})
 	})
 }
 
@@ -506,6 +624,15 @@ func (s *Service) handleListTunnels(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, records)
+}
+
+func (s *Service) handleListRequests(c *gin.Context) {
+	requests, err := s.listRequests(maxRecentRequestRows)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list requests"})
+		return
+	}
+	c.JSON(http.StatusOK, requests)
 }
 
 func (s *Service) handleCreateTunnel(c *gin.Context) {
@@ -1045,6 +1172,41 @@ func (s *Service) listEvents(limit int) ([]EventResponse, error) {
 	return response, nil
 }
 
+func (s *Service) listRequests(limit int) ([]RequestResponse, error) {
+	var records []RequestRecord
+	if err := s.db.Order("created_at desc").Limit(limit).Find(&records).Error; err != nil {
+		return nil, err
+	}
+
+	response := make([]RequestResponse, 0, len(records))
+	for _, record := range records {
+		response = append(response, RequestResponse{
+			ID:              record.ID,
+			TunnelID:        record.TunnelID,
+			TunnelSubdomain: record.TunnelSubdomain,
+			Kind:            record.Kind,
+			Provider:        record.Provider,
+			EventType:       record.EventType,
+			Method:          record.Method,
+			Path:            record.Path,
+			Status:          record.Status,
+			DurationMs:      record.DurationMs,
+			Source:          record.Source,
+			Target:          record.Target,
+			Destination:     record.Destination,
+			ErrorType:       record.ErrorType,
+			RequestHeaders:  splitPreviewLines(record.RequestHeaders),
+			ResponseHeaders: splitPreviewLines(record.ResponseHeaders),
+			RequestPreview:  record.RequestPreview,
+			PayloadPreview:  record.PayloadPreview,
+			ResponsePreview: record.ResponsePreview,
+			CreatedAt:       record.CreatedAt,
+		})
+	}
+
+	return response, nil
+}
+
 func (s *Service) instanceResponse() InstanceResponse {
 	var total int64
 	_ = s.db.Model(&TunnelRecord{}).Count(&total).Error
@@ -1277,6 +1439,337 @@ func fallbackString(value, fallback string) string {
 		return fallback
 	}
 	return value
+}
+
+type requestSnapshot struct {
+	Path                string
+	Kind                string
+	Provider            string
+	EventType           string
+	Source              string
+	HeaderLines         []string
+	RequestPreview      string
+	PayloadPreview      string
+	ResponsePreviewHint string
+}
+
+type requestObservation struct {
+	Kind            string
+	Provider        string
+	EventType       string
+	Method          string
+	Path            string
+	Status          int
+	DurationMs      int64
+	Source          string
+	Target          string
+	Destination     string
+	ErrorType       string
+	RequestHeaders  []string
+	ResponseHeaders []string
+	RequestPreview  string
+	PayloadPreview  string
+	ResponsePreview string
+}
+
+func captureRequestSnapshot(r *http.Request) requestSnapshot {
+	path := r.URL.RequestURI()
+	headerLines := formatHeadersForPreview(r.Header)
+	payloadPreview := captureRequestBodyPreview(r)
+	kind, provider := inferTrafficKind(path, r.Header)
+	eventType := inferEventType(r.Header, payloadPreview)
+	requestPreview := strings.TrimSpace(strings.Join([]string{
+		fmt.Sprintf("%s %s", r.Method, path),
+		joinPreviewSegments(headerLines[:min(len(headerLines), 3)]),
+	}, " | "))
+
+	responseHint := "No response body preview was captured."
+	if strings.EqualFold(kind, "WEBHOOK") {
+		responseHint = "The request reached the webhook target but did not return a captured response body preview."
+	}
+
+	return requestSnapshot{
+		Path:                path,
+		Kind:                kind,
+		Provider:            provider,
+		EventType:           eventType,
+		Source:              formatSource(r.RemoteAddr),
+		HeaderLines:         headerLines,
+		RequestPreview:      requestPreview,
+		PayloadPreview:      payloadPreview,
+		ResponsePreviewHint: responseHint,
+	}
+}
+
+func captureRequestBodyPreview(r *http.Request) string {
+	if r.Body == nil {
+		return ""
+	}
+	if r.ContentLength < 0 || r.ContentLength > maxBodyPreviewBytes {
+		return ""
+	}
+
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		return ""
+	}
+	r.Body = io.NopCloser(bytes.NewReader(body))
+
+	return compactPreview(string(body), maxBodyPreviewBytes)
+}
+
+func inferTrafficKind(path string, headers http.Header) (string, string) {
+	lowerPath := strings.ToLower(path)
+
+	switch {
+	case headers.Get("stripe-signature") != "":
+		return "WEBHOOK", "Stripe"
+	case headers.Get("svix-signature") != "" || headers.Get("svix-id") != "":
+		return "WEBHOOK", "Clerk"
+	case headers.Get("x-supabase-signature") != "":
+		return "WEBHOOK", "Supabase"
+	case headers.Get("x-hub-signature-256") != "" || headers.Get("x-github-event") != "":
+		return "WEBHOOK", "GitHub"
+	case headers.Get("linear-signature") != "":
+		return "WEBHOOK", "Linear"
+	case strings.Contains(lowerPath, "stripe"):
+		return "WEBHOOK", "Stripe"
+	case strings.Contains(lowerPath, "clerk"):
+		return "WEBHOOK", "Clerk"
+	case strings.Contains(lowerPath, "supabase"):
+		return "WEBHOOK", "Supabase"
+	case strings.Contains(lowerPath, "github"):
+		return "WEBHOOK", "GitHub"
+	case strings.Contains(lowerPath, "linear"):
+		return "WEBHOOK", "Linear"
+	case strings.Contains(lowerPath, "neon"):
+		return "WEBHOOK", "Neon"
+	case strings.Contains(lowerPath, "webhook"):
+		return "WEBHOOK", ""
+	default:
+		return "REQUEST", ""
+	}
+}
+
+func inferEventType(headers http.Header, payloadPreview string) string {
+	candidates := []string{
+		headers.Get("X-GitHub-Event"),
+		headers.Get("X-Event-Type"),
+		headers.Get("X-Webhook-Event"),
+	}
+	for _, candidate := range candidates {
+		if strings.TrimSpace(candidate) != "" {
+			return compactPreview(candidate, 120)
+		}
+	}
+
+	if payloadPreview == "" {
+		return ""
+	}
+
+	for _, key := range []string{`"type":"`, `"type": "`, `"event":"`, `"event": "`} {
+		index := strings.Index(payloadPreview, key)
+		if index == -1 {
+			continue
+		}
+		rest := payloadPreview[index+len(key):]
+		end := strings.IndexAny(rest, `",}`)
+		if end == -1 {
+			end = len(rest)
+		}
+		value := compactPreview(rest[:end], 120)
+		if value != "" {
+			return value
+		}
+	}
+
+	return ""
+}
+
+func formatSource(remoteAddr string) string {
+	if strings.TrimSpace(remoteAddr) == "" {
+		return "public ingress"
+	}
+	return fmt.Sprintf("public ingress from %s", remoteAddr)
+}
+
+func formatHeadersForPreview(header http.Header) []string {
+	if len(header) == 0 {
+		return nil
+	}
+
+	keys := make([]string, 0, len(header))
+	for key := range header {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
+	lines := make([]string, 0, min(len(keys), maxHeaderPreviewRows))
+	for _, key := range keys {
+		value := compactPreview(strings.Join(header.Values(key), ", "), 180)
+		lines = append(lines, fmt.Sprintf("%s: %s", strings.ToLower(key), value))
+		if len(lines) >= maxHeaderPreviewRows {
+			break
+		}
+	}
+
+	return lines
+}
+
+func compactPreview(input string, limit int) string {
+	value := strings.TrimSpace(strings.Join(strings.Fields(input), " "))
+	if value == "" {
+		return ""
+	}
+	if len(value) <= limit {
+		return value
+	}
+	return strings.TrimSpace(value[:limit]) + "..."
+}
+
+func joinPreviewSegments(values []string) string {
+	filtered := make([]string, 0, len(values))
+	for _, value := range values {
+		if trimmed := strings.TrimSpace(value); trimmed != "" {
+			filtered = append(filtered, trimmed)
+		}
+	}
+	return strings.Join(filtered, " | ")
+}
+
+func splitPreviewLines(value string) []string {
+	if strings.TrimSpace(value) == "" {
+		return nil
+	}
+
+	lines := strings.Split(value, "\n")
+	filtered := make([]string, 0, len(lines))
+	for _, line := range lines {
+		if trimmed := strings.TrimSpace(line); trimmed != "" {
+			filtered = append(filtered, trimmed)
+		}
+	}
+	return filtered
+}
+
+func classifyRequestError(status int, kind, responsePreview, fallback string) string {
+	if status < 400 {
+		return ""
+	}
+
+	lower := strings.ToLower(responsePreview + " " + fallback)
+	switch {
+	case status == http.StatusUnauthorized || status == http.StatusForbidden:
+		return "AUTH_REJECTED"
+	case status == http.StatusNotFound:
+		return "ROUTE_NOT_FOUND"
+	case strings.Contains(lower, "signature"):
+		return "SIGNATURE_VERIFICATION_FAILED"
+	case status == http.StatusUnprocessableEntity:
+		return "PAYLOAD_REJECTED"
+	case status == http.StatusBadGateway && strings.EqualFold(kind, "WEBHOOK"):
+		return "WEBHOOK_UPSTREAM_BAD_GATEWAY"
+	case status == http.StatusBadGateway:
+		return "UPSTREAM_BAD_GATEWAY"
+	case status == http.StatusServiceUnavailable:
+		return "SERVICE_UNAVAILABLE"
+	case status >= 500:
+		return "UPSTREAM_SERVER_ERROR"
+	default:
+		return "REQUEST_REJECTED"
+	}
+}
+
+func (s *Service) recordObservedRequest(tunnel TunnelRecord, observed requestObservation) error {
+	record := RequestRecord{
+		ID:              uuid.NewString(),
+		TunnelID:        tunnel.ID,
+		TunnelSubdomain: tunnel.Subdomain,
+		Kind:            fallbackString(observed.Kind, "REQUEST"),
+		Provider:        observed.Provider,
+		EventType:       observed.EventType,
+		Method:          observed.Method,
+		Path:            observed.Path,
+		Status:          observed.Status,
+		DurationMs:      observed.DurationMs,
+		Source:          observed.Source,
+		Target:          observed.Target,
+		Destination:     observed.Destination,
+		ErrorType:       observed.ErrorType,
+		RequestHeaders:  strings.Join(observed.RequestHeaders, "\n"),
+		ResponseHeaders: strings.Join(observed.ResponseHeaders, "\n"),
+		RequestPreview:  observed.RequestPreview,
+		PayloadPreview:  observed.PayloadPreview,
+		ResponsePreview: observed.ResponsePreview,
+	}
+
+	return s.db.Create(&record).Error
+}
+
+type statusCapturingResponseWriter struct {
+	http.ResponseWriter
+	status int
+	body   bytes.Buffer
+}
+
+func newStatusCapturingResponseWriter(inner http.ResponseWriter) *statusCapturingResponseWriter {
+	return &statusCapturingResponseWriter{
+		ResponseWriter: inner,
+		status:         http.StatusOK,
+	}
+}
+
+func (w *statusCapturingResponseWriter) WriteHeader(status int) {
+	w.status = status
+	w.ResponseWriter.WriteHeader(status)
+}
+
+func (w *statusCapturingResponseWriter) Write(p []byte) (int, error) {
+	if remaining := maxBodyPreviewBytes - w.body.Len(); remaining > 0 {
+		if len(p) > remaining {
+			w.body.Write(p[:remaining])
+		} else {
+			w.body.Write(p)
+		}
+	}
+	return w.ResponseWriter.Write(p)
+}
+
+func (w *statusCapturingResponseWriter) Status() int {
+	return w.status
+}
+
+func (w *statusCapturingResponseWriter) BodyPreview() string {
+	return compactPreview(w.body.String(), maxBodyPreviewBytes)
+}
+
+func (w *statusCapturingResponseWriter) Flush() {
+	if flusher, ok := w.ResponseWriter.(http.Flusher); ok {
+		flusher.Flush()
+	}
+}
+
+func (w *statusCapturingResponseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	hijacker, ok := w.ResponseWriter.(http.Hijacker)
+	if !ok {
+		return nil, nil, errors.New("response writer does not support hijacking")
+	}
+	return hijacker.Hijack()
+}
+
+func (w *statusCapturingResponseWriter) Push(target string, opts *http.PushOptions) error {
+	pusher, ok := w.ResponseWriter.(http.Pusher)
+	if !ok {
+		return http.ErrNotSupported
+	}
+	return pusher.Push(target, opts)
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 func formatTime(value *time.Time) string {
