@@ -11,7 +11,7 @@ import TokenManager from "./token-manager";
 
 export default function DashboardPage() {
   const { data: session } = useSession();
-  const { tunnels, isLoading, isError } = useTunnels(session?.user?.id);
+  const { tunnels, isLoading, isError } = useTunnels();
 
   const activeCount = tunnels ? tunnels.filter((t: any) => t.status === "ACTIVE").length : 0;
   const totalBandwidth = tunnels ? tunnels.reduce((acc: number, t: any) => acc + (t.bytes_out || 0), 0) : 0;
@@ -46,8 +46,8 @@ export default function DashboardPage() {
               BINBOI<span className="text-miransas-cyan">.</span>CORE
             </h1>
             <p className="mt-4 max-w-2xl text-sm leading-7 text-gray-400">
-              This dashboard is now safe in empty states as well. If the relay API is down you still
-              get setup guidance instead of a broken screen.
+              This dashboard is now driven by the relay control plane. It keeps useful empty states,
+              but the content reflects real instance behavior instead of placeholder product ideas.
             </p>
           </div>
 
@@ -89,8 +89,8 @@ export default function DashboardPage() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-white/[0.02] text-[10px] text-gray-500 uppercase font-bold tracking-[0.2em]">
-                  <th className="p-6 border-b border-white/5">Neural Node</th>
-                  <th className="p-6 border-b border-white/5">Signal</th>
+                  <th className="p-6 border-b border-white/5">Subdomain</th>
+                  <th className="p-6 border-b border-white/5">Status</th>
                   <th className="p-6 border-b border-white/5">Target</th>
                 </tr>
               </thead>

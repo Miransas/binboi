@@ -1,1 +1,7 @@
-export default function Page() { return <div className='p-6 text-white'>ca page</div> }
+import { DashboardPageShell } from "@/components/dashboard/shared/page-shell";
+import { dashboardPageContent } from "@/lib/dashboard-content";
+
+export default function CertificateAuthorityPage() {
+  const content = dashboardPageContent.ca;
+  return <DashboardPageShell {...content} />;
+}

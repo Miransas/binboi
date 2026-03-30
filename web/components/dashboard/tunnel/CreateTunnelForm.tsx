@@ -33,7 +33,7 @@ export default function CreateTunnelForm({ onSuccess }: { onSuccess: () => void 
       } else {
         alert(`🔴 Error: ${data.error}`);
       }
-    } catch (err) {
+    } catch {
       alert("🔴 Binboi Core Server is offline!");
     } finally {
       setLoading(false);

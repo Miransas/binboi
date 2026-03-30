@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
-import { motion, AnimatePresence } from "framer-motion";
-import { Laptop, Globe, ShieldCheck, ArrowRight, Zap, Activity } from "lucide-react";
+import { motion } from "framer-motion";
+import { Laptop, Globe, ShieldCheck, ArrowRight, Activity } from "lucide-react";
 import Link from "next/link";
 import { useTraffic } from "../../../hooks/useTraffic";
 

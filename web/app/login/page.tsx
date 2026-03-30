@@ -74,6 +74,13 @@ export default function LoginPage() {
             Continue with GitHub
           </motion.button>
 
+          <Link
+            href="/dashboard"
+            className="inline-flex items-center justify-center rounded-xl border border-white/10 px-6 py-3 text-sm font-medium text-gray-300 transition hover:border-white/20 hover:bg-white/5 hover:text-white"
+          >
+            Continue in local preview mode
+          </Link>
+
           {/* CLI ile kullanım ipucu */}
           <div className="mt-6 pt-6 border-t border-white/10 flex flex-col items-center gap-3">
             <span className="text-xs text-gray-600 font-mono uppercase tracking-widest">Developers First</span>

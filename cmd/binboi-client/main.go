@@ -27,26 +27,24 @@ func main() {
 	case "start":
 		handleStart()
 	case "version":
-		fmt.Println("Binboi Neural CLI v0.2.0")
+		fmt.Println("Binboi CLI v0.3.0")
 	default:
 		showHelp()
 	}
 }
 
-// handleAuth: API Key kaydetme işini yönetir
 func handleAuth() {
 	if len(os.Args) < 3 {
-		fmt.Println("❌ Usage: binboi-client auth <api_key>")
+		fmt.Println("Usage: binboi auth <instance-token>")
 		return
 	}
 	if err := cli.SaveConfig(os.Args[2]); err != nil {
-		fmt.Printf("🔴 Config error: %v\n", err)
+		fmt.Printf("Could not save token: %v\n", err)
 		return
 	}
-	fmt.Println("🚀 [NEURAL_LINK]: API Key secured.")
+	fmt.Println("Saved the instance token to ~/.binboi/config.json")
 }
 
-// ParseStartArgs: Komut satırı argümanlarını işleyen saf mantık (TESTLER BURAYA BAKAR)
 func ParseStartArgs(args []string, fallbackName string) StartConfig {
 	port := 3000
 	if len(args) > 2 {
@@ -66,29 +64,25 @@ func ParseStartArgs(args []string, fallbackName string) StartConfig {
 	}
 }
 
-// handleStart: Tüneli başlatma işini yönetir
 func handleStart() {
-	// 1. Argümanları işle (ParseStartArgs kullanarak)
 	config := ParseStartArgs(os.Args, utils.GenerateCyberName())
 
-	// 2. API Key Yükle
 	apiKey, err := cli.LoadConfig()
 	if err != nil {
-		fmt.Println("🔑 [AUTH_REQUIRED]: Please run 'binboi-client auth <key>' first.")
+		fmt.Println("Authentication required. Run 'binboi auth <instance-token>' first.")
 		return
 	}
 
-	// 3. UI ve Tünel Başlat
-	publicURL := fmt.Sprintf("https://%s.binboi.link", config.Subdomain)
-	cli.RenderCoolUI(config.Subdomain, publicURL, config.Port)
-	cli.StartHttpTunnel(apiKey, config.Port, config.Subdomain)
+	if err := cli.StartHttpTunnel(apiKey, config.Port, config.Subdomain); err != nil {
+		fmt.Printf("Tunnel failed: %v\n", err)
+	}
 }
 
 func showHelp() {
-	fmt.Println("\n🌌 BINBOI - Neural Tunneling CLI")
-	fmt.Println("Usage: binboi-client <command> [arguments]")
+	fmt.Println("\nBINBOI CLI")
+	fmt.Println("Usage: binboi <command> [arguments]")
 	fmt.Println("\nCommands:")
-	fmt.Println("  auth <key>           Secure your access key")
-	fmt.Println("  start <port> <sub>   Open a link (subdomain optional)")
-	fmt.Println("  version              Show system version")
+	fmt.Println("  auth <token>         Save the instance token")
+	fmt.Println("  start <port> [sub]   Start a tunnel for the local port")
+	fmt.Println("  version              Show the CLI version")
 }

@@ -1,15 +1,38 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Copy, RefreshCcw, Eye, EyeOff, Check } from "lucide-react";
 import { buildApiUrl } from "@/lib/binboi";
 
 export default function TokenManager({ initialToken }: { initialToken: string }) {
-  // Eyaletler (States)
-  const [token, setToken] = useState(initialToken || "NEURAL_KEY_NOT_SET");
+  const [token, setToken] = useState(initialToken || "TOKEN_NOT_SET");
   const [isVisible, setIsVisible] = useState(false);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (initialToken) {
+      return;
+    }
+
+    let cancelled = false;
+    async function loadCurrentToken() {
+      try {
+        const res = await fetch(buildApiUrl("/api/tokens/current"));
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled && data?.token) {
+          setToken(data.token);
+        }
+      } catch {
+      }
+    }
+
+    loadCurrentToken();
+    return () => {
+      cancelled = true;
+    };
+  }, [initialToken]);
 
   const generateNewToken = async () => {
     setLoading(true);
@@ -26,7 +49,7 @@ export default function TokenManager({ initialToken }: { initialToken: string })
       setToken(data.token);
     } catch (err) {
       console.error("🔴 [AUTH_ERROR]:", err);
-      setError("Backend'e ulasilamadi. Sunucu aciksa tekrar dene.");
+      setError("The control plane is unavailable. Start the relay and try again.");
     } finally {
       setLoading(false);
     }
@@ -41,11 +64,10 @@ export default function TokenManager({ initialToken }: { initialToken: string })
   return (
     <div className="p-6 bg-[#080808] border border-white/10 rounded-2xl relative overflow-hidden group">
       <div className="flex justify-between items-center mb-6">
-        <h3 className="text-[10px] text-gray-500 uppercase font-bold tracking-[0.2em]">Neural Access Token</h3>
+        <h3 className="text-[10px] text-gray-500 uppercase font-bold tracking-[0.2em]">Instance Token</h3>
         
-        {/* YENİLEME BUTONU */}
         <button 
-          onClick={generateNewToken} // Fonksiyonu buraya bağladık!
+          onClick={generateNewToken}
           disabled={loading}
           className="p-2 hover:bg-white/5 rounded-lg transition-all group/btn"
         >
@@ -73,7 +95,7 @@ export default function TokenManager({ initialToken }: { initialToken: string })
       </div>
 
       <p className="mt-4 text-[9px] text-gray-600 italic leading-relaxed">
-        PRO_TIP: Use this token with the CLI: <span className="text-miransas-cyan">binboi auth [token]</span>
+        Use this token with the CLI: <span className="text-miransas-cyan">binboi auth [token]</span>
       </p>
       {error && <p className="mt-3 text-xs text-red-400">{error}</p>}
     </div>

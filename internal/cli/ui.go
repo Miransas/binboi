@@ -5,7 +5,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-// Değişkenleri açıkça lipgloss.Style olarak tanımlıyoruz
 var (
 	cyan    = lipgloss.Color("#00FFD1")
 	magenta = lipgloss.Color("#FF00FF")
@@ -29,14 +28,14 @@ var (
 	urlStyle  = lipgloss.NewStyle().Foreground(white).Underline(true)
 )
 
-// RenderCoolUI: Artık boxStyle.Render hata vermeyecek
 func RenderCoolUI(subdomain, url string, port int) {
-	title := titleStyle.Render(" MIRANSAS BINBOI v0.2.0 ")
+	title := titleStyle.Render(" BINBOI AGENT ")
 	
 	content := fmt.Sprintf(
-		"Status:   %s\nTunnel:   %s\nLocal:    %s\n\n%s",
+		"Status:   %s\nTunnel:   %s\nSubdomain:%s\nLocal:    %s\n\n%s",
 		infoStyle.Render("● ONLINE"),
 		urlStyle.Render(url),
+		infoStyle.Render(subdomain),
 		fmt.Sprintf("localhost:%d", port),
 		lipgloss.NewStyle().Italic(true).Foreground(gray).Render("Waiting for traffic..."),
 	)

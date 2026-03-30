@@ -1,117 +1,160 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
-import { Key, Copy, RefreshCw, Eye, EyeOff, ShieldAlert, Check, Terminal, Clock, ZapOff } from "lucide-react";
-import { BorderBeam } from "@/components/ui/border-beam";
-import { toast, Toaster } from "sonner"; // Bildirim kütüphanesi
+import { useEffect, useState } from "react";
+import { Check, Copy, Eye, EyeOff, KeyRound, RefreshCcw, ShieldAlert } from "lucide-react";
+import { fetchControlPlane, type ControlPlaneTokenState } from "@/lib/controlplane";
+import { DashboardPageShell } from "@/components/dashboard/shared/page-shell";
 
 export default function AuthTokenPage() {
-  const [data, setData] = useState({ token: "", last_used_at: "", active_nodes: 0 });
+  const [data, setData] = useState<ControlPlaneTokenState | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isVisible, setIsVisible] = useState(false);
+  const [revealed, setRevealed] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const fetchTokenData = async () => {
+  const load = async () => {
+    setLoading(true);
     try {
-      const res = await fetch("http://localhost:8080/api/tokens/current");
-      const result = await res.json();
-      setData(result);
-    } catch (err) {
-      toast.error("SYSTEM_SYNC_ERROR: Failed to connect to core.");
+      const response = await fetchControlPlane<ControlPlaneTokenState>("/api/tokens/current");
+      setData(response);
+      setError(null);
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : "Could not load token state.");
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { fetchTokenData(); }, []);
+  useEffect(() => {
+    load();
+  }, []);
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(data.token);
-    toast.success("ACCESS_KEY_COPIED", {
-      description: "Neural key secured in clipboard.",
-      className: "bg-black border border-miransas-cyan/50 text-miransas-cyan font-mono text-[10px]",
-    });
+  const copyToken = async () => {
+    if (!data?.token) return;
+    await navigator.clipboard.writeText(data.token);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1500);
+  };
+
+  const rotateToken = async () => {
+    try {
+      await fetchControlPlane<{ token: string }>("/api/tokens/generate", { method: "POST" });
+      await load();
+    } catch (rotateError) {
+      setError(rotateError instanceof Error ? rotateError.message : "Token rotation failed.");
+    }
   };
 
   const revokeSessions = async () => {
-    if (!confirm("🚨 KRİTİK UYARI: Tüm aktif tünellerin anında kopacak. Emin misin?")) return;
-    
+    const confirmed = window.confirm(
+      "Revoke all active tunnel sessions? Connected agents will need to reconnect."
+    );
+    if (!confirmed) return;
+
     try {
-      await fetch("http://localhost:8080/api/tokens/revoke", { method: "POST" });
-      toast.error("PROTOCOL_X_INITIATED", { description: "All active links terminated." });
-      fetchTokenData();
-    } catch (err) {
-      toast.error("REVOKE_FAILED");
+      await fetchControlPlane("/api/tokens/revoke", { method: "POST" });
+      await load();
+    } catch (revokeError) {
+      setError(revokeError instanceof Error ? revokeError.message : "Session revoke failed.");
     }
   };
 
   return (
-    <div className="p-6 lg:p-12 min-h-screen bg-black text-white font-mono">
-      <Toaster position="bottom-right" theme="dark" />
-      
-      <header className="mb-12">
-        <h1 className="text-5xl font-black italic tracking-tighter uppercase">Neural_Access</h1>
-        <div className="flex items-center gap-4 mt-2">
-            <span className="text-[9px] text-gray-500 font-bold tracking-[0.3em] uppercase">Auth_Protocol: 0x11</span>
-            {data.last_used_at && (
-                <div className="flex items-center gap-1.5 text-miransas-cyan/60 text-[9px] font-bold">
-                    <Clock size={10} />
-                    LAST_ACTIVITY: {data.last_used_at}
-                </div>
-            )}
-        </div>
-      </header>
-
-      <div className="max-w-3xl space-y-6">
-        <div className="relative bg-[#080808] border border-white/5 rounded-3xl p-8 overflow-hidden">
-          <BorderBeam size={400} duration={8} className="opacity-20" />
-          
-          <div className="flex justify-between items-center mb-8">
-            <h3 className="text-xl font-bold italic uppercase flex items-center gap-2">
-                <Key size={18} className="text-miransas-cyan" /> Master_Key
-            </h3>
-            <div className="flex gap-2">
-                <button onClick={fetchTokenData} className="p-2 bg-white/5 rounded-lg hover:bg-white/10 transition-all">
-                    <RefreshCw size={14} />
-                </button>
+    <DashboardPageShell
+      eyebrow="Authentication"
+      title="Manage the instance token"
+      description="This self-hosted MVP uses one instance token for CLI agents. Rotate it when needed and revoke sessions when you want every active tunnel to disconnect immediately."
+      highlights={[
+        {
+          label: "Token mode",
+          value: "Single instance",
+          note: "The control plane currently uses one shared token for all connected agents.",
+        },
+        {
+          label: "Last used",
+          value: data?.last_used_at || "Never",
+          note: "Updated when the relay accepts a tunnel handshake.",
+        },
+        {
+          label: "Active agents",
+          value: data ? String(data.active_nodes) : "0",
+          note: error || "Each connected tunnel agent counts as one active node here.",
+        },
+      ]}
+      panels={[
+        {
+          title: "Why the token is instance-wide",
+          description: "The first release prioritizes a clear self-hosted story over a half-finished per-user auth system. Rotate the token when you want to replace machine access.",
+        },
+        {
+          title: "What is still missing",
+          description: "Per-user API keys, per-agent machine identities, and audit approvals still belong to the next backend milestone.",
+        },
+      ]}
+    >
+      <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+        <article className="rounded-3xl border border-white/10 bg-[#080808] p-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <KeyRound className="h-5 w-5 text-miransas-cyan" />
+              <h2 className="text-xl font-semibold text-white">Current token</h2>
             </div>
+            <button
+              onClick={load}
+              className="rounded-xl border border-white/8 bg-white/5 p-2 text-zinc-400 transition hover:bg-white/10 hover:text-white"
+            >
+              <RefreshCcw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            </button>
           </div>
 
-          <div className="bg-black/60 border border-white/5 p-6 rounded-2xl flex items-center gap-4 group/input">
-            <p className={`flex-1 text-sm tracking-widest ${isVisible ? 'text-white' : 'text-gray-800 blur-sm select-none'}`}>
-              {loading ? "..." : isVisible ? data.token : "********************************"}
-            </p>
-            <div className="flex gap-1">
-                <button onClick={() => setIsVisible(!isVisible)} className="p-2 hover:text-white transition-colors">
-                    {isVisible ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-                <button onClick={handleCopy} className="p-2 hover:text-miransas-cyan transition-colors">
-                    <Copy size={18} />
-                </button>
+          <div className="mt-5 flex items-center gap-3 rounded-2xl border border-white/8 bg-black/30 p-4 font-mono text-sm">
+            <div className="flex-1 overflow-x-auto whitespace-nowrap text-miransas-cyan">
+              {loading
+                ? "Loading token..."
+                : revealed
+                  ? data?.token || "Token unavailable"
+                  : "••••••••••••••••••••••••••••••••"}
             </div>
+            <button
+              onClick={() => setRevealed((value) => !value)}
+              className="rounded-xl border border-white/8 bg-white/5 p-2 text-zinc-400 transition hover:bg-white/10 hover:text-white"
+            >
+              {revealed ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+            <button
+              onClick={copyToken}
+              className="rounded-xl border border-white/8 bg-white/5 p-2 text-zinc-400 transition hover:bg-white/10 hover:text-white"
+            >
+              {copied ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
+            </button>
           </div>
-        </div>
 
-        {/* Güvenlik Butonları Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="bg-[#080808] border border-white/5 p-6 rounded-2xl">
-                <h4 className="text-[10px] font-bold text-gray-500 uppercase mb-4 tracking-widest">Danger_Zone</h4>
-                <button 
-                    onClick={revokeSessions}
-                    className="w-full flex items-center justify-center gap-2 py-3 bg-red-950/20 border border-red-900/30 text-red-500 rounded-xl text-[10px] font-black hover:bg-red-500 hover:text-white transition-all uppercase"
-                >
-                    <ZapOff size={14} /> Revoke_All_Sessions
-                </button>
-            </div>
+          <p className="mt-4 text-sm leading-7 text-zinc-400">
+            Use the token with <span className="font-mono text-miransas-cyan">binboi auth &lt;token&gt;</span> on each machine that should open tunnels.
+          </p>
+          {error && <p className="mt-4 text-sm text-red-400">{error}</p>}
+        </article>
 
-            <div className="bg-[#080808] border border-white/5 p-6 rounded-2xl flex flex-col justify-center">
-                <span className="text-[9px] text-gray-600 font-bold uppercase mb-1">Active_Neural_Nodes</span>
-                <div className="text-3xl font-black italic text-miransas-cyan">
-                    {data.active_nodes.toString().padStart(2, '0')}
-                </div>
-            </div>
-        </div>
-      </div>
-    </div>
+        <article className="space-y-4 rounded-3xl border border-white/10 bg-[#080808] p-6">
+          <h2 className="text-xl font-semibold text-white">Token actions</h2>
+          <button
+            onClick={rotateToken}
+            className="w-full rounded-2xl bg-miransas-cyan px-4 py-3 text-sm font-semibold text-black transition hover:brightness-110"
+          >
+            Generate a new token
+          </button>
+          <button
+            onClick={revokeSessions}
+            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm font-semibold text-red-300 transition hover:bg-red-500/20"
+          >
+            <ShieldAlert className="h-4 w-4" />
+            Revoke all active sessions
+          </button>
+          <p className="text-sm leading-7 text-zinc-500">
+            Rotating the token changes future agent authentication. Revoking sessions drops every active tunnel immediately.
+          </p>
+        </article>
+      </section>
+    </DashboardPageShell>
   );
 }

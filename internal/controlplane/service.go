@@ -1,0 +1,1200 @@
+package controlplane
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"log"
+	"net"
+	"net/http"
+	"net/http/httputil"
+	"os"
+	"regexp"
+	"strconv"
+	"strings"
+	"sync"
+	"sync/atomic"
+	"time"
+
+	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
+	"github.com/gorilla/websocket"
+	"github.com/hashicorp/yamux"
+	"github.com/miransas/binboi/internal/auth"
+	"github.com/miransas/binboi/internal/protocol"
+	"github.com/miransas/binboi/internal/utils"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
+)
+
+const (
+	defaultAPIAddr     = ":8080"
+	defaultTunnelAddr  = ":8081"
+	defaultProxyAddr   = ":8000"
+	defaultBaseDomain  = "binboi.localhost"
+	defaultDatabase    = "binboi.db"
+	defaultInstance    = "Binboi Self-Hosted"
+	defaultRegion      = "local"
+	maxLogBacklog      = 100
+	maxRecentEventRows = 50
+)
+
+var (
+	subdomainPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$|^[a-z0-9]$`)
+	wsUpgrader       = websocket.Upgrader{
+		CheckOrigin: func(_ *http.Request) bool { return true },
+	}
+)
+
+type Config struct {
+	APIAddr      string
+	TunnelAddr   string
+	ProxyAddr    string
+	BaseDomain   string
+	PublicScheme string
+	PublicPort   int
+	DatabasePath string
+	InstanceName string
+	DefaultRegion string
+}
+
+func LoadConfigFromEnv() Config {
+	cfg := Config{
+		APIAddr:      envOrDefault("BINBOI_API_ADDR", defaultAPIAddr),
+		TunnelAddr:   envOrDefault("BINBOI_TUNNEL_ADDR", defaultTunnelAddr),
+		ProxyAddr:    envOrDefault("BINBOI_PROXY_ADDR", defaultProxyAddr),
+		BaseDomain:   envOrDefault("BINBOI_BASE_DOMAIN", defaultBaseDomain),
+		PublicScheme: envOrDefault("BINBOI_PUBLIC_SCHEME", "http"),
+		DatabasePath: envOrDefault("BINBOI_DATABASE_PATH", defaultDatabase),
+		InstanceName: envOrDefault("BINBOI_INSTANCE_NAME", defaultInstance),
+		DefaultRegion: envOrDefault("BINBOI_DEFAULT_REGION", defaultRegion),
+	}
+
+	if port, err := strconv.Atoi(envOrDefault("BINBOI_PUBLIC_PORT", strconv.Itoa(portFromAddr(cfg.ProxyAddr, 8000)))); err == nil {
+		cfg.PublicPort = port
+	} else {
+		cfg.PublicPort = 8000
+	}
+
+	return cfg
+}
+
+func envOrDefault(key, fallback string) string {
+	if value := strings.TrimSpace(os.Getenv(key)); value != "" {
+		return value
+	}
+	return fallback
+}
+
+func portFromAddr(addr string, fallback int) int {
+	_, port, err := net.SplitHostPort(addr)
+	if err != nil {
+		if strings.HasPrefix(addr, ":") {
+			port = strings.TrimPrefix(addr, ":")
+		}
+	}
+	parsed, err := strconv.Atoi(port)
+	if err != nil {
+		return fallback
+	}
+	return parsed
+}
+
+type InstanceToken struct {
+	ID        uint `gorm:"primaryKey"`
+	Value     string `gorm:"uniqueIndex"`
+	LastUsedAt *time.Time
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
+type TunnelRecord struct {
+	ID               string `gorm:"primaryKey"`
+	Subdomain        string `gorm:"uniqueIndex"`
+	Target           string
+	TargetPort       int
+	Status           string
+	Region           string
+	LastError        string
+	RequestCount     int64
+	BytesTransferred int64
+	LastConnectedAt  *time.Time
+	LastDisconnectedAt *time.Time
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
+}
+
+type DomainRecord struct {
+	ID          uint `gorm:"primaryKey"`
+	Name        string `gorm:"uniqueIndex"`
+	Type        string
+	Status      string
+	ExpectedTXT string
+	VerifiedAt  *time.Time
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+}
+
+type EventRecord struct {
+	ID             uint `gorm:"primaryKey"`
+	Level          string
+	Message        string
+	TunnelSubdomain string
+	CreatedAt      time.Time
+}
+
+type activeSession struct {
+	session    *yamux.Session
+	remoteAddr string
+	connectedAt time.Time
+}
+
+type Service struct {
+	cfg Config
+	db  *gorm.DB
+
+	mu       sync.RWMutex
+	sessions map[string]*activeSession
+
+	logMu   sync.Mutex
+	clients map[*websocket.Conn]struct{}
+	backlog []string
+}
+
+type TunnelResponse struct {
+	ID              string     `json:"id"`
+	Subdomain       string     `json:"subdomain"`
+	Target          string     `json:"target"`
+	Status          string     `json:"status"`
+	Region          string     `json:"region"`
+	RequestCount    int64      `json:"request_count"`
+	BytesOut        int64      `json:"bytes_out"`
+	CreatedAt       time.Time  `json:"created_at"`
+	LastConnectedAt *time.Time `json:"last_connected_at,omitempty"`
+	PublicURL       string     `json:"public_url"`
+}
+
+type DomainResponse struct {
+	Name        string     `json:"name"`
+	Type        string     `json:"type"`
+	Status      string     `json:"status"`
+	ExpectedTXT string     `json:"expected_txt"`
+	VerifiedAt  *time.Time `json:"verified_at,omitempty"`
+}
+
+type NodeResponse struct {
+	Name        string `json:"name"`
+	Region      string `json:"region"`
+	Address     string `json:"address"`
+	Status      string `json:"status"`
+	Description string `json:"description"`
+}
+
+type EventResponse struct {
+	Level          string    `json:"level"`
+	Message        string    `json:"message"`
+	TunnelSubdomain string   `json:"tunnel_subdomain,omitempty"`
+	CreatedAt      time.Time `json:"created_at"`
+}
+
+type InstanceResponse struct {
+	InstanceName     string `json:"instance_name"`
+	Database         string `json:"database"`
+	DatabasePath     string `json:"database_path"`
+	ManagedDomain    string `json:"managed_domain"`
+	PublicURLExample string `json:"public_url_example"`
+	APIAddr          string `json:"api_addr"`
+	TunnelAddr       string `json:"tunnel_addr"`
+	ProxyAddr        string `json:"proxy_addr"`
+	AuthMode         string `json:"auth_mode"`
+	ActiveTunnels    int    `json:"active_tunnels"`
+	ReservedTunnels  int64  `json:"reserved_tunnels"`
+}
+
+func NewService(cfg Config) (*Service, error) {
+	db, err := gorm.Open(sqlite.Open(cfg.DatabasePath), &gorm.Config{})
+	if err != nil {
+		return nil, fmt.Errorf("open sqlite database: %w", err)
+	}
+
+	if err := db.AutoMigrate(&InstanceToken{}, &TunnelRecord{}, &DomainRecord{}, &EventRecord{}); err != nil {
+		return nil, fmt.Errorf("migrate sqlite database: %w", err)
+	}
+
+	service := &Service{
+		cfg:      cfg,
+		db:       db,
+		sessions: make(map[string]*activeSession),
+		clients:  make(map[*websocket.Conn]struct{}),
+		backlog:  make([]string, 0, maxLogBacklog),
+	}
+
+	if err := service.ensureDefaults(); err != nil {
+		return nil, err
+	}
+
+	return service, nil
+}
+
+func (s *Service) ensureDefaults() error {
+	var count int64
+	if err := s.db.Model(&InstanceToken{}).Count(&count).Error; err != nil {
+		return err
+	}
+	if count == 0 {
+		if err := s.db.Create(&InstanceToken{Value: auth.GenerateSecureToken()}).Error; err != nil {
+			return err
+		}
+	}
+
+	var domainCount int64
+	if err := s.db.Model(&DomainRecord{}).Where("name = ?", s.cfg.BaseDomain).Count(&domainCount).Error; err != nil {
+		return err
+	}
+	if domainCount == 0 {
+		now := time.Now().UTC()
+		if err := s.db.Create(&DomainRecord{
+			Name:       s.cfg.BaseDomain,
+			Type:       "MANAGED",
+			Status:     "VERIFIED",
+			VerifiedAt: &now,
+		}).Error; err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (s *Service) RegisterRoutes(r *gin.Engine) {
+	r.Use(gin.Recovery())
+	r.Use(s.requestLogger())
+
+	r.GET("/ws/logs", s.handleLogsSocket)
+
+	api := r.Group("/api")
+	api.GET("/health", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	})
+	api.GET("/instance", func(c *gin.Context) {
+		c.JSON(http.StatusOK, s.instanceResponse())
+	})
+	api.GET("/nodes", func(c *gin.Context) {
+		c.JSON(http.StatusOK, s.listNodes())
+	})
+	api.GET("/events", func(c *gin.Context) {
+		events, err := s.listEvents(maxRecentEventRows)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load events"})
+			return
+		}
+		c.JSON(http.StatusOK, events)
+	})
+	api.GET("/tunnels", s.handleListTunnels)
+	api.GET("/tunnels/:scope", s.handleListTunnels)
+	api.POST("/tunnels", s.handleCreateTunnel)
+	api.DELETE("/tunnels/:id", s.handleDeleteTunnel)
+	api.GET("/tokens/current", s.handleCurrentToken)
+	api.POST("/tokens/generate", s.handleGenerateToken)
+	api.POST("/tokens/revoke", s.handleRevokeSessions)
+	api.GET("/domains", s.handleListDomains)
+	api.POST("/domains", s.handleCreateDomain)
+	api.POST("/domains/verify", s.handleVerifyDomain)
+}
+
+func (s *Service) HandleTunnelConnection(conn net.Conn) {
+	defer conn.Close()
+
+	buf := make([]byte, 4096)
+	n, err := conn.Read(buf)
+	if err != nil {
+		s.broadcastLog("error", fmt.Sprintf("Tunnel handshake failed: %v", err), "")
+		return
+	}
+
+	msg, err := protocol.Decode(buf[:n])
+	if err != nil {
+		s.writeHandshakeError(conn, "invalid handshake payload")
+		return
+	}
+
+	var payload protocol.HandshakePayload
+	if err := json.Unmarshal(msg.Payload, &payload); err != nil {
+		s.writeHandshakeError(conn, "could not parse handshake")
+		return
+	}
+
+	authToken := strings.TrimSpace(payload.AuthToken)
+	if authToken == "" {
+		authToken = strings.TrimSpace(payload.Token)
+	}
+
+	subdomain, err := normalizeSubdomain(payload.Subdomain)
+	if err != nil {
+		s.writeHandshakeError(conn, err.Error())
+		return
+	}
+
+	if payload.LocalPort <= 0 {
+		s.writeHandshakeError(conn, "local port must be a positive integer")
+		return
+	}
+
+	if err := s.validateInstanceToken(authToken); err != nil {
+		s.writeHandshakeError(conn, "token rejected")
+		s.broadcastLog("warn", fmt.Sprintf("Rejected tunnel connection for %s", subdomain), subdomain)
+		return
+	}
+
+	if err := s.upsertTunnelOnConnect(subdomain, payload.LocalPort); err != nil {
+		s.writeHandshakeError(conn, "could not prepare tunnel state")
+		return
+	}
+
+	response := protocol.HandshakeResponse{
+		Status:  "success",
+		Message: "Tunnel is ready",
+		URL:     s.BuildPublicURL(subdomain),
+	}
+
+	encodedPayload, _ := json.Marshal(response)
+	encodedMessage, _ := (&protocol.Message{
+		Type:    protocol.TypeHandshakeAck,
+		Payload: encodedPayload,
+	}).Encode()
+
+	if _, err := conn.Write(encodedMessage); err != nil {
+		s.broadcastLog("error", fmt.Sprintf("Failed to send handshake response for %s: %v", subdomain, err), subdomain)
+		return
+	}
+
+	session, err := yamux.Server(conn, nil)
+	if err != nil {
+		s.broadcastLog("error", fmt.Sprintf("Failed to open yamux session for %s: %v", subdomain, err), subdomain)
+		_ = s.markTunnelStatus(subdomain, "ERROR", "Failed to create yamux session")
+		return
+	}
+
+	s.attachSession(subdomain, session, conn.RemoteAddr().String())
+	defer s.detachSession(subdomain)
+
+	s.broadcastLog("info", fmt.Sprintf("Tunnel %s connected from %s", subdomain, conn.RemoteAddr().String()), subdomain)
+	<-session.CloseChan()
+}
+
+func (s *Service) ServeProxy() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		subdomain := extractSubdomain(r.Host, s.cfg.BaseDomain)
+		if subdomain == "" {
+			s.renderProxyLanding(w)
+			return
+		}
+
+		active, tunnel, err := s.lookupActiveTunnel(subdomain)
+		if err != nil {
+			http.Error(w, "Tunnel not found", http.StatusNotFound)
+			return
+		}
+		if active == nil {
+			http.Error(w, "Tunnel is currently offline", http.StatusBadGateway)
+			return
+		}
+
+		stream, err := active.session.Open()
+		if err != nil {
+			s.broadcastLog("error", fmt.Sprintf("Could not open stream for %s: %v", subdomain, err), subdomain)
+			http.Error(w, "Tunnel stream unavailable", http.StatusServiceUnavailable)
+			return
+		}
+
+		counter := newCountingConn(stream, func(total int64) {
+			_ = s.recordProxyTraffic(subdomain, total)
+		})
+
+		proxy := &httputil.ReverseProxy{
+			Director: func(req *http.Request) {
+				req.URL.Scheme = "http"
+				req.URL.Host = r.Host
+				req.Host = r.Host
+				req.Header.Set("X-Forwarded-Proto", s.cfg.PublicScheme)
+				req.Header.Set("X-Forwarded-Host", r.Host)
+				req.Header.Set("X-Binboi-Subdomain", subdomain)
+			},
+			Transport: &http.Transport{
+				DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
+					return counter, nil
+				},
+			},
+			ErrorHandler: func(rw http.ResponseWriter, req *http.Request, proxyErr error) {
+				s.broadcastLog("error", fmt.Sprintf("Proxy error for %s: %v", subdomain, proxyErr), subdomain)
+				http.Error(rw, "Proxy request failed", http.StatusBadGateway)
+			},
+		}
+
+		s.broadcastLog("info", fmt.Sprintf("%s %s -> %s", r.Method, r.URL.Path, tunnel.Target), subdomain)
+		_ = s.incrementRequestCount(subdomain)
+		proxy.ServeHTTP(w, r)
+	})
+}
+
+func (s *Service) BuildPublicURL(subdomain string) string {
+	host := fmt.Sprintf("%s.%s", subdomain, s.cfg.BaseDomain)
+	if (s.cfg.PublicScheme == "http" && s.cfg.PublicPort == 80) || (s.cfg.PublicScheme == "https" && s.cfg.PublicPort == 443) {
+		return fmt.Sprintf("%s://%s", s.cfg.PublicScheme, host)
+	}
+	return fmt.Sprintf("%s://%s:%d", s.cfg.PublicScheme, host, s.cfg.PublicPort)
+}
+
+func (s *Service) handleLogsSocket(c *gin.Context) {
+	conn, err := wsUpgrader.Upgrade(c.Writer, c.Request, nil)
+	if err != nil {
+		return
+	}
+
+	s.logMu.Lock()
+	s.clients[conn] = struct{}{}
+	backlog := append([]string(nil), s.backlog...)
+	s.logMu.Unlock()
+
+	for i := len(backlog) - 1; i >= 0; i-- {
+		if err := conn.WriteMessage(websocket.TextMessage, []byte(backlog[i])); err != nil {
+			conn.Close()
+			return
+		}
+	}
+
+	defer func() {
+		s.logMu.Lock()
+		delete(s.clients, conn)
+		s.logMu.Unlock()
+		conn.Close()
+	}()
+
+	for {
+		if _, _, err := conn.ReadMessage(); err != nil {
+			return
+		}
+	}
+}
+
+func (s *Service) requestLogger() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		start := time.Now()
+		c.Next()
+		log.Printf("[binboi] %d %s %s %s", c.Writer.Status(), c.Request.Method, c.Request.URL.Path, time.Since(start).Round(time.Millisecond))
+	}
+}
+
+func (s *Service) handleListTunnels(c *gin.Context) {
+	records, err := s.listTunnels()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list tunnels"})
+		return
+	}
+	c.JSON(http.StatusOK, records)
+}
+
+func (s *Service) handleCreateTunnel(c *gin.Context) {
+	var req struct {
+		Subdomain string `json:"subdomain"`
+		Target    string `json:"target"`
+		Region    string `json:"region"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid tunnel payload"})
+		return
+	}
+
+	record, err := s.createTunnel(req.Subdomain, req.Target, req.Region)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	s.broadcastLog("info", fmt.Sprintf("Reserved tunnel %s -> %s", record.Subdomain, record.Target), record.Subdomain)
+	c.JSON(http.StatusCreated, s.mapTunnelRecord(record))
+}
+
+func (s *Service) handleDeleteTunnel(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "missing tunnel id"})
+		return
+	}
+
+	if err := s.deleteTunnel(id); err != nil {
+		status := http.StatusInternalServerError
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			status = http.StatusNotFound
+		}
+		c.JSON(status, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"status": "deleted"})
+}
+
+func (s *Service) handleCurrentToken(c *gin.Context) {
+	token, err := s.currentToken()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load token"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"token":        token.Value,
+		"last_used_at": formatTime(token.LastUsedAt),
+		"active_nodes": s.activeTunnelCount(),
+	})
+}
+
+func (s *Service) handleGenerateToken(c *gin.Context) {
+	token, err := s.rotateToken()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to rotate token"})
+		return
+	}
+
+	s.broadcastLog("info", "Generated a new instance token", "")
+	c.JSON(http.StatusOK, gin.H{"status": "success", "token": token})
+}
+
+func (s *Service) handleRevokeSessions(c *gin.Context) {
+	if err := s.closeAllSessions("token revoke requested from dashboard"); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to revoke sessions"})
+		return
+	}
+
+	s.broadcastLog("warn", "Revoked all active tunnel sessions", "")
+	c.JSON(http.StatusOK, gin.H{"status": "all_sessions_terminated"})
+}
+
+func (s *Service) handleListDomains(c *gin.Context) {
+	domains, err := s.listDomains()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load domains"})
+		return
+	}
+	c.JSON(http.StatusOK, domains)
+}
+
+func (s *Service) handleCreateDomain(c *gin.Context) {
+	var req struct {
+		Domain string `json:"domain"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid domain payload"})
+		return
+	}
+
+	record, err := s.createDomain(req.Domain)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, DomainResponse{
+		Name:        record.Name,
+		Type:        record.Type,
+		Status:      record.Status,
+		ExpectedTXT: record.ExpectedTXT,
+		VerifiedAt:  record.VerifiedAt,
+	})
+}
+
+func (s *Service) handleVerifyDomain(c *gin.Context) {
+	var req struct {
+		DomainName string `json:"domain_name"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid domain payload"})
+		return
+	}
+
+	result, err := s.verifyDomain(req.DomainName)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	status := http.StatusOK
+	if result.Status != "VERIFIED" {
+		status = http.StatusAccepted
+	}
+
+	c.JSON(status, result)
+}
+
+func (s *Service) currentToken() (*InstanceToken, error) {
+	var token InstanceToken
+	if err := s.db.First(&token).Error; err != nil {
+		return nil, err
+	}
+	return &token, nil
+}
+
+func (s *Service) validateInstanceToken(raw string) error {
+	token, err := s.currentToken()
+	if err != nil {
+		return err
+	}
+	if strings.TrimSpace(raw) == "" || raw != token.Value {
+		return errors.New("invalid token")
+	}
+
+	now := time.Now().UTC()
+	return s.db.Model(token).Update("last_used_at", &now).Error
+}
+
+func (s *Service) rotateToken() (string, error) {
+	token, err := s.currentToken()
+	if err != nil {
+		return "", err
+	}
+
+	newValue := auth.GenerateSecureToken()
+	if err := s.db.Model(token).Updates(map[string]any{
+		"value":       newValue,
+		"last_used_at": nil,
+	}).Error; err != nil {
+		return "", err
+	}
+
+	return newValue, nil
+}
+
+func (s *Service) listTunnels() ([]TunnelResponse, error) {
+	var records []TunnelRecord
+	if err := s.db.Order("created_at desc").Find(&records).Error; err != nil {
+		return nil, err
+	}
+
+	response := make([]TunnelResponse, 0, len(records))
+	for _, record := range records {
+		response = append(response, s.mapTunnelRecord(record))
+	}
+	return response, nil
+}
+
+func (s *Service) mapTunnelRecord(record TunnelRecord) TunnelResponse {
+	return TunnelResponse{
+		ID:              record.ID,
+		Subdomain:       record.Subdomain,
+		Target:          record.Target,
+		Status:          record.Status,
+		Region:          record.Region,
+		RequestCount:    record.RequestCount,
+		BytesOut:        record.BytesTransferred,
+		CreatedAt:       record.CreatedAt,
+		LastConnectedAt: record.LastConnectedAt,
+		PublicURL:       s.BuildPublicURL(record.Subdomain),
+	}
+}
+
+func (s *Service) createTunnel(subdomain, target, region string) (TunnelRecord, error) {
+	normalizedSubdomain, err := normalizeSubdomain(subdomain)
+	if err != nil {
+		return TunnelRecord{}, err
+	}
+
+	normalizedTarget, targetPort, err := normalizeTarget(target)
+	if err != nil {
+		return TunnelRecord{}, err
+	}
+
+	record := TunnelRecord{
+		ID:         uuid.NewString(),
+		Subdomain:  normalizedSubdomain,
+		Target:     normalizedTarget,
+		TargetPort: targetPort,
+		Status:     "INACTIVE",
+		Region:     fallbackString(region, s.cfg.DefaultRegion),
+	}
+
+	if err := s.db.Create(&record).Error; err != nil {
+		if strings.Contains(strings.ToLower(err.Error()), "unique") {
+			return TunnelRecord{}, errors.New("subdomain is already reserved")
+		}
+		return TunnelRecord{}, err
+	}
+
+	return record, nil
+}
+
+func (s *Service) upsertTunnelOnConnect(subdomain string, localPort int) error {
+	now := time.Now().UTC()
+	target := fmt.Sprintf("http://localhost:%d", localPort)
+
+	var record TunnelRecord
+	err := s.db.Where("subdomain = ?", subdomain).First(&record).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		record = TunnelRecord{
+			ID:          uuid.NewString(),
+			Subdomain:   subdomain,
+			Target:      target,
+			TargetPort:  localPort,
+			Status:      "ACTIVE",
+			Region:      s.cfg.DefaultRegion,
+			LastConnectedAt: &now,
+		}
+		return s.db.Create(&record).Error
+	}
+	if err != nil {
+		return err
+	}
+
+	return s.db.Model(&record).Updates(map[string]any{
+		"target":            target,
+		"target_port":       localPort,
+		"status":            "ACTIVE",
+		"region":            fallbackString(record.Region, s.cfg.DefaultRegion),
+		"last_error":        "",
+		"last_connected_at": &now,
+	}).Error
+}
+
+func (s *Service) deleteTunnel(id string) error {
+	var record TunnelRecord
+	if err := s.db.Where("id = ?", id).First(&record).Error; err != nil {
+		return err
+	}
+
+	s.mu.Lock()
+	if active, ok := s.sessions[record.Subdomain]; ok {
+		_ = active.session.Close()
+		delete(s.sessions, record.Subdomain)
+	}
+	s.mu.Unlock()
+
+	s.broadcastLog("warn", fmt.Sprintf("Deleted tunnel %s", record.Subdomain), record.Subdomain)
+	return s.db.Delete(&record).Error
+}
+
+func (s *Service) markTunnelStatus(subdomain, status, lastError string) error {
+	updates := map[string]any{
+		"status":     status,
+		"last_error": lastError,
+	}
+	if status == "INACTIVE" || status == "ERROR" {
+		now := time.Now().UTC()
+		updates["last_disconnected_at"] = &now
+	}
+	return s.db.Model(&TunnelRecord{}).Where("subdomain = ?", subdomain).Updates(updates).Error
+}
+
+func (s *Service) attachSession(subdomain string, session *yamux.Session, remoteAddr string) {
+	s.mu.Lock()
+	if existing, ok := s.sessions[subdomain]; ok {
+		_ = existing.session.Close()
+	}
+	s.sessions[subdomain] = &activeSession{
+		session:     session,
+		remoteAddr:  remoteAddr,
+		connectedAt: time.Now().UTC(),
+	}
+	s.mu.Unlock()
+}
+
+func (s *Service) detachSession(subdomain string) {
+	s.mu.Lock()
+	delete(s.sessions, subdomain)
+	s.mu.Unlock()
+
+	_ = s.markTunnelStatus(subdomain, "INACTIVE", "")
+	s.broadcastLog("info", fmt.Sprintf("Tunnel %s disconnected", subdomain), subdomain)
+}
+
+func (s *Service) lookupActiveTunnel(subdomain string) (*activeSession, TunnelRecord, error) {
+	var record TunnelRecord
+	if err := s.db.Where("subdomain = ?", subdomain).First(&record).Error; err != nil {
+		return nil, TunnelRecord{}, err
+	}
+
+	s.mu.RLock()
+	active := s.sessions[subdomain]
+	s.mu.RUnlock()
+	return active, record, nil
+}
+
+func (s *Service) closeAllSessions(reason string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	for subdomain, active := range s.sessions {
+		_ = active.session.Close()
+		delete(s.sessions, subdomain)
+		_ = s.markTunnelStatus(subdomain, "INACTIVE", reason)
+	}
+
+	return nil
+}
+
+func (s *Service) recordProxyTraffic(subdomain string, total int64) error {
+	if total <= 0 {
+		return nil
+	}
+	return s.db.Model(&TunnelRecord{}).
+		Where("subdomain = ?", subdomain).
+		UpdateColumn("bytes_transferred", gorm.Expr("bytes_transferred + ?", total)).
+		Error
+}
+
+func (s *Service) incrementRequestCount(subdomain string) error {
+	return s.db.Model(&TunnelRecord{}).
+		Where("subdomain = ?", subdomain).
+		UpdateColumn("request_count", gorm.Expr("request_count + 1")).
+		Error
+}
+
+func (s *Service) listDomains() ([]DomainResponse, error) {
+	var records []DomainRecord
+	if err := s.db.Order("created_at asc").Find(&records).Error; err != nil {
+		return nil, err
+	}
+
+	response := make([]DomainResponse, 0, len(records))
+	for _, record := range records {
+		response = append(response, DomainResponse{
+			Name:        record.Name,
+			Type:        record.Type,
+			Status:      record.Status,
+			ExpectedTXT: record.ExpectedTXT,
+			VerifiedAt:  record.VerifiedAt,
+		})
+	}
+	return response, nil
+}
+
+func (s *Service) createDomain(name string) (DomainRecord, error) {
+	domain := strings.ToLower(strings.TrimSpace(name))
+	if domain == "" {
+		return DomainRecord{}, errors.New("domain name is required")
+	}
+
+	record := DomainRecord{
+		Name:        domain,
+		Type:        "CUSTOM",
+		Status:      "PENDING",
+		ExpectedTXT: fmt.Sprintf("binboi-verification=%s", uuid.NewString()),
+	}
+
+	if err := s.db.Create(&record).Error; err != nil {
+		if strings.Contains(strings.ToLower(err.Error()), "unique") {
+			return DomainRecord{}, errors.New("domain already exists")
+		}
+		return DomainRecord{}, err
+	}
+
+	return record, nil
+}
+
+func (s *Service) verifyDomain(name string) (DomainResponse, error) {
+	domain := strings.ToLower(strings.TrimSpace(name))
+	if domain == "" {
+		return DomainResponse{}, errors.New("domain name is required")
+	}
+
+	var record DomainRecord
+	if err := s.db.Where("name = ?", domain).First(&record).Error; err != nil {
+		return DomainResponse{}, err
+	}
+
+	if record.Type == "MANAGED" {
+		return DomainResponse{
+			Name:        record.Name,
+			Type:        record.Type,
+			Status:      "VERIFIED",
+			ExpectedTXT: record.ExpectedTXT,
+			VerifiedAt:  record.VerifiedAt,
+		}, nil
+	}
+
+	txtRecords, err := net.LookupTXT(record.Name)
+	if err != nil {
+		return DomainResponse{
+			Name:        record.Name,
+			Type:        record.Type,
+			Status:      record.Status,
+			ExpectedTXT: record.ExpectedTXT,
+			VerifiedAt:  record.VerifiedAt,
+		}, nil
+	}
+
+	for _, txtRecord := range txtRecords {
+		if strings.Contains(txtRecord, record.ExpectedTXT) {
+			now := time.Now().UTC()
+			record.Status = "VERIFIED"
+			record.VerifiedAt = &now
+			record.ExpectedTXT = ""
+			if err := s.db.Save(&record).Error; err != nil {
+				return DomainResponse{}, err
+			}
+			s.broadcastLog("info", fmt.Sprintf("Verified custom domain %s", record.Name), "")
+			break
+		}
+	}
+
+	return DomainResponse{
+		Name:        record.Name,
+		Type:        record.Type,
+		Status:      record.Status,
+		ExpectedTXT: record.ExpectedTXT,
+		VerifiedAt:  record.VerifiedAt,
+	}, nil
+}
+
+func (s *Service) listNodes() []NodeResponse {
+	status := "online"
+	if s.activeTunnelCount() == 0 {
+		status = "idle"
+	}
+	return []NodeResponse{
+		{
+			Name:        "primary-relay",
+			Region:      s.cfg.DefaultRegion,
+			Address:     s.cfg.ProxyAddr,
+			Status:      status,
+			Description: "Single-node HTTP relay used by the self-hosted MVP.",
+		},
+	}
+}
+
+func (s *Service) listEvents(limit int) ([]EventResponse, error) {
+	var records []EventRecord
+	if err := s.db.Order("created_at desc").Limit(limit).Find(&records).Error; err != nil {
+		return nil, err
+	}
+
+	response := make([]EventResponse, 0, len(records))
+	for _, record := range records {
+		response = append(response, EventResponse{
+			Level:          record.Level,
+			Message:        record.Message,
+			TunnelSubdomain: record.TunnelSubdomain,
+			CreatedAt:      record.CreatedAt,
+		})
+	}
+	return response, nil
+}
+
+func (s *Service) instanceResponse() InstanceResponse {
+	var total int64
+	_ = s.db.Model(&TunnelRecord{}).Count(&total).Error
+	return InstanceResponse{
+		InstanceName:     s.cfg.InstanceName,
+		Database:         "sqlite",
+		DatabasePath:     s.cfg.DatabasePath,
+		ManagedDomain:    s.cfg.BaseDomain,
+		PublicURLExample: s.BuildPublicURL("my-app"),
+		APIAddr:          s.cfg.APIAddr,
+		TunnelAddr:       s.cfg.TunnelAddr,
+		ProxyAddr:        s.cfg.ProxyAddr,
+		AuthMode:         "instance-token",
+		ActiveTunnels:    s.activeTunnelCount(),
+		ReservedTunnels:  total,
+	}
+}
+
+func (s *Service) activeTunnelCount() int {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return len(s.sessions)
+}
+
+func (s *Service) renderProxyLanding(w http.ResponseWriter) {
+	tunnels, err := s.listTunnels()
+	if err != nil {
+		http.Error(w, "Control plane is unavailable", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	fmt.Fprintf(w, `<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>%s</title>
+    <style>
+      body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background:#050505; color:#fff; margin:0; padding:48px; }
+      .card { max-width:960px; margin:0 auto; background:#0d0d0d; border:1px solid rgba(255,255,255,.08); border-radius:24px; padding:32px; }
+      h1 { margin:0 0 12px; font-size:42px; }
+      p, li { color:#a1a1aa; line-height:1.7; }
+      code { color:#00ffd1; }
+      table { width:100%%; border-collapse:collapse; margin-top:24px; }
+      th, td { padding:14px 12px; border-top:1px solid rgba(255,255,255,.08); text-align:left; }
+      th { color:#71717a; font-size:12px; text-transform:uppercase; letter-spacing:.12em; }
+      .pill { display:inline-block; padding:4px 10px; border-radius:999px; background:rgba(0,255,209,.1); color:#00ffd1; font-size:12px; }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <span class="pill">HTTP proxy</span>
+      <h1>%s</h1>
+      <p>Send traffic to a tunnel subdomain such as <code>%s</code>. The dashboard is available on <code>http://localhost:3000/dashboard</code> during local development.</p>
+      <p>This self-hosted MVP uses a single instance token and a local SQLite control-plane database. Reserve a subdomain in the dashboard, then connect your CLI agent with <code>binboi auth &lt;token&gt;</code> and <code>binboi start 3000 your-subdomain</code>.</p>
+      <table>
+        <thead>
+          <tr><th>Subdomain</th><th>Status</th><th>Target</th><th>Public URL</th></tr>
+        </thead>
+        <tbody>`, s.cfg.InstanceName, s.cfg.InstanceName, s.BuildPublicURL("my-app"))
+
+	if len(tunnels) == 0 {
+		fmt.Fprint(w, `<tr><td colspan="4">No tunnels have been reserved yet.</td></tr>`)
+	} else {
+		for _, tunnel := range tunnels {
+			fmt.Fprintf(w, `<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>`, tunnel.Subdomain, tunnel.Status, tunnel.Target, tunnel.PublicURL)
+		}
+	}
+
+	fmt.Fprint(w, `</tbody></table></div></body></html>`)
+}
+
+func (s *Service) broadcastLog(level, message, subdomain string) {
+	line := fmt.Sprintf("%s [%s] %s", time.Now().UTC().Format(time.RFC3339), strings.ToUpper(level), message)
+
+	s.logMu.Lock()
+	s.backlog = append([]string{line}, s.backlog...)
+	if len(s.backlog) > maxLogBacklog {
+		s.backlog = s.backlog[:maxLogBacklog]
+	}
+
+	for client := range s.clients {
+		if err := client.WriteMessage(websocket.TextMessage, []byte(line)); err != nil {
+			client.Close()
+			delete(s.clients, client)
+		}
+	}
+	s.logMu.Unlock()
+
+	_ = s.db.Create(&EventRecord{
+		Level:          strings.ToLower(level),
+		Message:        message,
+		TunnelSubdomain: subdomain,
+	}).Error
+}
+
+func (s *Service) writeHandshakeError(conn net.Conn, message string) {
+	response := protocol.HandshakeResponse{
+		Status:  "error",
+		Message: message,
+	}
+	encodedPayload, _ := json.Marshal(response)
+	encodedMessage, _ := (&protocol.Message{
+		Type:    protocol.TypeError,
+		Payload: encodedPayload,
+	}).Encode()
+	_, _ = conn.Write(encodedMessage)
+}
+
+type countingConn struct {
+	net.Conn
+	onClose func(total int64)
+	read    int64
+	written int64
+	once    sync.Once
+}
+
+func newCountingConn(inner net.Conn, onClose func(total int64)) *countingConn {
+	return &countingConn{Conn: inner, onClose: onClose}
+}
+
+func (c *countingConn) Read(p []byte) (int, error) {
+	n, err := c.Conn.Read(p)
+	atomic.AddInt64(&c.read, int64(n))
+	return n, err
+}
+
+func (c *countingConn) Write(p []byte) (int, error) {
+	n, err := c.Conn.Write(p)
+	atomic.AddInt64(&c.written, int64(n))
+	return n, err
+}
+
+func (c *countingConn) Close() error {
+	err := c.Conn.Close()
+	c.once.Do(func() {
+		if c.onClose != nil {
+			c.onClose(atomic.LoadInt64(&c.read) + atomic.LoadInt64(&c.written))
+		}
+	})
+	return err
+}
+
+func extractSubdomain(hostHeader, baseDomain string) string {
+	host := hostHeader
+	if strings.Contains(host, ":") {
+		if parsedHost, _, err := net.SplitHostPort(host); err == nil {
+			host = parsedHost
+		} else {
+			host = strings.Split(host, ":")[0]
+		}
+	}
+
+	host = strings.ToLower(strings.TrimSpace(host))
+	baseDomain = strings.ToLower(strings.TrimSpace(baseDomain))
+
+	if host == "" || host == "localhost" || host == baseDomain {
+		return ""
+	}
+	if !strings.HasSuffix(host, "."+baseDomain) {
+		return ""
+	}
+
+	return strings.TrimSuffix(host, "."+baseDomain)
+}
+
+func normalizeSubdomain(raw string) (string, error) {
+	value := strings.ToLower(strings.TrimSpace(raw))
+	if value == "" {
+		value = utils.GenerateCyberName()
+	}
+	value = strings.ReplaceAll(value, "_", "-")
+
+	if !subdomainPattern.MatchString(value) {
+		return "", errors.New("subdomain must use lowercase letters, numbers, and hyphens")
+	}
+	return value, nil
+}
+
+func normalizeTarget(raw string) (string, int, error) {
+	value := strings.TrimSpace(raw)
+	if value == "" {
+		value = "http://localhost:3000"
+	}
+	if _, err := strconv.Atoi(value); err == nil {
+		value = fmt.Sprintf("http://localhost:%s", value)
+	}
+	if !strings.Contains(value, "://") {
+		value = "http://" + value
+	}
+
+	parsed := strings.TrimPrefix(value, "http://")
+	host, portString, err := net.SplitHostPort(parsed)
+	if err != nil {
+		return "", 0, errors.New("target must include a host and port")
+	}
+	port, err := strconv.Atoi(portString)
+	if err != nil || port <= 0 {
+		return "", 0, errors.New("target port must be a positive integer")
+	}
+	if host == "" {
+		return "", 0, errors.New("target host is required")
+	}
+
+	return value, port, nil
+}
+
+func fallbackString(value, fallback string) string {
+	if strings.TrimSpace(value) == "" {
+		return fallback
+	}
+	return value
+}
+
+func formatTime(value *time.Time) string {
+	if value == nil {
+		return "Never"
+	}
+	return value.UTC().Format(time.RFC3339)
+}

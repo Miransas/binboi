@@ -1,50 +1,61 @@
-"use client";
-import { Check, Zap, Shield, Cpu } from "lucide-react";
-import { NeuralButton } from "@/components/ui/neutral-button";
-import { motion } from "framer-motion";
-
-const tiers = [
-  { name: "Lite_Node", price: "$0", desc: "For independent explorers", features: ["1 Active Tunnel", "Random Subdomain", "Basic Latency", "Community Support"] },
-  { name: "Neural_Link", price: "$12", desc: "Professional grade tunneling", features: ["10 Active Tunnels", "Custom Subdomains", "Global Relay Nodes", "Priority Traffic"], featured: true },
-  { name: "Enterprise_Core", price: "Custom", desc: "Unrestricted neural access", features: ["Unlimited Tunnels", "Wildcard Domains", "Dedicated IP", "24/7 Core Support"] },
+const plans = [
+  {
+    name: "Community",
+    price: "$0",
+    description: "For local development and single-operator self-hosting.",
+    features: ["HTTP tunnels", "Instance token auth", "SQLite control plane", "Manual edge TLS"],
+  },
+  {
+    name: "Team",
+    price: "$19",
+    description: "A future hosted plan for teams that want managed relay infrastructure.",
+    features: ["Managed relay nodes", "Custom domains", "Shared dashboards", "Usage analytics"],
+    featured: true,
+  },
+  {
+    name: "Enterprise",
+    price: "Custom",
+    description: "For organizations that need private networking, formal identity, and support.",
+    features: ["Dedicated infrastructure", "SSO and RBAC", "Private CA roadmap", "Support and migration help"],
+  },
 ];
 
 export default function PricingPage() {
   return (
-    <div className="pt-32 pb-20 bg-black min-h-screen text-white px-6">
-      <div className="max-w-6xl mx-auto text-center mb-20">
-        <h1 className="text-6xl font-black italic uppercase tracking-tighter mb-4">Neural_Plans</h1>
-        <p className="text-gray-500 font-mono text-xs uppercase tracking-[0.4em]">Choose your access level to the Miransas network</p>
-      </div>
+    <main className="min-h-screen bg-black px-6 pb-20 pt-32 text-white">
+      <div className="mx-auto max-w-6xl">
+        <div className="max-w-3xl">
+          <p className="text-sm font-semibold uppercase tracking-[0.25em] text-miransas-cyan">Pricing</p>
+          <h1 className="mt-4 text-5xl font-black tracking-tight">Simple plans for a focused product</h1>
+          <p className="mt-5 text-sm leading-7 text-zinc-400">
+            The current repository is best treated as a self-hosted MVP. Hosted pricing stays on the page as a product direction, not as a promise that every feature already exists.
+          </p>
+        </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-        {tiers.map((tier, i) => (
-          <motion.div 
-            key={i}
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.1 }}
-            className={`p-10 rounded-3xl border ${tier.featured ? 'border-miransas-cyan bg-miransas-cyan/5 shadow-[0_0_40px_rgba(0,255,209,0.1)]' : 'border-white/5 bg-[#080808]'} flex flex-col`}
-          >
-            <h3 className="text-xl font-black italic uppercase mb-2">{tier.name}</h3>
-            <div className="flex items-baseline gap-1 mb-6">
-              <span className="text-4xl font-black italic">{tier.price}</span>
-              {tier.price !== "Custom" && <span className="text-gray-600 text-xs uppercase font-bold">/Month</span>}
-            </div>
-            <p className="text-gray-500 text-xs mb-8 font-mono italic">{tier.desc}</p>
-            
-            <ul className="space-y-4 mb-10 flex-1">
-              {tier.features.map((f, idx) => (
-                <li key={idx} className="flex items-center gap-3 text-[11px] font-bold text-gray-400 uppercase">
-                  <Check size={14} className="text-miransas-cyan" /> {f}
-                </li>
-              ))}
-            </ul>
-
-            <NeuralButton className="w-full justify-center">Initiate_Access</NeuralButton>
-          </motion.div>
-        ))}
+        <div className="mt-12 grid gap-6 md:grid-cols-3">
+          {plans.map((plan) => (
+            <article
+              key={plan.name}
+              className={`rounded-3xl border p-6 ${
+                plan.featured
+                  ? "border-miransas-cyan/40 bg-miransas-cyan/5"
+                  : "border-white/10 bg-[#080808]"
+              }`}
+            >
+              <h2 className="text-2xl font-semibold text-white">{plan.name}</h2>
+              <p className="mt-3 text-4xl font-black tracking-tight text-white">{plan.price}</p>
+              <p className="mt-4 text-sm leading-7 text-zinc-400">{plan.description}</p>
+              <ul className="mt-6 space-y-3 text-sm leading-7 text-zinc-300">
+                {plan.features.map((feature) => (
+                  <li key={feature} className="rounded-2xl border border-white/8 bg-black/20 px-4 py-3">
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+            </article>
+          ))}
+        </div>
       </div>
-    </div>
+    </main>
   );
 }

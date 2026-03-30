@@ -1,103 +1,112 @@
-🚀 Binboi — Neural Tunneling Core
-Binboi is a high-performance, neural-themed tunneling service written in Go. It allows you to expose your local environment to the global network instantly through encrypted neural links. Powered by the Miransas ecosystem.
+# Binboi
 
-<div align="center">
-<img src="https://github.com/sardorazimov/binboi/blob/main/assets/neural-banner.png?raw=true" alt="Binboi Banner" width="800">
-<p><i>"Expose your local world to the neural network."</i></p>
-</div>
+Binboi is a self-hosted HTTP tunneling MVP with three parts:
 
-📋 [SYSTEM_MANIFEST]
-Features
+- A Go relay and control plane
+- A CLI agent that opens tunnels from your local machine
+- A Next.js dashboard for setup, reservation, domains, and visibility
 
-Installation
+The project is intentionally scoped to a coherent first release:
 
-Neural Authentication
+- HTTP tunnels over a single yamux connection
+- One instance token for agent authentication
+- SQLite-backed control-plane state by default
+- Managed base domain plus optional custom domains with DNS TXT verification
 
-Quick Start
+It is not pretending to be a finished hosted ngrok replacement yet. Raw TCP, private CA management, deep traffic policy, and AI inspection remain future work.
 
-Dashboard
+## MVP data story
 
-Architecture
+The repository now treats the Go backend as the source of truth for product data.
 
-License
+- Default storage: SQLite at `binboi.db`
+- Default auth model: one instance token stored by the control plane
+- Optional web auth: the Next.js app can layer GitHub auth on top when configured, but the dashboard can still run in local preview mode
 
-⚡ Features
-Neural Links – Instant HTTP tunnels with a single command (binboi start 3000).
+## Default ports
 
-Yamux Powered – Multiplexed streams over a single TCP connection for extreme efficiency.
+- API: `:8080`
+- Tunnel listener: `:8081`
+- Public HTTP proxy: `:8000`
 
-Cyber-Dashboard – Next.js 16 powered, dark-mode-only management console.
+The default managed domain is `binboi.localhost`, which makes local subdomains easy to test:
 
-Live Neural Stream – Real-time request logging via WebSockets.
+- `http://my-app.binboi.localhost:8000`
 
-DNS Verification – Support for custom domains via automated DNS TXT checks.
+## Quick start
 
-AI Gateways – Smart traffic inspection and neural shielding (Alpha).
+1. Start the relay:
 
-📦 Installation
-Go Install (Recommended)
-Bash
-go install github.com/miransas/binboi/cmd/binboi@latest
-Build from Source
-Bash
-# Clone the repository
-git clone https://github.com/miransas/binboi.git
-cd binboi
+```bash
+go run ./cmd/binboi-server
+```
 
-# Build the Neural Core (Server)
-go build -o binboi-server ./cmd/binboi-server
+2. Open the dashboard:
 
-# Build the CLI (Client)
-go build -o binboi ./cmd/binboi
-🔑 Authentication
-Before starting a tunnel, you must link your local machine to the Miransas network:
+```bash
+cd web
+npm install
+npm run dev
+```
 
-Go to the Binboi Dashboard.
+3. Build the CLI:
 
-Copy your Neural Access Token.
+```bash
+go build -o binboi ./cmd/binboi-client
+```
 
-Run the following command:
+4. Copy the instance token from the dashboard and save it locally:
 
-Bash
-binboi auth binboi_live_YOUR_TOKEN_HERE
-🧪 Quick Start
-1. Fire up the Core (Server-side)
-Bash
-./binboi-server
-# 🚀 Binboi Core Running on :8080
-# 📡 [PROXY_GATEWAY]: Intercepting traffic on :8000
-2. Initiate a Link (Client-side)
-Bash
-binboi start 3000
+```bash
+./binboi auth <instance-token>
+```
 
-# Output:
-#  🚇 [NEURAL_LINK_ESTABLISHED]
-#  ─────────────────────────────────────────
-#  Endpoint:  http://asardor.binboi.link:8000
-#  Target:    http://localhost:3000
-#  ─────────────────────────────────────────
-🖥️ Dashboard
-Binboi comes with a state-of-the-art management console built with Next.js 16 and Tailwind CSS v4.
+5. Start a tunnel to your local app:
 
-Traffic Inspector: Watch incoming requests in real-time with Matrix-style logs.
+```bash
+./binboi start 3000 my-app
+```
 
-Domain Manager: Link your own domains (e.g., api.miransas.com) via DNS verification.
+## Important environment variables
 
-Security Hub: Revoke all active sessions and rotate neural keys instantly.
+Relay:
 
-📂 Project Structure
-.
-├── cmd/
-│   ├── binboi/            # Client CLI (The "Agent")
-│   └── binboi-server/     # Core Server (The "Relay")
-├── internal/
-│   ├── auth/              # Neural Token validation
-│   ├── db/                # Postgres & Tunnel registry
-│   ├── protocol/          # Yamux & Binary handshake
-│   └── server/            # Gin API + Reverse Proxy
-├── web/                   # Next.js 16 Dashboard
-└── go.mod
-📄 License
-MIT License — see LICENSE for details.
+- `BINBOI_API_ADDR`
+- `BINBOI_TUNNEL_ADDR`
+- `BINBOI_PROXY_ADDR`
+- `BINBOI_BASE_DOMAIN`
+- `BINBOI_PUBLIC_SCHEME`
+- `BINBOI_PUBLIC_PORT`
+- `BINBOI_DATABASE_PATH`
 
-Copyright © 2026 Sardor Azimov / Miransas.
+CLI:
+
+- `BINBOI_SERVER_ADDR`
+
+Dashboard:
+
+- `NEXT_PUBLIC_BINBOI_API_BASE`
+- `NEXT_PUBLIC_BINBOI_WS_BASE`
+
+## Docker
+
+The included `Dockerfile` and `docker-compose.yml` reflect the SQLite-backed MVP. No external Postgres container is required to run the Go relay.
+
+## Current product boundaries
+
+Working:
+
+- Tunnel reservation
+- Agent handshake and tunnel activation
+- Public URL generation from the managed domain
+- Token rotation and session revocation
+- Domain registration and DNS verification
+- Event log streaming to the dashboard
+
+Not finished:
+
+- Raw TCP product surface
+- In-core TLS certificate management
+- Per-user machine identities
+- Kubernetes operator
+- AI inspection

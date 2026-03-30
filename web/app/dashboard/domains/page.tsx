@@ -1,121 +1,196 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
-import { Globe, CheckCircle2, Clock, RefreshCw, Copy, ExternalLink } from "lucide-react";
-import { useState, useEffect } from "react";
 
-export default function DomainsTable() {
-  const [domains, setDomains] = useState<any[]>([]);
+import { useEffect, useState } from "react";
+import { CheckCircle2, Clock3, Globe, Plus, RefreshCcw } from "lucide-react";
+import { DashboardPageShell } from "@/components/dashboard/shared/page-shell";
+import { fetchControlPlane, type ControlPlaneDomain } from "@/lib/controlplane";
+
+export default function DomainsPage() {
+  const [domains, setDomains] = useState<ControlPlaneDomain[]>([]);
   const [loading, setLoading] = useState(true);
-  const [verifying, setVerifying] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [newDomain, setNewDomain] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
-  // 1. Go Backend'den verileri çekelim
-  const fetchDomains = async () => {
+  const load = async () => {
+    setLoading(true);
     try {
-      const res = await fetch("http://localhost:8080/api/domains");
-      const data = await res.json();
-      setDomains(data);
-    } catch (err) {
-      console.error("Fetch error:", err);
+      const result = await fetchControlPlane<ControlPlaneDomain[]>("/api/domains");
+      setDomains(result);
+      setError(null);
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : "Could not load domains.");
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { fetchDomains(); }, []);
+  useEffect(() => {
+    load();
+  }, []);
 
-  // 2. Doğrulama İşlemi
-  const handleVerify = async (domainName: string) => {
-    setVerifying(domainName);
+  const addDomain = async () => {
+    if (!newDomain.trim()) return;
+    setCreating(true);
     try {
-      const res = await fetch("http://localhost:8080/api/domains/verify", {
+      await fetchControlPlane("/api/domains", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ domain_name: domainName }),
+        body: JSON.stringify({ domain: newDomain.trim() }),
       });
-
-      if (res.ok) {
-        alert("🟢 SYSTEM_CONFIRMED: Neural Link Verified!");
-        fetchDomains(); // Listeyi tazele
-      } else {
-        alert("🔴 DNS_NOT_FOUND: TXT kaydı henüz algılanamadı. Biraz daha bekle usta.");
-      }
-    } catch (err) {
-      alert("🔴 CONNECTION_ERROR: Sunucuya ulaşılamıyor.");
+      setNewDomain("");
+      await load();
+    } catch (createError) {
+      setError(createError instanceof Error ? createError.message : "Could not add domain.");
     } finally {
-      setVerifying(null);
+      setCreating(false);
     }
   };
 
-  return (
-    <div className=" overflow-hidden ">
-      <div className="p-8 border-b border-white/5 flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-black italic tracking-tight text-white uppercase">Domains_Registry</h2>
-          <p className="text-[10px] text-gray-200 mt-1 uppercase font-bold">Manage your neural entry points</p>
-        </div>
-        <button className="px-6 py-2 bg-miransas-cyan bg-white text-black font-black italic text-xs uppercase rounded-xl hover:scale-105 transition-all shadow-[0_0_20px_rgba(0,255,209,0.2)]">
-          + Add Domain
-        </button>
-      </div>
+  const verifyDomain = async (domain: string) => {
+    try {
+      await fetchControlPlane("/api/domains/verify", {
+        method: "POST",
+        body: JSON.stringify({ domain_name: domain }),
+      });
+      await load();
+    } catch (verifyError) {
+      setError(verifyError instanceof Error ? verifyError.message : "Verification failed.");
+    }
+  };
 
-      <table className="w-full text-left">
-        <thead>
-          <tr className="bg-white/[0.02] text-[10px] text-gray-200 font-bold tracking-[0.2em] uppercase">
-            <th className="p-6 border-b border-white/5">Namespace</th>
-            <th className="p-6 border-b border-white/5">DNS Configuration</th>
-            <th className="p-6 border-b border-white/5">Status</th>
-            <th className="p-6 border-b border-white/5 text-right">Action</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-white/5">
-          {loading ? (
-            <tr><td colSpan={4} className="p-10 text-center animate-pulse text-miransas-cyan italic">SYNCHRONIZING_DATABASE...</td></tr>
-          ) : domains.map((domain, i) => (
-            <tr key={i} className="hover:bg-white/[0.01] transition-colors group">
-              <td className="p-6">
-                <div className="flex items-center gap-4">
-                  <Globe size={18} className="text-gray-600 group-hover:text-miransas-cyan transition-colors" />
-                  <span className="font-bold text-lg italic text-white">{domain.name}</span>
-                </div>
-              </td>
-              <td className="p-6">
-                {domain.status === 'PENDING' ? (
-                  <div className="flex flex-col gap-1">
-                    <span className="text-[9px] text-gray-600 font-bold">ADD_TXT_RECORD:</span>
-                    <code className="text-[10px] bg-black p-1 px-2 rounded border border-white/5 text-miransas-cyan w-fit">
-                      {domain.expected_txt}
-                    </code>
+  const verifiedCount = domains.filter((domain) => domain.status === "VERIFIED").length;
+
+  return (
+    <DashboardPageShell
+      eyebrow="Domains"
+      title="Managed and custom domains"
+      description="The control plane now shows a real domain story for the MVP: one managed base domain plus optional custom domains that can be verified with a DNS TXT record."
+      highlights={[
+        {
+          label: "Managed domains",
+          value: String(domains.filter((domain) => domain.type === "MANAGED").length),
+          note: "The managed base domain is created automatically when the relay boots.",
+        },
+        {
+          label: "Verified domains",
+          value: String(verifiedCount),
+          note: "Only verified domains should be used for production traffic.",
+        },
+        {
+          label: "Pending checks",
+          value: String(domains.length - verifiedCount),
+          note: error || "Pending domains stay in a safe waiting state until TXT verification succeeds.",
+        },
+      ]}
+      panels={[
+        {
+          title: "How verification works",
+          description: "Add the TXT record shown below, wait for DNS to propagate, then run verification again from the dashboard.",
+        },
+        {
+          title: "TLS note",
+          description: "The MVP tracks domain ownership, but certificate issuance should still be handled by your edge proxy or ingress.",
+        },
+      ]}
+    >
+      <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+        <article className="rounded-3xl border border-white/10 bg-[#080808] p-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-semibold text-white">Domain registry</h2>
+            <button
+              onClick={load}
+              className="rounded-xl border border-white/8 bg-white/5 p-2 text-zinc-400 transition hover:bg-white/10 hover:text-white"
+            >
+              <RefreshCcw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            </button>
+          </div>
+
+          <div className="mt-6 space-y-4">
+            {loading ? (
+              <div className="rounded-2xl border border-white/8 bg-black/20 p-6 text-sm text-zinc-500">
+                Loading domains...
+              </div>
+            ) : domains.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-white/10 bg-black/20 p-6 text-sm text-zinc-500">
+                No domains have been registered yet.
+              </div>
+            ) : (
+              domains.map((domain) => (
+                <div
+                  key={domain.name}
+                  className="rounded-2xl border border-white/8 bg-black/20 p-5"
+                >
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div className="flex items-start gap-3">
+                      <div className="rounded-2xl border border-white/8 bg-white/5 p-3 text-miransas-cyan">
+                        <Globe className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-white">{domain.name}</h3>
+                        <p className="mt-1 text-sm text-zinc-500">{domain.type}</p>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <span
+                        className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold ${
+                          domain.status === "VERIFIED"
+                            ? "bg-emerald-500/10 text-emerald-300"
+                            : "bg-amber-500/10 text-amber-300"
+                        }`}
+                      >
+                        {domain.status === "VERIFIED" ? (
+                          <CheckCircle2 className="h-3.5 w-3.5" />
+                        ) : (
+                          <Clock3 className="h-3.5 w-3.5" />
+                        )}
+                        {domain.status}
+                      </span>
+                      {domain.status !== "VERIFIED" && (
+                        <button
+                          onClick={() => verifyDomain(domain.name)}
+                          className="rounded-xl border border-white/8 bg-white/5 px-4 py-2 text-sm text-zinc-300 transition hover:bg-white/10 hover:text-white"
+                        >
+                          Verify DNS
+                        </button>
+                      )}
+                    </div>
                   </div>
-                ) : (
-                  <span className="text-[10px] font-black border border-miransas-cyan/20 px-2 py-1 rounded text-miransas-cyan bg-miransas-cyan/5">
-                    {domain.type}
-                  </span>
-                )}
-              </td>
-              <td className="p-6">
-                <div className={`flex items-center gap-2 text-[10px] font-bold uppercase ${
-                  domain.status === 'VERIFIED' ? 'text-miransas-cyan' : 'text-yellow-500 animate-pulse'
-                }`}>
-                  {domain.status === 'VERIFIED' ? <CheckCircle2 size={12} /> : <Clock size={12} />}
-                  {domain.status}
+
+                  {domain.expected_txt && (
+                    <div className="mt-4 rounded-2xl border border-white/8 bg-black/40 p-4 font-mono text-sm text-miransas-cyan">
+                      {domain.expected_txt}
+                    </div>
+                  )}
                 </div>
-              </td>
-              <td className="p-6 text-right">
-                {domain.status === 'PENDING' && (
-                  <button 
-                    onClick={() => handleVerify(domain.name)}
-                    disabled={verifying === domain.name}
-                    className="p-2 px-4 bg-white/5 border border-white/10 rounded-lg text-[10px] font-black hover:bg-white/10 transition-all flex items-center gap-2 ml-auto"
-                  >
-                    {verifying === domain.name ? <RefreshCw size={12} className="animate-spin" /> : <ExternalLink size={12} />}
-                    VERIFY_DNS
-                  </button>
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+              ))
+            )}
+          </div>
+        </article>
+
+        <article className="rounded-3xl border border-white/10 bg-[#080808] p-6">
+          <h2 className="text-xl font-semibold text-white">Add a custom domain</h2>
+          <p className="mt-3 text-sm leading-7 text-zinc-400">
+            Add a domain you control. The control plane will create a pending entry and generate the TXT value required for verification.
+          </p>
+          <div className="mt-5 flex gap-3">
+            <input
+              value={newDomain}
+              onChange={(event) => setNewDomain(event.target.value)}
+              placeholder="api.example.com"
+              className="flex-1 rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white outline-none transition focus:border-miransas-cyan"
+            />
+            <button
+              onClick={addDomain}
+              disabled={creating}
+              className="inline-flex items-center gap-2 rounded-2xl bg-miransas-cyan px-4 py-3 text-sm font-semibold text-black transition hover:brightness-110 disabled:opacity-50"
+            >
+              <Plus className="h-4 w-4" />
+              Add
+            </button>
+          </div>
+          {error && <p className="mt-4 text-sm text-red-400">{error}</p>}
+        </article>
+      </section>
+    </DashboardPageShell>
   );
 }

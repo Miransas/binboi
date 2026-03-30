@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Zap, Globe, Server, ArrowRight } from "lucide-react";
+import { X, Globe, Server, ArrowRight } from "lucide-react";
 import { useState } from "react";
 
 interface AddTunnelModalProps {
@@ -33,7 +33,7 @@ export default function AddTunnelModal({ isOpen, onClose, onSuccess }: AddTunnel
         onSuccess();
         onClose();
       }
-    } catch (err) {
+    } catch {
       console.error("🔴 [LINK_FAILED]: Could not create tunnel.");
     } finally {
       setLoading(false);

@@ -1,21 +1,21 @@
 version: '3.8'
 services:
-  db:
-    image: postgres:15-alpine
-    environment:
-      POSTGRES_USER: binboi
-      POSTGRES_PASSWORD: your_password
-      POSTGRES_DB: binboi_db
-    ports:
-      - "5432:5432"
-
   core:
     build: .
     ports:
-      - "8080:8080" # API
-      - "8081:8081" # Tunnel TCP
-      - "8000:8000" # Proxy HTTP
+      - "8080:8080"
+      - "8081:8081"
+      - "8000:8000"
     environment:
-      DATABASE_URL: postgres://binboi:your_password@db:5432/binboi_db
-    depends_on:
-      - db
+      BINBOI_API_ADDR: ":8080"
+      BINBOI_TUNNEL_ADDR: ":8081"
+      BINBOI_PROXY_ADDR: ":8000"
+      BINBOI_BASE_DOMAIN: "binboi.localhost"
+      BINBOI_PUBLIC_SCHEME: "http"
+      BINBOI_PUBLIC_PORT: "8000"
+      BINBOI_DATABASE_PATH: "/data/binboi.db"
+    volumes:
+      - binboi-data:/data
+
+volumes:
+  binboi-data:

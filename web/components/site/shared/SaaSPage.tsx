@@ -4,7 +4,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence, Variants, cubicBezier } from 'framer-motion';
-import { ArrowRight, Zap, Globe, ShieldCheck, Activity, Lock, TerminalSquare, Cpu } from 'lucide-react';
+import { Zap, Globe, ShieldCheck, Activity, Lock, TerminalSquare, Cpu } from 'lucide-react';
 import { BorderBeam } from '../../ui/border-beam';
 
 // ==========================================

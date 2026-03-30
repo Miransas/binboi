@@ -2,82 +2,101 @@ package cli
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"net"
+	"os"
 
 	"github.com/hashicorp/yamux"
-	"github.com/miransas/binboi/internal/client"
 	"github.com/miransas/binboi/internal/protocol"
-	"github.com/miransas/binboi/internal/server"
 )
 
-func StartHttpTunnel(token string, port int, subdomain string) {
-	// Sunucu IP'sini kendi VPS IP'n ile değiştirmeyi unutma usta!
-	conn, err := net.Dial("tcp", "your-server-ip:8081")
-	if err != nil {
-		fmt.Println("❌ Server connection failed:", err)
-		return
+func StartHttpTunnel(token string, port int, subdomain string) error {
+	serverAddr := os.Getenv("BINBOI_SERVER_ADDR")
+	if serverAddr == "" {
+		serverAddr = "127.0.0.1:8081"
 	}
 
-	// 1. Handshake (El Sıkışma) Paketini Gönder
+	conn, err := net.Dial("tcp", serverAddr)
+	if err != nil {
+		return fmt.Errorf("connect to relay: %w", err)
+	}
+
 	hp := protocol.HandshakePayload{
-		AuthToken: token, 
-		Subdomain: subdomain, 
+		AuthToken: token,
+		Subdomain: subdomain,
 		LocalPort: port,
+		ClientVersion: "0.3.0",
 	}
 	payload, _ := json.Marshal(hp)
 	msg, _ := (&protocol.Message{Type: protocol.TypeHandshake, Payload: payload}).Encode()
-	_, _ = conn.Write(msg) // 'n' hatasını önlemek için _ kullandık
-
-	// 2. Sunucudan Gelen Onayı Bekle ve Oku
-	buf := make([]byte, 1024)
-	n, err := conn.Read(buf) // 'n' burada OKUNAN byte sayısını tutuyor
-	if err != nil {
-		fmt.Println("❌ Failed to read server response")
-		return
+	if _, err := conn.Write(msg); err != nil {
+		return fmt.Errorf("send handshake: %w", err)
 	}
 
-	// Gelen mesajı çöz (Decode)
-	raw, err := protocol.Decode(buf[:n]) // 'n' değişkenini burada KULLANDIK!
+	buf := make([]byte, 1024)
+	n, err := conn.Read(buf)
 	if err != nil {
-		fmt.Println("❌ Protocol error")
-		return
+		return fmt.Errorf("read handshake response: %w", err)
+	}
+
+	raw, err := protocol.Decode(buf[:n])
+	if err != nil {
+		return fmt.Errorf("decode handshake response: %w", err)
 	}
 
 	var resp protocol.HandshakeResponse
-	err = json.Unmarshal(raw.Payload, &resp) // 'resp' değişkenini burada KULLANDIK!
-	if err != nil {
-		fmt.Println("❌ Failed to parse server response")
-		return
+	if err := json.Unmarshal(raw.Payload, &resp); err != nil {
+		return fmt.Errorf("parse handshake response: %w", err)
 	}
 
-	// Eğer sunucu reddettiyse dur
 	if resp.Status != "success" {
-		fmt.Printf("🔴 Connection Rejected: %s\n", resp.Message)
-		return
+		if resp.Message == "" {
+			resp.Message = "relay rejected the connection"
+		}
+		return errors.New(resp.Message)
 	}
 
-	// 3. UI Göster ve Tüneli Ateşle
-	client.ShowWelcome("http://"+subdomain+".binboi.link", port, "Sardor Azimov", "eu-central")
+	RenderCoolUI(subdomain, resp.URL, port)
 
-	// Yamux Client başlat
 	session, err := yamux.Client(conn, nil)
 	if err != nil {
-		return
+		return fmt.Errorf("create yamux client: %w", err)
 	}
 
 	for {
 		stream, err := session.Accept()
 		if err != nil {
-			break
+			return err
 		}
+
 		go func(s net.Conn) {
-			local, err := net.Dial("tcp", fmt.Sprintf("localhost:%d", port))
+			local, err := net.Dial("tcp", fmt.Sprintf("127.0.0.1:%d", port))
 			if err != nil {
 				s.Close()
 				return
 			}
-			server.Relay(s, local)
+			joinConnections(s, local)
 		}(stream)
 	}
+}
+
+func joinConnections(left, right net.Conn) {
+	defer left.Close()
+	defer right.Close()
+
+	done := make(chan struct{}, 2)
+
+	go func() {
+		_, _ = io.Copy(left, right)
+		done <- struct{}{}
+	}()
+
+	go func() {
+		_, _ = io.Copy(right, left)
+		done <- struct{}{}
+	}()
+
+	<-done
 }

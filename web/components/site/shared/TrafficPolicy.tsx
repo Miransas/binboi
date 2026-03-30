@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Server, Laptop, Globe, Zap, ShieldCheck } from "lucide-react";
+import { Laptop, Globe, Zap, ShieldCheck } from "lucide-react";
 import { BorderBeam } from "@/components/ui/border-beam";
 
 export default function NeuralFlowSection() {

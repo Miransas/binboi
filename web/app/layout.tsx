@@ -6,8 +6,8 @@ import SessionProvider from "../components/provider/session-provider";
 
 // Binboi SEO & Meta Bilgileri
 export const metadata: Metadata = {
-  title: "Binboi | Neural Tunnels",
-  description: "Hyper-speed introspection tunnels for the Miransas ecosystem.",
+  title: "Binboi | Self-Hosted Tunnels",
+  description: "A self-hosted HTTP tunnel control plane with a Go relay, CLI agent, and dashboard.",
 };
 
 export default function RootLayout({

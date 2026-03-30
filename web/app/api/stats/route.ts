@@ -1,22 +1,40 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { buildApiUrl } from "@/lib/binboi";
 
 export async function GET() {
-  // 1. Güvenlik Kontrolü (Sadece giriş yapmış kullanıcı istatistik görebilsin)
-  const session = await auth();
-  
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  try {
+    const [instanceRes, tunnelsRes] = await Promise.all([
+      fetch(buildApiUrl("/api/instance"), { cache: "no-store" }),
+      fetch(buildApiUrl("/api/tunnels"), { cache: "no-store" }),
+    ]);
+
+    if (!instanceRes.ok || !tunnelsRes.ok) {
+      throw new Error("control plane unavailable");
+    }
+
+    const instance = await instanceRes.json();
+    const tunnels = await tunnelsRes.json();
+
+    const totalRequests = Array.isArray(tunnels)
+      ? tunnels.reduce((sum, tunnel) => sum + (tunnel.request_count || 0), 0)
+      : 0;
+
+    const totalTransfer = Array.isArray(tunnels)
+      ? tunnels.reduce((sum, tunnel) => sum + (tunnel.bytes_out || 0), 0)
+      : 0;
+
+    return NextResponse.json({
+      kbps: Math.round(totalTransfer / 1024),
+      latency: 0,
+      activeTunnels: instance.active_tunnels ?? 0,
+      totalRequests,
+    });
+  } catch {
+    return NextResponse.json({
+      kbps: 0,
+      latency: 0,
+      activeTunnels: 0,
+      totalRequests: 0,
+    });
   }
-
-  // 2. Canlı Veri Simülasyonu (Veya Go Backend'den veri çekme)
-  // Şimdilik dashboard animasyonları çalışsın diye rastgele veri dönüyoruz
-  const mockStats = {
-    kbps: Math.floor(Math.random() * 800) + 100, // 100-900 arası rastgele hız
-    latency: Math.floor(Math.random() * 40) + 10, // 10-50ms arası gecikme
-    activeTunnels: 2,
-    totalRequests: 1450,
-  };
-
-  return NextResponse.json(mockStats);
 }

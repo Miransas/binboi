@@ -2,6 +2,7 @@
 
 import useSWR from 'swr';
 import { buildApiUrl } from '@/lib/binboi';
+import type { ControlPlaneTunnel } from '@/lib/controlplane';
 
 const fetcher = async (url: string) => {
   const res = await fetch(url);
@@ -11,16 +12,16 @@ const fetcher = async (url: string) => {
   return res.json();
 };
 
-export function useTunnels(userId?: string) {
+export function useTunnels() {
   const { data, error, mutate } = useSWR(
-    userId ? buildApiUrl(`/api/tunnels/${userId}`) : null,
+    buildApiUrl(`/api/tunnels`),
     fetcher,
-    { refreshInterval: userId ? 5000 : 0, revalidateOnFocus: false }
+    { refreshInterval: 5000, revalidateOnFocus: false }
   );
 
   return {
-    tunnels: Array.isArray(data) ? data : [],
-    isLoading: Boolean(userId) && !error && !data,
+    tunnels: (Array.isArray(data) ? data : []) as ControlPlaneTunnel[],
+    isLoading: !error && !data,
     isError: error,
     refresh: mutate
   };

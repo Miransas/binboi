@@ -27,7 +27,7 @@ export default function TerminalLog() {
     <div className="bg-[#080808] mt-10 border border-white/10 rounded-xl p-6 font-mono text-[10px] h-64 overflow-y-auto shadow-inner">
       <div className="flex items-center gap-2 text-miransas-cyan mb-4 animate-pulse font-bold tracking-widest uppercase">
         <span className="h-1.5 w-1.5 bg-miransas-cyan rounded-full" />
-        Live Neural Stream
+        Relay Event Stream
       </div>
       <div className="mb-4 text-[10px] uppercase tracking-[0.2em] text-gray-600">
         {status === "live" ? "relay connected" : status === "connecting" ? "connecting" : "relay offline"}

@@ -28,17 +28,17 @@ export function Footer() {
               <span className="font-bold text-foreground font-mono tracking-tight">binboi</span>
             </Link>
             <p className="text-sm text-zinc-500 leading-relaxed max-w-xs">
-              Zero-config instant tunneling. Put your local app on a public URL in seconds.
+              Self-hosted HTTP tunneling for local apps. Reserve a subdomain, connect an agent, and ship a public URL in seconds.
             </p>
             <p className="text-xs text-zinc-600 font-mono">
-              Engineered by{" "}
+              Built by{" "}
               <a
                 href="https://miransas.com"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-violet-400 hover:text-violet-300 transition-colors"
               >
-                Miransas Neural Node
+                Miransas
               </a>
               {" "}· 
             </p>

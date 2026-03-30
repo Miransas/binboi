@@ -14,28 +14,28 @@ func TestParseStartArgs(t *testing.T) {
 		wantSub      string
 	}{
 		{
-			name:         "Varsayılan port ve rastgele isim",
+			name:         "defaults to port 3000 and fallback name",
 			args:         []string{"binboi", "start"},
 			fallbackName: "neon-ghost-123",
 			wantPort:     3000,
 			wantSub:      "neon-ghost-123",
 		},
 		{
-			name:         "Özel port ve rastgele isim",
+			name:         "uses custom port and fallback name",
 			args:         []string{"binboi", "start", "8080"},
 			fallbackName: "cyber-pulse-99",
 			wantPort:     8080,
 			wantSub:      "cyber-pulse-99",
 		},
 		{
-			name:         "Özel port ve özel subdomain",
+			name:         "uses custom port and explicit subdomain",
 			args:         []string{"binboi", "start", "5000", "asardor"},
 			fallbackName: "ignore-me",
 			wantPort:     5000,
 			wantSub:      "asardor",
 		},
 		{
-			name:         "Geçersiz port durumunda default'a dön",
+			name:         "falls back to default port on invalid input",
 			args:         []string{"binboi", "start", "invalid-port"},
 			fallbackName: "test-node",
 			wantPort:     3000,

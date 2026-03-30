@@ -23,6 +23,7 @@ import { DASHBOARD_LINKS } from "../../../constants";
 export default function DashboardSidebar({ user }: { user: any }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const pathname = usePathname();
+  const isGuest = user?.email === "preview@binboi.local";
 
   return (
     <motion.aside
@@ -144,16 +145,20 @@ export default function DashboardSidebar({ user }: { user: any }) {
 
         {/* Çıkış Butonu */}
         <button
-          onClick={() => signOut({ callbackUrl: '/' })}
+          onClick={() => {
+            if (!isGuest) {
+              signOut({ callbackUrl: '/' })
+            }
+          }}
           className={`mt-2 flex items-center gap-2 py-2 text-xs font-bold text-red-400 hover:text-red-300 hover:bg-red-400/10 rounded-lg transition-colors w-full
             ${isCollapsed ? 'justify-center px-0' : 'px-3 justify-start'}`}
-          title={isCollapsed ? "Sign Out" : ""}
+          title={isCollapsed ? (isGuest ? "Local Preview" : "Sign Out") : ""}
         >
           <LogOut className="w-4 h-4 shrink-0" />
           <AnimatePresence>
             {!isCollapsed && (
               <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                Sign Out
+                {isGuest ? "Local Preview" : "Sign Out"}
               </motion.span>
             )}
           </AnimatePresence>
