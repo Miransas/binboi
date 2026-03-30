@@ -17,6 +17,7 @@ export async function GET() {
     if (error instanceof AccessTokenRouteError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
     }
+    console.error("GET /api/v1/tokens failed", error);
     return NextResponse.json({ error: "Could not load access tokens." }, { status: 500 });
   }
 }
@@ -30,6 +31,7 @@ export async function POST(request: Request) {
     if (error instanceof AccessTokenRouteError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
     }
+    console.error("POST /api/v1/tokens failed", error);
     return NextResponse.json({ error: "Could not create access token." }, { status: 500 });
   }
 }

@@ -3,6 +3,7 @@ import { and, desc, eq } from "drizzle-orm";
 
 import { auth, authEnabled } from "@/auth";
 import { db, dbAvailable } from "@/db";
+import { ensureAppDatabaseSchema } from "@/db/ensure-schema";
 import { buildApiUrl } from "@/lib/binboi";
 import {
   accessTokens,
@@ -78,6 +79,12 @@ const PLAN_LIMITS: Record<UserPlan, { maxTokens: number; maxTunnels: number }> =
   SCALE: { maxTokens: 100, maxTunnels: 100 },
 };
 
+type DatabaseLikeError = {
+  code?: string;
+  message?: string;
+  cause?: unknown;
+};
+
 function normalizePlan(plan: string | null | undefined): UserPlan {
   const value = String(plan).toUpperCase();
   if (value === "SCALE") {
@@ -111,6 +118,57 @@ function safeTokenPrefix(token: string): string {
     return parts.slice(0, 3).join("_");
   }
   return token.trim().slice(0, 20);
+}
+
+function extractDatabaseErrorCode(error: unknown): string | null {
+  let current: unknown = error;
+  for (let depth = 0; depth < 4 && current; depth += 1) {
+    const record = current as DatabaseLikeError;
+    if (typeof record.code === "string" && record.code) {
+      return record.code;
+    }
+    current = record.cause;
+  }
+  return null;
+}
+
+function extractDatabaseErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+  const message = (error as DatabaseLikeError | null)?.message;
+  if (typeof message === "string" && message.trim()) {
+    return message.trim();
+  }
+  return "Unexpected database error";
+}
+
+function mapAccessTokenError(error: unknown, fallback: string): AccessTokenRouteError {
+  const code = extractDatabaseErrorCode(error);
+  const message = extractDatabaseErrorMessage(error).toLowerCase();
+
+  switch (code) {
+    case "42P01":
+      return new AccessTokenRouteError(
+        503,
+        "The access token tables are not ready yet. Binboi is bootstrapping the schema now; retry the request.",
+      );
+    case "42703":
+      return new AccessTokenRouteError(
+        503,
+        "The auth database schema is out of date for access tokens. Binboi needs the latest auth columns before tokens can be issued.",
+      );
+    case "23505":
+      return new AccessTokenRouteError(409, "A token with that identifier already exists. Retry the request.");
+    case "08001":
+    case "08006":
+      return new AccessTokenRouteError(503, "The auth database is currently unavailable.");
+    default:
+      if (message.includes("fetch failed") || message.includes("connection") || message.includes("network")) {
+        return new AccessTokenRouteError(503, "The auth database is currently unavailable.");
+      }
+      return new AccessTokenRouteError(500, fallback);
+  }
 }
 
 function stripSecret(row: StoredToken): AccessTokenRecord {
@@ -153,6 +211,15 @@ async function resolveViewer(): Promise<Viewer> {
     };
   }
 
+  try {
+    await ensureAppDatabaseSchema();
+  } catch (error) {
+    throw mapAccessTokenError(
+      error,
+      "Binboi could not prepare the auth database schema for access tokens.",
+    );
+  }
+
   const session = await auth();
   const sessionUserId = session?.user?.id;
   if (!sessionUserId) {
@@ -169,7 +236,10 @@ async function resolveViewer(): Promise<Viewer> {
     })
     .from(users)
     .where(eq(users.id, sessionUserId))
-    .limit(1);
+    .limit(1)
+    .catch((error) => {
+      throw mapAccessTokenError(error, "Could not load the signed-in user.");
+    });
 
   if (!user) {
     throw new AccessTokenRouteError(404, "Could not load the signed-in user.");
@@ -239,7 +309,10 @@ async function listStoredTokens(viewer: Viewer): Promise<StoredToken[]> {
     })
     .from(accessTokens)
     .where(eq(accessTokens.userId, viewer.user.id))
-    .orderBy(desc(accessTokens.createdAt));
+    .orderBy(desc(accessTokens.createdAt))
+    .catch((error) => {
+      throw mapAccessTokenError(error, "Could not load access tokens.");
+    });
 
   return rows.map((row) => ({
     ...row,
@@ -275,18 +348,8 @@ export async function createAccessToken(name: string): Promise<AccessTokenCreate
     );
   }
 
-  const createdAt = new Date();
-  const { token, prefix, hash } = generateAccessToken();
-  const record: StoredToken = {
-    id: randomUUID(),
-    name: sanitizeTokenName(name),
-    prefix,
-    status: "ACTIVE",
-    createdAt,
-    lastUsedAt: null,
-    revokedAt: null,
-    tokenHash: hash,
-  };
+  let token = "";
+  let record: StoredToken | null = null;
 
   if (viewer.mode === "preview") {
     const response = await fetch(buildApiUrl("/api/tokens/generate"), {
@@ -298,29 +361,68 @@ export async function createAccessToken(name: string): Promise<AccessTokenCreate
       throw new AccessTokenRouteError(502, body.error || "Preview relay auth is unavailable.");
     }
 
-    record.prefix = safeTokenPrefix(body.token);
-    record.createdAt = new Date();
-    record.tokenHash = hashAccessToken(body.token);
+    token = body.token;
+    record = {
+      id: "preview-relay-token",
+      name: sanitizeTokenName(name),
+      prefix: safeTokenPrefix(body.token),
+      status: "ACTIVE",
+      createdAt: new Date(),
+      lastUsedAt: null,
+      revokedAt: null,
+      tokenHash: hashAccessToken(body.token),
+    };
 
     return {
       auth_mode: viewer.mode,
       user: viewer.user,
       limits: buildLimits(viewer.user.plan, [stripSecret(record)], viewer.mode),
-      token: body.token,
+      token,
       record: stripSecret(record),
     };
   } else if (db) {
-    await db.insert(accessTokens).values({
-      id: record.id,
-      userId: viewer.user.id,
-      name: record.name,
-      prefix: record.prefix,
-      tokenHash: record.tokenHash,
-      status: record.status,
-      createdAt: record.createdAt,
-      lastUsedAt: null,
-      revokedAt: null,
-    });
+    const sanitizedName = sanitizeTokenName(name);
+
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const createdAt = new Date();
+      const generated = generateAccessToken();
+      token = generated.token;
+      record = {
+        id: randomUUID(),
+        name: sanitizedName,
+        prefix: generated.prefix,
+        status: "ACTIVE",
+        createdAt,
+        lastUsedAt: null,
+        revokedAt: null,
+        tokenHash: generated.hash,
+      };
+
+      try {
+        await db.insert(accessTokens).values({
+          id: record.id,
+          userId: viewer.user.id,
+          name: record.name,
+          prefix: record.prefix,
+          tokenHash: record.tokenHash,
+          status: record.status,
+          createdAt: record.createdAt,
+          lastUsedAt: null,
+          revokedAt: null,
+        });
+        break;
+      } catch (error) {
+        const code = extractDatabaseErrorCode(error);
+        if (code === "23505" && attempt < 2) {
+          continue;
+        }
+        throw mapAccessTokenError(error, "Could not create access token.");
+      }
+    }
+  }
+
+  if (!record || !token) {
+    throw new AccessTokenRouteError(500, "Could not create access token.");
   }
 
   const tokens = [...currentTokens, stripSecret(record)];
@@ -354,7 +456,10 @@ export async function revokeAccessToken(tokenId: string): Promise<AccessTokenLis
       .select({ id: accessTokens.id })
       .from(accessTokens)
       .where(and(eq(accessTokens.id, tokenId), eq(accessTokens.userId, viewer.user.id)))
-      .limit(1);
+      .limit(1)
+      .catch((error) => {
+        throw mapAccessTokenError(error, "Could not load access token.");
+      });
 
     if (rows.length === 0) {
       throw new AccessTokenRouteError(404, "Access token not found.");
@@ -366,7 +471,10 @@ export async function revokeAccessToken(tokenId: string): Promise<AccessTokenLis
         status: "REVOKED",
         revokedAt: new Date(),
       })
-      .where(and(eq(accessTokens.id, tokenId), eq(accessTokens.userId, viewer.user.id)));
+      .where(and(eq(accessTokens.id, tokenId), eq(accessTokens.userId, viewer.user.id)))
+      .catch((error) => {
+        throw mapAccessTokenError(error, "Could not revoke access token.");
+      });
   }
 
   return listAccessTokens();

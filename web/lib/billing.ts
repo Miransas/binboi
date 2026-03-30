@@ -4,6 +4,7 @@ import { and, desc, eq } from "drizzle-orm";
 
 import { auth, authEnabled } from "@/auth";
 import { db, dbAvailable } from "@/db";
+import { ensureAppDatabaseSchema } from "@/db/ensure-schema";
 import {
   billingSubscriptions,
   users,
@@ -90,6 +91,57 @@ type PaddleSubscriptionEventData = {
   custom_data?: Record<string, unknown> | null;
 };
 
+type DatabaseLikeError = {
+  code?: string;
+  message?: string;
+  cause?: unknown;
+};
+
+function extractDatabaseErrorCode(error: unknown): string | null {
+  let current: unknown = error;
+  for (let depth = 0; depth < 4 && current; depth += 1) {
+    const record = current as DatabaseLikeError;
+    if (typeof record.code === "string" && record.code) {
+      return record.code;
+    }
+    current = record.cause;
+  }
+  return null;
+}
+
+function extractDatabaseErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+  const message = (error as DatabaseLikeError | null)?.message;
+  if (typeof message === "string" && message.trim()) {
+    return message.trim();
+  }
+  return "Unexpected database error";
+}
+
+function mapBillingError(error: unknown, fallback: string): BillingRouteError {
+  const code = extractDatabaseErrorCode(error);
+  const message = extractDatabaseErrorMessage(error).toLowerCase();
+
+  switch (code) {
+    case "42P01":
+    case "42703":
+      return new BillingRouteError(
+        503,
+        "The billing tables are not ready yet. Binboi is bootstrapping the auth schema now; retry the request.",
+      );
+    case "08001":
+    case "08006":
+      return new BillingRouteError(503, "The auth database is currently unavailable.");
+    default:
+      if (message.includes("fetch failed") || message.includes("connection") || message.includes("network")) {
+        return new BillingRouteError(503, "The auth database is currently unavailable.");
+      }
+      return new BillingRouteError(500, fallback);
+  }
+}
+
 function normalizeSubscriptionStatus(status?: string | null): SubscriptionStatus {
   switch (String(status || "").toLowerCase()) {
     case "trialing":
@@ -148,6 +200,12 @@ async function resolveViewer(): Promise<BillingViewer> {
     };
   }
 
+  try {
+    await ensureAppDatabaseSchema();
+  } catch (error) {
+    throw mapBillingError(error, "Binboi could not prepare the billing schema.");
+  }
+
   const session = await auth();
   const sessionUserId = session?.user?.id;
   if (!sessionUserId) {
@@ -165,7 +223,10 @@ async function resolveViewer(): Promise<BillingViewer> {
     })
     .from(users)
     .where(eq(users.id, sessionUserId))
-    .limit(1);
+    .limit(1)
+    .catch((error) => {
+      throw mapBillingError(error, "Could not load the signed-in user.");
+    });
 
   if (!user) {
     throw new BillingRouteError(404, "Could not load the signed-in user.");
@@ -206,7 +267,10 @@ async function getLatestSubscription(userId: string): Promise<StoredSubscription
     .from(billingSubscriptions)
     .where(eq(billingSubscriptions.userId, userId))
     .orderBy(desc(billingSubscriptions.updatedAt))
-    .limit(1);
+    .limit(1)
+    .catch((error) => {
+      throw mapBillingError(error, "Could not load the current subscription.");
+    });
 
   return row ?? null;
 }

@@ -17,6 +17,7 @@ export async function DELETE(
     if (error instanceof AccessTokenRouteError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
     }
+    console.error("DELETE /api/v1/tokens/:tokenId failed", error);
     return NextResponse.json({ error: "Could not revoke access token." }, { status: 500 });
   }
 }
