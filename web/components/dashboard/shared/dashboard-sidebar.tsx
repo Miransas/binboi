@@ -1,24 +1,37 @@
 /* eslint-disable @next/next/no-img-element */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
-import { useState } from "react";
+
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
+import { ChevronLeft, ChevronRight, LogOut, Sparkles } from "lucide-react";
 import { signOut } from "next-auth/react";
-import {
-  LogOut,
-  ChevronLeft,
-  ChevronRight
-} from "lucide-react";
-import { DASHBOARD_LINKS } from "../../../constants";
+import { useState } from "react";
 
+import { DASHBOARD_LINKS } from "@/constants";
+import { cn } from "@/lib/utils";
 
-// İkon eşleştirme (Constants'tan gelen stringleri icon'a çeviriyoruz)
+function SidebarSectionLabel({
+  isCollapsed,
+  label,
+}: {
+  isCollapsed: boolean;
+  label: string;
+}) {
+  if (isCollapsed) {
+    return <div className="px-2 py-1" />;
+  }
 
-
-// Senin constants/index.ts dosyan (Örnek)
-
+  return (
+    <div className="mb-2 flex items-center gap-2 px-3">
+      <span className="h-1.5 w-1.5 rounded-full bg-miransas-cyan/70 shadow-[0_0_10px_rgba(0,255,209,0.55)]" />
+      <span className="text-[10px] font-semibold uppercase tracking-[0.24em] text-zinc-500">
+        {label}
+      </span>
+    </div>
+  );
+}
 
 export default function DashboardSidebar({ user }: { user: any }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -27,144 +40,202 @@ export default function DashboardSidebar({ user }: { user: any }) {
 
   return (
     <motion.aside
-      initial={{ width: 256 }}
-      animate={{ width: isCollapsed ? 80 : 256 }}
-      transition={{ duration: 0.3, ease: "easeInOut" }}
-      className="relative h-screen bg-[#0a0a0a] border-r border-white/5 flex flex-col z-50 shrink-0"
+      initial={false}
+      animate={{ width: isCollapsed ? 92 : 292 }}
+      transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+      className="relative z-40 flex h-screen shrink-0 flex-col border-r border-white/10 bg-[linear-gradient(180deg,rgba(8,10,16,0.98),rgba(5,7,12,0.96))] shadow-[24px_0_80px_rgba(0,0,0,0.24)]"
     >
-      {/* 🚀 Collapse/Expand Butonu */}
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(0,255,209,0.14),transparent_26%),radial-gradient(circle_at_bottom_left,rgba(139,92,246,0.08),transparent_28%)]" />
+        <div className="absolute right-0 top-0 h-full w-px bg-gradient-to-b from-transparent via-white/12 to-transparent" />
+        <div className="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+      </div>
+
       <button
-        onClick={() => setIsCollapsed(!isCollapsed)}
-        className="absolute -right-3 top-6 bg-[#1a1a1a] border border-white/10 rounded-full p-1.5 text-gray-400 hover:text-white hover:border-miransas-cyan transition-colors z-50"
+        type="button"
+        onClick={() => setIsCollapsed((value) => !value)}
+        className="absolute -right-3 top-7 z-50 inline-flex h-7 w-7 items-center justify-center rounded-full border border-white/10 bg-[#0d1118] text-zinc-400 shadow-[0_8px_24px_rgba(0,0,0,0.24)] transition hover:border-miransas-cyan/30 hover:text-white"
       >
-        {isCollapsed ? <ChevronRight className="w-3 h-3" /> : <ChevronLeft className="w-3 h-3" />}
+        {isCollapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronLeft className="h-3.5 w-3.5" />}
       </button>
 
-      {/* 🟢 Logo Alanı */}
-      <div className="h-16 flex items-center px-6 border-b border-white/5 overflow-hidden">
-        <Link href="/" className="flex items-center gap-3 group whitespace-nowrap">
-          <div className="">
-           <img src="/logo.png" alt="Binboi logo" className="w-18" />
+      <div className="relative z-10 flex h-20 items-center border-b border-white/10 px-5">
+        <Link href="/" className="flex min-w-0 items-center gap-3">
+          <div className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] shadow-[0_0_32px_rgba(0,255,209,0.12)]">
+            <img src="/logo.png" alt="Binboi logo" className="h-9 w-9 object-contain" />
           </div>
-          <AnimatePresence>
+
+          <AnimatePresence initial={false}>
             {!isCollapsed && (
-              <motion.span
-                initial={{ opacity: 0, x: -10 }}
+              <motion.div
+                initial={{ opacity: 0, x: -8 }}
                 animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -10 }}
-                className="font-black italic text-xl tracking-tighter text-white"
+                exit={{ opacity: 0, x: -8 }}
+                className="min-w-0"
               >
-                BIN<span className="text-miransas-cyan">BOI</span>
-              </motion.span>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-zinc-500">
+                  Binboi
+                </p>
+                <p className="mt-1 truncate text-base font-black tracking-tight text-white">
+                  Control plane
+                </p>
+              </motion.div>
             )}
           </AnimatePresence>
         </Link>
       </div>
 
-      {/* 🧭 Navigasyon Menüsü */}
-      <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto overflow-x-hidden no-scrollbar">
-        {DASHBOARD_LINKS.map((section) => (
-          <div key={section.title} className="space-y-2">
-
-            {/* SECTION TITLE */}
-            {!isCollapsed && (
-              <div className="text-[10px] uppercase text-gray-500 px-3 mb-1">
-                {section.title}
-              </div>
-            )}
-
-            {/* ITEMS */}
-            {section.items.map((link) => {
-              const isActive = pathname === link.href;
-              const Icon = link.icon;
-
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className={`flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 whitespace-nowrap
-          ${isActive
-                      ? 'bg-miransas-cyan/10 text-miransas-cyan border border-miransas-cyan/20'
-                      : 'text-gray-400 hover:text-white hover:bg-white/5 border border-transparent'
-                    }`}
-                  title={isCollapsed ? link.label : ""}
+      <div className="relative z-10 flex-1 overflow-y-auto px-3 py-5">
+        <div className="mb-5 rounded-[1.75rem] border border-white/10 bg-white/[0.03] p-3">
+          <div className={cn("flex items-start gap-3", isCollapsed && "justify-center")}>
+            <div className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-miransas-cyan/20 bg-miransas-cyan/10 text-miransas-cyan">
+              <Sparkles className="h-4 w-4" />
+            </div>
+            <AnimatePresence initial={false}>
+              {!isCollapsed && (
+                <motion.div
+                  initial={{ opacity: 0, x: -8 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -8 }}
+                  className="min-w-0"
                 >
-                  <div className={isActive ? "text-miransas-cyan" : "text-gray-500"}>
-                    {Icon && <Icon size={18} />}
-                  </div>
-
-                  <AnimatePresence>
-                    {!isCollapsed && (
-                      <motion.span
-                        initial={{ opacity: 0, width: 0 }}
-                        animate={{ opacity: 1, width: "auto" }}
-                        exit={{ opacity: 0, width: 0 }}
-                        className="overflow-hidden flex-1"
-                      >
-                        {link.label}
-                      </motion.span>
-                    )}
-                  </AnimatePresence>
-
-                  {/* BADGE */}
-                  {!isCollapsed && link.badge && (
-                    <span className="text-[10px] px-2 py-0.5 rounded bg-purple-500/20 text-purple-300">
-                      {link.badge}
-                    </span>
-                  )}
-                </Link>
-              );
-            })}
+                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-zinc-500">
+                    Operator surface
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-zinc-300">
+                    Tunnels, webhooks, logs, and AI guidance from one place.
+                  </p>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
-        ))}
-      </nav>
-
-      {/* 👤 Kullanıcı Profil Alanı (En Alt) */}
-      <div className="p-4 border-t border-white/5 overflow-hidden whitespace-nowrap">
-        <div className={`flex items-center gap-3 rounded-xl border border-white/5 bg-white/5 transition-all ${isCollapsed ? 'p-2 justify-center' : 'p-3'}`}>
-          <img
-            src={user?.image || "https://github.com/ghost.png"}
-            alt="User Avatar"
-            className="w-8 h-8 rounded-full border border-white/10 shrink-0"
-          />
-
-          <AnimatePresence>
-            {!isCollapsed && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="flex flex-col flex-1 overflow-hidden"
-              >
-                <span className="text-xs font-bold text-white truncate">{user?.name}</span>
-                <span className="text-[10px] text-gray-500 font-mono truncate">{user?.email}</span>
-              </motion.div>
-            )}
-          </AnimatePresence>
         </div>
 
-        {/* Çıkış Butonu */}
-        <button
-          onClick={() => {
-            if (!isGuest) {
-              signOut({ callbackUrl: '/' })
-            }
-          }}
-          className={`mt-2 flex items-center gap-2 py-2 text-xs font-bold text-red-400 hover:text-red-300 hover:bg-red-400/10 rounded-lg transition-colors w-full
-            ${isCollapsed ? 'justify-center px-0' : 'px-3 justify-start'}`}
-          title={isCollapsed ? (isGuest ? "Local Preview" : "Sign Out") : ""}
-        >
-          <LogOut className="w-4 h-4 shrink-0" />
-          <AnimatePresence>
-            {!isCollapsed && (
-              <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                {isGuest ? "Local Preview" : "Sign Out"}
-              </motion.span>
-            )}
-          </AnimatePresence>
-        </button>
+        <nav className="space-y-5">
+          {DASHBOARD_LINKS.map((section) => (
+            <div key={section.title}>
+              <SidebarSectionLabel isCollapsed={isCollapsed} label={section.title} />
+
+              <div className="space-y-1.5">
+                {section.items.map((link) => {
+                  const isActive = pathname === link.href;
+                  const Icon = link.icon;
+
+                  return (
+                    <Link
+                      key={`${section.title}-${link.href}`}
+                      href={link.href}
+                      title={isCollapsed ? link.label : undefined}
+                      className={cn(
+                        "group relative flex items-center gap-3 overflow-hidden rounded-2xl px-3 py-3 transition-all duration-200",
+                        isCollapsed ? "justify-center" : "justify-start",
+                        isActive ? "text-white" : "text-zinc-400 hover:text-white",
+                      )}
+                    >
+                      {isActive ? (
+                        <motion.span
+                          layoutId="dashboard-sidebar-active"
+                          className="absolute inset-0 rounded-2xl border border-miransas-cyan/20 bg-[linear-gradient(180deg,rgba(0,255,209,0.12),rgba(10,16,20,0.9))] shadow-[0_14px_40px_rgba(0,0,0,0.22)]"
+                        />
+                      ) : null}
+                      <span
+                        className={cn(
+                          "absolute inset-x-4 top-0 h-px bg-gradient-to-r from-transparent to-transparent opacity-0 transition-opacity duration-200 group-hover:opacity-100",
+                          isActive ? "via-miransas-cyan/45 opacity-100" : "via-white/18",
+                        )}
+                      />
+                      <div className="relative z-10 flex min-w-0 items-center gap-3">
+                        <span
+                          className={cn(
+                            "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border transition-colors",
+                            isActive
+                              ? "border-miransas-cyan/25 bg-miransas-cyan/12 text-miransas-cyan"
+                              : "border-white/10 bg-white/[0.03] text-zinc-500 group-hover:text-zinc-200",
+                          )}
+                        >
+                          {Icon ? <Icon size={18} /> : null}
+                        </span>
+
+                        <AnimatePresence initial={false}>
+                          {!isCollapsed && (
+                            <motion.div
+                              initial={{ opacity: 0, x: -8 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              exit={{ opacity: 0, x: -8 }}
+                              className="flex min-w-0 flex-1 items-center justify-between gap-3"
+                            >
+                              <span className="truncate text-sm font-medium">{link.label}</span>
+                              {link.badge ? (
+                                <span className="rounded-full border border-amber-300/20 bg-amber-300/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-amber-100">
+                                  {link.badge}
+                                </span>
+                              ) : null}
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </nav>
       </div>
 
+      <div className="relative z-10 border-t border-white/10 p-4">
+        <div
+          className={cn(
+            "rounded-[1.75rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] p-3",
+            isCollapsed && "px-2",
+          )}
+        >
+          <div className={cn("flex items-center gap-3", isCollapsed && "justify-center")}>
+            <img
+              src={user?.image || "https://github.com/ghost.png"}
+              alt="User Avatar"
+              className="h-9 w-9 shrink-0 rounded-full border border-white/10 object-cover"
+            />
+
+            <AnimatePresence initial={false}>
+              {!isCollapsed && (
+                <motion.div
+                  initial={{ opacity: 0, x: -8 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -8 }}
+                  className="min-w-0 flex-1"
+                >
+                  <p className="truncate text-sm font-semibold text-white">{user?.name}</p>
+                  <p className="mt-1 truncate text-xs text-zinc-500">{user?.email}</p>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              if (!isGuest) {
+                signOut({ callbackUrl: "/" });
+              }
+            }}
+            className={cn(
+              "mt-3 inline-flex w-full items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-2.5 text-sm text-zinc-400 transition hover:border-red-400/20 hover:bg-red-500/10 hover:text-red-200",
+              isCollapsed && "justify-center px-0",
+            )}
+            title={isCollapsed ? (isGuest ? "Local Preview" : "Sign Out") : undefined}
+          >
+            <LogOut className="h-4 w-4 shrink-0" />
+            <AnimatePresence initial={false}>
+              {!isCollapsed && (
+                <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                  {isGuest ? "Local preview" : "Sign out"}
+                </motion.span>
+              )}
+            </AnimatePresence>
+          </button>
+        </div>
+      </div>
     </motion.aside>
   );
 }

@@ -4,6 +4,11 @@ import { useEffect, useMemo, useState } from "react";
 import { Check, Copy, Download, TerminalSquare, Waypoints } from "lucide-react";
 import { fetchControlPlane, type ControlPlaneInstance } from "@/lib/controlplane";
 import { DashboardPageShell } from "@/components/dashboard/shared/page-shell";
+import {
+  DashboardSurface,
+  DashboardTimeline,
+  type DashboardTimelineItem,
+} from "@/components/dashboard/shared/dashboard-primitives";
 
 type SetupState = {
   instance: ControlPlaneInstance | null;
@@ -96,6 +101,14 @@ export default function SetupPage() {
     ];
   }, [state.instance]);
 
+  const timelineItems: DashboardTimelineItem[] = steps.map((step, index) => ({
+    label: `Step ${index + 1}`,
+    title: step.title,
+    description: step.description,
+    status: index === 0 ? "active" : "waiting",
+    meta: index === 0 ? "Start here" : undefined,
+  }));
+
   const copyCommand = async (command: string, index: number) => {
     await navigator.clipboard.writeText(command);
     setCopiedIndex(index);
@@ -135,41 +148,51 @@ export default function SetupPage() {
         },
       ]}
     >
-      <section className="grid gap-6">
-        {steps.map((step, index) => {
-          const Icon = step.icon;
-          return (
-            <article
-              key={step.title}
-              className="rounded-3xl border border-white/10 bg-[#080808] p-6"
-            >
-              <div className="flex items-start gap-4">
-                <div className="rounded-2xl border border-miransas-cyan/20 bg-miransas-cyan/10 p-3 text-miransas-cyan">
-                  <Icon className="h-5 w-5" />
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center gap-3">
-                    <span className="rounded-full bg-white/5 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.24em] text-zinc-400">
-                      Step {index + 1}
-                    </span>
-                    <h2 className="text-xl font-semibold text-white">{step.title}</h2>
+      <section className="grid gap-6 xl:grid-cols-[0.82fr_1.18fr]">
+        <DashboardTimeline
+          eyebrow="Setup progression"
+          title="Move from install to first public request"
+          items={timelineItems}
+          className="h-fit"
+        />
+
+        <div className="grid gap-6">
+          {steps.map((step, index) => {
+            const Icon = step.icon;
+            return (
+              <DashboardSurface
+                key={step.title}
+                accent={index % 2 === 0 ? "cyan" : "violet"}
+                className="p-6"
+              >
+                <div className="flex items-start gap-4">
+                  <div className="rounded-2xl border border-miransas-cyan/20 bg-miransas-cyan/10 p-3 text-miransas-cyan">
+                    <Icon className="h-5 w-5" />
                   </div>
-                  <p className="mt-3 text-sm leading-7 text-zinc-400">{step.description}</p>
-                  <div className="mt-5 flex items-center gap-3 rounded-2xl border border-white/8 bg-black/30 p-4 font-mono text-sm text-miransas-cyan">
-                    <span className="text-zinc-600">$</span>
-                    <code className="flex-1 overflow-x-auto whitespace-nowrap">{step.command}</code>
-                    <button
-                      onClick={() => copyCommand(step.command, index)}
-                      className="rounded-xl border border-white/8 bg-white/5 p-2 text-zinc-400 transition hover:bg-white/10 hover:text-white"
-                    >
-                      {copiedIndex === index ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
-                    </button>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3">
+                      <span className="rounded-full bg-white/5 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.24em] text-zinc-400">
+                        Step {index + 1}
+                      </span>
+                      <h2 className="text-xl font-semibold text-white">{step.title}</h2>
+                    </div>
+                    <p className="mt-3 text-sm leading-7 text-zinc-400">{step.description}</p>
+                    <div className="mt-5 flex items-center gap-3 rounded-2xl border border-white/10 bg-black/30 p-4 font-mono text-sm text-miransas-cyan">
+                      <span className="text-zinc-600">$</span>
+                      <code className="flex-1 overflow-x-auto whitespace-nowrap">{step.command}</code>
+                      <button
+                        onClick={() => copyCommand(step.command, index)}
+                        className="rounded-xl border border-white/10 bg-white/5 p-2 text-zinc-400 transition hover:bg-white/10 hover:text-white"
+                      >
+                        {copiedIndex === index ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </article>
-          );
-        })}
+              </DashboardSurface>
+            );
+          })}
+        </div>
       </section>
     </DashboardPageShell>
   );

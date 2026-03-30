@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ExternalLink, Globe, Plus, RefreshCcw, Trash2 } from "lucide-react";
 import { useRegisterAssistantContext } from "@/components/shared/assistant-context";
 import { DashboardPageShell } from "@/components/dashboard/shared/page-shell";
+import { DashboardSurface } from "@/components/dashboard/shared/dashboard-primitives";
 import { fetchControlPlane, type ControlPlaneTunnel } from "@/lib/controlplane";
 
 export default function TunnelPage() {
@@ -124,7 +125,7 @@ export default function TunnelPage() {
       ]}
     >
       <section className="grid gap-6 xl:grid-cols-[1fr_1.2fr]">
-        <article className="rounded-3xl border border-white/10 bg-[#080808] p-6">
+        <DashboardSurface accent="amber" className="p-6">
           <h2 className="text-xl font-semibold text-white">Create a tunnel reservation</h2>
           <p className="mt-3 text-sm leading-7 text-zinc-400">
             Reserve a subdomain and target port first. Then connect the agent with the same subdomain.
@@ -152,9 +153,9 @@ export default function TunnelPage() {
             </button>
           </div>
           {error && <p className="mt-4 text-sm text-red-400">{error}</p>}
-        </article>
+        </DashboardSurface>
 
-        <article className="rounded-3xl border border-white/10 bg-[#080808] p-6">
+        <DashboardSurface accent="cyan" className="p-6">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-semibold text-white">Tunnel inventory</h2>
             <button
@@ -176,9 +177,9 @@ export default function TunnelPage() {
               </div>
             ) : (
               tunnels.map((tunnel) => (
-                <div
+              <div
                   key={tunnel.id}
-                  className="rounded-2xl border border-white/8 bg-black/20 p-5"
+                  className="rounded-[1.75rem] border border-white/10 bg-black/20 p-5"
                 >
                   <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                     <div className="flex items-start gap-3">
@@ -245,7 +246,7 @@ export default function TunnelPage() {
               ))
             )}
           </div>
-        </article>
+        </DashboardSurface>
       </section>
     </DashboardPageShell>
   );

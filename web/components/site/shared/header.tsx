@@ -29,12 +29,12 @@ export default function Header() {
               />
             </div>
             <div className="hidden sm:block">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-zinc-500">
+              <h1 className="text-[20px] font-semibold uppercase tracking-[0.26em] text-zinc-500">
                 Binboi
-              </p>
-              <p className="text-base font-black tracking-tight text-white">
+              </h1>
+              {/* <p className="text-base font-black tracking-tight text-white">
                 Tunnel visibility for developers
-              </p>
+              </p> */}
             </div>
           </Link>
 

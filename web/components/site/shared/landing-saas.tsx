@@ -212,7 +212,7 @@ const heroSignals = [
 const heroStatus = [
   {
     label: "Public URL",
-    value: "stripe-dev.binboi.link",
+    value: "miransas-dev.binboi.link",
     note: "Stable enough for providers to call back into local development.",
   },
   {
@@ -227,67 +227,7 @@ const heroStatus = [
   },
 ];
 
-const featureCards: Array<{
-  accent: Accent;
-  eyebrow: string;
-  title: string;
-  description: string;
-  bullets: string[];
-  icon: IconType;
-}> = [
-  {
-    accent: "cyan",
-    eyebrow: "Request inspection",
-    title: "Follow the full handoff from edge to localhost.",
-    description:
-      "Binboi is designed around the moment after the public URL works. Read what actually arrived, which host matched, how long the target took, and where the request went next.",
-    bullets: [
-      "Headers, payload previews, status, duration, and target service in one surface.",
-      "Cleaner clues when a 404 or 500 came from the app instead of the tunnel.",
-      "A calmer path from transport success to debugging reality.",
-    ],
-    icon: TerminalSquare,
-  },
-  {
-    accent: "magenta",
-    eyebrow: "Webhook debugging",
-    title: "Diagnose provider failures before you redeploy.",
-    description:
-      "Stripe, Clerk, Supabase, GitHub, Neon, and Linear all surface different versions of the same problem: the provider delivered something, but your local app still rejected it.",
-    bullets: [
-      "Compare signature headers, raw body handling, and route registration.",
-      "See retries, application failures, and likely next steps without guessing.",
-      "Keep webhook docs and assistant help one click away from the active tunnel.",
-    ],
-    icon: Webhook,
-  },
-  {
-    accent: "violet",
-    eyebrow: "Logs and events",
-    title: "Keep the relay honest about what happened.",
-    description:
-      "Raw logs are useful, but lifecycle events, tunnel state, and product-level notes are what make the control plane readable under pressure.",
-    bullets: [
-      "Tunnel attach, disconnect, and error moments stay visible.",
-      "Runtime logs can be summarized by the assistant when context is available.",
-      "Surface gaps are labeled clearly when the backend is still MVP.",
-    ],
-    icon: Sparkles,
-  },
-  {
-    accent: "amber",
-    eyebrow: "Access control",
-    title: "Separate operator accounts from machine credentials.",
-    description:
-      "Users create tokens in the dashboard, the CLI uses those tokens for machine auth, and the product stays honest about free and paid plan foundations while billing matures.",
-    bullets: [
-      "Full tokens are shown once and stored as prefix plus secure hash.",
-      "binboi login and binboi whoami behave like a real developer product.",
-      "Plan labels and limits are visible without pretending billing is finished.",
-    ],
-    icon: KeyRound,
-  },
-];
+
 
 function generateScenario(previousId?: string): EngineScenario {
   const availableModules = engineModules.filter((module) => module.id !== previousId);
@@ -503,87 +443,7 @@ const LandingSaas = () => {
     <div>
        <section className="relative ">
         <div className="mx-auto max-w-full">
-          {/* <div className="mx-auto max-w-5xl text-center">
-            <motion.div variants={fadeUp} initial="hidden" animate="visible">
-              <AccentBadge accent="cyan" className="mx-auto">
-                <span className="relative flex h-2 w-2">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-miransas-cyan opacity-70" />
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-miransas-cyan" />
-                </span>
-                Developer tunnels with request truth
-              </AccentBadge>
-            </motion.div>
-
-            <motion.h1
-              variants={fadeUp}
-              initial="hidden"
-              animate="visible"
-              transition={{ ...transition, delay: 0.08 }}
-              className="mt-8 text-5xl font-black leading-[0.92] tracking-[-0.05em] text-white sm:text-6xl lg:text-[6.75rem]"
-            >
-              Tunnel local services with
-              <span className="block bg-gradient-to-r from-miransas-cyan via-white to-miransas-magenta bg-clip-text text-transparent">
-                a control plane that shows what happened.
-              </span>
-            </motion.h1>
-
-            <motion.p
-              variants={fadeUp}
-              initial="hidden"
-              animate="visible"
-              transition={{ ...transition, delay: 0.16 }}
-              className="mx-auto mt-7 max-w-3xl text-base leading-8 text-zinc-400 sm:text-lg"
-            >
-              Binboi gives developers more than a public URL. It combines a Go relay, token-based
-              CLI auth, request and webhook debugging, and a calmer dashboard that stays readable
-              when the delivery failed somewhere between the provider and your local app.
-            </motion.p>
-
-            <motion.div
-              variants={fadeUp}
-              initial="hidden"
-              animate="visible"
-              transition={{ ...transition, delay: 0.22 }}
-              className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row"
-            >
-              <Link
-                href="/dashboard"
-                className="inline-flex items-center justify-center gap-2 rounded-full bg-miransas-cyan px-6 py-3.5 text-sm font-semibold text-black transition hover:brightness-110"
-              >
-                Open dashboard
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-              <Link
-                href="/docs/quick-start"
-                className="inline-flex items-center justify-center rounded-full border border-white/12 bg-white/[0.04] px-6 py-3.5 text-sm font-semibold text-white transition hover:border-white/20 hover:bg-white/[0.07]"
-              >
-                Read quick start
-              </Link>
-              <Link
-                href="/dashboard/access-tokens"
-                className="inline-flex items-center justify-center rounded-full border border-miransas-magenta/18 bg-miransas-magenta/8 px-6 py-3.5 text-sm font-semibold text-white transition hover:brightness-110"
-              >
-                Create access token
-              </Link>
-            </motion.div>
-
-            <motion.div
-              variants={fadeUp}
-              initial="hidden"
-              animate="visible"
-              transition={{ ...transition, delay: 0.3 }}
-              className="mt-8 flex flex-wrap items-center justify-center gap-3"
-            >
-              {heroSignals.map((signal) => (
-                <span
-                  key={signal}
-                  className="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-xs font-medium uppercase tracking-[0.18em] text-zinc-300"
-                >
-                  {signal}
-                </span>
-              ))}
-            </motion.div>
-          </div> */}
+     
 
           <motion.div
             variants={fadeUp}
@@ -790,6 +650,50 @@ const LandingSaas = () => {
             </PremiumSurface>
           </motion.div>
         </div>
+         <motion.div
+              variants={fadeUp}
+              initial="hidden"
+              animate="visible"
+              transition={{ ...transition, delay: 0.22 }}
+              className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row"
+            >
+              <Link
+                href="/dashboard"
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-miransas-cyan px-6 py-3.5 text-sm font-semibold text-black transition hover:brightness-110"
+              >
+                Open dashboard
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link
+                href="/docs/quick-start"
+                className="inline-flex items-center justify-center rounded-full border border-white/12 bg-white/[0.04] px-6 py-3.5 text-sm font-semibold text-white transition hover:border-white/20 hover:bg-white/[0.07]"
+              >
+                Read quick start
+              </Link>
+              <Link
+                href="/dashboard/access-tokens"
+                className="inline-flex items-center justify-center rounded-full border border-miransas-magenta/18 bg-miransas-magenta/8 px-6 py-3.5 text-sm font-semibold text-white transition hover:brightness-110"
+              >
+                Create access token
+              </Link>
+            </motion.div>
+
+            <motion.div
+              variants={fadeUp}
+              initial="hidden"
+              animate="visible"
+              transition={{ ...transition, delay: 0.3 }}
+              className="mt-8 flex flex-wrap items-center justify-center gap-3"
+            >
+              {heroSignals.map((signal) => (
+                <span
+                  key={signal}
+                  className="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-xs font-medium uppercase tracking-[0.18em] text-zinc-300"
+                >
+                  {signal}
+                </span>
+              ))}
+            </motion.div>
       </section>  
     </div>
   )

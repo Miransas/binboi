@@ -19,6 +19,12 @@ import {
   webhookDeliveryRecords,
   type WebhookDeliveryRecord,
 } from "@/lib/webhook-debug-data";
+import {
+  DashboardSectionHeading,
+  DashboardStatCard,
+  DashboardSurface,
+  DashboardTimeline,
+} from "@/components/dashboard/shared/dashboard-primitives";
 
 const providerNotes = [
   {
@@ -93,6 +99,43 @@ export function WebhookDebugWorkbench() {
     webhookDeliveryRecords.reduce((total, record) => total + record.durationMs, 0) /
       webhookDeliveryRecords.length,
   );
+  const selectedTimeline =
+    selected
+      ? ([
+          {
+            label: "Ingress",
+            title: `${selected.provider} emitted ${selected.eventType}`,
+            description: `The delivery reached ${selected.path} from ${selected.source}.`,
+            status: "complete",
+            meta: selected.provider,
+          },
+          {
+            label: "Forward",
+            title: `Forwarded to ${selected.destination}`,
+            description: `Binboi attached the delivery to tunnel ${selected.tunnelId} and observed ${selected.durationMs} ms end-to-end latency.`,
+            status: selected.deliveryStatus === "FAILED" ? "error" : "complete",
+            meta: `${selected.durationMs} ms`,
+          },
+          {
+            label: "Outcome",
+            title:
+              selected.deliveryStatus === "SUCCESS"
+                ? `Destination responded with ${selected.status}`
+                : selected.errorClassification || "Delivery needs investigation",
+            description:
+              selected.deliveryStatus === "SUCCESS"
+                ? "The webhook completed successfully and is safe to compare against future regressions."
+                : selected.responsePreview,
+            status:
+              selected.deliveryStatus === "SUCCESS"
+                ? "complete"
+                : selected.deliveryStatus === "RETRYING"
+                  ? "active"
+                  : "error",
+            meta: selected.deliveryStatus,
+          },
+        ] as const)
+      : ([] as const);
 
   useRegisterAssistantContext("dashboard-webhook-debug", {
     currentPage: {
@@ -117,64 +160,53 @@ export function WebhookDebugWorkbench() {
   });
 
   return (
-    <div className="min-h-screen bg-black px-6 py-8 text-white lg:px-12">
+    <div className="px-4 pb-12 pt-6 text-white sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl">
-        <header className="max-w-4xl">
-          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-miransas-cyan">
-            Webhook debugger
-          </p>
-          <h1 className="mt-4 text-4xl font-black tracking-tight text-white lg:text-6xl">
-            Turn webhook failures into an investigation surface instead of a log guessing game.
-          </h1>
-          <p className="mt-4 text-sm leading-7 text-zinc-400 lg:text-base">
-            This page is built around realistic provider deliveries and the debugging questions that
-            matter in Binboi: which provider fired, which event arrived, what the destination did,
-            whether retries are happening, and how to explain the failure without inventing data.
-          </p>
-        </header>
+        <DashboardSurface accent="cyan" className="px-6 py-7 sm:px-8 lg:px-10">
+          <div className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(20rem,0.85fr)] xl:items-end">
+            <DashboardSectionHeading
+              eyebrow="Webhook debugger"
+              title="Turn webhook failures into an investigation surface instead of a log guessing game."
+              description="This page is built around realistic provider deliveries and the debugging questions that matter in Binboi: which provider fired, which event arrived, what the destination did, whether retries are happening, and how to explain the failure without inventing data."
+            />
+
+            <DashboardSurface accent="violet" className="p-5">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-zinc-500">
+                Why this view matters
+              </p>
+              <p className="mt-3 text-sm leading-7 text-zinc-300">
+                Signature failures, route mismatches, retry storms, and slow handlers all look
+                different. The debugger separates them into one readable delivery surface.
+              </p>
+            </DashboardSurface>
+          </div>
+        </DashboardSurface>
 
         <div className="mt-10 grid gap-6 md:grid-cols-3">
-          <section className="rounded-3xl border border-white/10 bg-[#080808] p-6">
-            <div className="flex items-center justify-between">
-              <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-zinc-500">
-                Failed deliveries
-              </p>
-              <TriangleAlert className="h-4 w-4 text-red-300" />
-            </div>
-            <p className="mt-5 text-4xl font-black tracking-tight text-white">{failedCount}</p>
-            <p className="mt-3 text-sm leading-6 text-zinc-500">
-              These are the deliveries that need explanation, not just transport status.
-            </p>
-          </section>
-
-          <section className="rounded-3xl border border-white/10 bg-[#080808] p-6">
-            <div className="flex items-center justify-between">
-              <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-zinc-500">
-                Retrying now
-              </p>
-              <Webhook className="h-4 w-4 text-amber-200" />
-            </div>
-            <p className="mt-5 text-4xl font-black tracking-tight text-white">{retryingCount}</p>
-            <p className="mt-3 text-sm leading-6 text-zinc-500">
-              Deliveries in progress help you spot upstream instability or slow local handlers.
-            </p>
-          </section>
-
-          <section className="rounded-3xl border border-white/10 bg-[#080808] p-6">
-            <div className="flex items-center justify-between">
-              <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-zinc-500">
-                Average latency
-              </p>
-              <Waypoints className="h-4 w-4 text-miransas-cyan" />
-            </div>
-            <p className="mt-5 text-4xl font-black tracking-tight text-white">{avgLatency} ms</p>
-            <p className="mt-3 text-sm leading-6 text-zinc-500">
-              Enough to catch slow handlers before provider retry windows get noisy.
-            </p>
-          </section>
+          <DashboardStatCard
+            label="Failed deliveries"
+            value={String(failedCount)}
+            note="These are the deliveries that need explanation, not just transport status."
+            icon={TriangleAlert}
+            accent="rose"
+          />
+          <DashboardStatCard
+            label="Retrying now"
+            value={String(retryingCount)}
+            note="Retries help you spot upstream instability or slow local handlers."
+            icon={Webhook}
+            accent="amber"
+          />
+          <DashboardStatCard
+            label="Average latency"
+            value={`${avgLatency} ms`}
+            note="Enough to catch slow handlers before provider retry windows get noisy."
+            icon={Waypoints}
+            accent="cyan"
+          />
         </div>
 
-        <section className="mt-10 rounded-[2rem] border border-white/10 bg-[#080808] p-6">
+        <DashboardSurface accent="violet" className="mt-10 p-6">
           <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_0.85fr] xl:items-end">
             <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_12rem_12rem]">
               <label className="flex items-center gap-3 rounded-2xl border border-white/10 bg-black/30 px-4 py-3">
@@ -233,7 +265,7 @@ export function WebhookDebugWorkbench() {
                   type="checkbox"
                   checked={failedOnly}
                   onChange={(event) => setFailedOnly(event.target.checked)}
-                  className="h-4 w-4 rounded border-white/20 bg-black text-miransas-cyan"
+                  className="h-4 w-4 rounded border-white/20 bg-black text-miransas-cyan accent-miransas-cyan"
                 />
                 Failed or retrying only
               </label>
@@ -242,15 +274,17 @@ export function WebhookDebugWorkbench() {
               </p>
             </div>
           </div>
-        </section>
+        </DashboardSurface>
 
         <section className="mt-10 grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_0.9fr]">
           <div className="space-y-4">
             {filtered.length === 0 ? (
-              <div className="rounded-3xl border border-dashed border-white/10 bg-[#080808] p-8 text-sm leading-7 text-zinc-500">
-                No deliveries matched the current filters. Broaden the provider or status filters,
-                or search for a different event type.
-              </div>
+              <DashboardSurface accent="amber" className="border-dashed p-8">
+                <p className="text-sm leading-7 text-zinc-500">
+                  No deliveries matched the current filters. Broaden the provider or status
+                  filters, or search for a different event type.
+                </p>
+              </DashboardSurface>
             ) : (
               filtered.map((record) => (
                 <WebhookDeliveryCard
@@ -267,7 +301,7 @@ export function WebhookDebugWorkbench() {
           </div>
 
           <aside className="space-y-4 xl:sticky xl:top-8">
-            <section className="rounded-3xl border border-white/10 bg-[#080808] p-6">
+            <DashboardSurface accent="amber" className="p-6">
               <div className="flex items-center gap-2">
                 <Sparkles className="h-4 w-4 text-miransas-cyan" />
                 <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-zinc-300">
@@ -287,9 +321,9 @@ export function WebhookDebugWorkbench() {
                   </div>
                 ))}
               </div>
-            </section>
+            </DashboardSurface>
 
-            <section className="rounded-3xl border border-white/10 bg-[#080808] p-6">
+            <DashboardSurface accent="violet" className="p-6">
               <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
                 Current focus
               </p>
@@ -307,9 +341,17 @@ export function WebhookDebugWorkbench() {
                   assistant.
                 </p>
               )}
-            </section>
+            </DashboardSurface>
 
-            <section className="rounded-3xl border border-white/10 bg-[#080808] p-6">
+            {selected ? (
+              <DashboardTimeline
+                eyebrow="Lifecycle"
+                title="Current delivery timeline"
+                items={selectedTimeline}
+              />
+            ) : null}
+
+            <DashboardSurface accent="cyan" className="p-6">
               <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
                 Supporting docs
               </p>
@@ -328,7 +370,7 @@ export function WebhookDebugWorkbench() {
                   </Link>
                 ))}
               </div>
-            </section>
+            </DashboardSurface>
           </aside>
         </section>
       </div>

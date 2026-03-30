@@ -47,13 +47,6 @@ export const DASHBOARD_LINKS = [
       { label: "Traffic Identities", href: "/dashboard/identities", icon: FiKey },
     ],
   },
-  {
-    title: "Security",
-    items: [
-      { label: "Vaults & Secrets", href: "/dashboard/secrets", icon: FiShield },
-      { label: "IP Policies", href: "/dashboard/ip", icon: FiSlash },
-    ],
-  },
 ]
 
 export const DOCS_LINKS = [

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, Check, Copy, KeyRound, Plus, RefreshCcw, Trash2 } from "lucide-react";
 
 import { DashboardPageShell } from "@/components/dashboard/shared/page-shell";
+import { DashboardSurface } from "@/components/dashboard/shared/dashboard-primitives";
 
 type AccessTokenRecord = {
   id: string;
@@ -180,7 +181,7 @@ export default function AccessTokensPage() {
       ]}
     >
       <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
-        <article className="rounded-3xl border border-white/10 bg-[#080808] p-6">
+        <DashboardSurface accent="amber" className="p-6">
           <div className="flex items-center gap-3">
             <KeyRound className="h-5 w-5 text-miransas-cyan" />
             <h2 className="text-xl font-semibold text-white">Create a new token</h2>
@@ -246,9 +247,9 @@ export default function AccessTokensPage() {
               Local preview mode is active because dashboard auth or Postgres is not configured. This page is backed by the relay&apos;s single preview token so `binboi login` and `binboi whoami` still work against the real backend.
             </p>
           )}
-        </article>
+        </DashboardSurface>
 
-        <article className="rounded-3xl border border-white/10 bg-[#080808] p-6">
+        <DashboardSurface accent="cyan" className="p-6">
           <div className="flex items-start justify-between gap-4">
             <div>
               <h2 className="text-xl font-semibold text-white">Existing access tokens</h2>
@@ -337,7 +338,7 @@ export default function AccessTokensPage() {
               </tbody>
             </table>
           </div>
-        </article>
+        </DashboardSurface>
       </section>
     </DashboardPageShell>
   );

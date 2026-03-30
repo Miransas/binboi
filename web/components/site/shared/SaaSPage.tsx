@@ -361,7 +361,7 @@ export default function SaaSPage() {
   }, []);
 
   return (
-    <main className="relative overflow-hidden bg-[#040405] text-white selection:bg-miransas-cyan/30">
+    <main className="relative overflow-hidden bg-[#040405] text-white selection:bg-miransas-cyan/30 mt-10">
       <div className="pointer-events-none absolute inset-x-0 top-0 h-[920px] bg-[radial-gradient(circle_at_top,rgba(0,255,209,0.16),transparent_24%),radial-gradient(circle_at_82%_14%,rgba(255,0,255,0.14),transparent_28%),linear-gradient(180deg,rgba(255,255,255,0.03),transparent_35%)]" />
       <div className="pointer-events-none absolute inset-0 bg-grid-pattern opacity-[0.16]" />
       <div className="pointer-events-none absolute left-[-16rem] top-[18rem] h-[28rem] w-[28rem] rounded-full bg-miransas-cyan/10 blur-[160px]" />
