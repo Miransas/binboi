@@ -1,80 +1,91 @@
-/* eslint-disable @next/next/no-img-element */
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
-import { NAV_LINKS } from "@/constants";
-import { useSession, signIn } from "next-auth/react";
+import { signIn, useSession } from "next-auth/react";
 import { LayoutDashboard, Loader2 } from "lucide-react";
-import { BsGithub } from "react-icons/bs";
+
+import { NAV_LINKS } from "@/constants";
+
+import { AssistantLauncher } from "./assistant-launcher";
+
+const primaryNav = NAV_LINKS.slice(0, 5);
 
 export default function Header() {
-  // NextAuth
   const { data: session, status } = useSession();
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 border-b border-white/10 bg-[#060606]/80 backdrop-blur-md">
-      <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-        
-        {/* Sol: Logo */}
-        <Link href="/" className="flex items-center space-x-2 group">
-          <img 
-            src="/logo.png" 
-            alt="Binboi Logo"  
-            className="w-10 h-10 object-contain group-hover:scale-105 transition-transform"
-          />
-          <span className="text-white font-black italic text-2xl tracking-tighter">
-            BIN<span className="text-miransas-cyan">BOI</span>
-          </span>
-        </Link>
+    <header className="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-[#050506]/78 backdrop-blur-xl">
+      <div className="mx-auto flex h-18 max-w-[1440px] items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center gap-6">
+          <Link href="/" className="group flex items-center gap-3">
+            <div className="relative h-10 w-10 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] shadow-[0_0_30px_rgba(0,255,209,0.08)]">
+              <Image
+                src="/logo.png"
+                alt="Binboi logo"
+                fill
+                sizes="40px"
+                className="object-contain p-1.5 transition duration-300 group-hover:scale-105"
+              />
+            </div>
+            <div className="hidden sm:block">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.26em] text-zinc-500">
+                Binboi
+              </p>
+              <p className="text-base font-black tracking-tight text-white">
+                Tunnel visibility for developers
+              </p>
+            </div>
+          </Link>
 
-        {/* Orta: Navigation (Sadece masaüstünde) */}
-        <nav className="hidden md:flex items-center space-x-8">
-          {NAV_LINKS.map((link) => (
-            <Link 
-              key={link.href} 
-              href={link.href} 
-              className="text-sm font-medium text-gray-400 hover:text-miransas-cyan transition-colors"
-            >
-              {link.label}
-            </Link>
-          ))}
-        </nav>
-
-        {/* Sağ: Auth Actions */}
-        <div className="flex items-center space-x-4">
-          {status === "loading" ? (
-            // Yükleniyor durumu (Skeleton / Spinner)
-            <div className="flex items-center justify-center w-20">
-              <Loader2 className="w-5 h-5 text-miransas-cyan animate-spin" />
-            </div>
-          ) : session ? (
-            // Kullanıcı giriş yapmışsa
-            <div className="flex items-center gap-4">
-              <Link 
-                href="/dashboard" 
-                className="flex items-center gap-2 text-sm font-medium text-white bg-white/5 hover:bg-white/10 border border-white/10 px-4 py-2 rounded-lg transition-all"
+          <nav className="hidden items-center gap-6 xl:flex">
+            {primaryNav.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="text-sm text-zinc-400 transition hover:text-white"
               >
-                <LayoutDashboard className="w-4 h-4" />
-                <span className="hidden sm:inline">Dashboard</span>
+                {link.label}
               </Link>
-            </div>
-          ) : (
-            // Kullanıcı giriş yapmamışsa
-            <div className="flex items-center gap-4">
-              <Link href="/dashboard" className="text-sm font-medium text-gray-300 hover:text-white transition-colors">
-                Local Preview
-              </Link>
-              <button 
-                onClick={() => signIn("github")} 
-                className="flex items-center gap-2 text-sm font-bold bg-miransas-cyan text-[#060606] px-5 py-2 rounded-lg hover:bg-[#00ffd1]/90 hover:shadow-[0_0_15px_rgba(0,255,209,0.4)] transition-all"
-              >
-                <BsGithub className="w-4 h-4" />
-                GitHub Login
-              </button>
-            </div>
-          )}
+            ))}
+          </nav>
         </div>
 
+        <div className="flex items-center gap-3">
+          <div className="hidden lg:block">
+            <AssistantLauncher />
+          </div>
+
+          {status === "loading" ? (
+            <div className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/[0.03]">
+              <Loader2 className="h-4 w-4 animate-spin text-miransas-cyan" />
+            </div>
+          ) : session ? (
+            <Link
+              href="/dashboard"
+              className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm font-medium text-white transition hover:border-white/20 hover:bg-white/[0.08]"
+            >
+              <LayoutDashboard className="h-4 w-4 text-miransas-cyan" />
+              Dashboard
+            </Link>
+          ) : (
+            <>
+              <Link
+                href="/dashboard"
+                className="hidden rounded-full border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm text-zinc-300 transition hover:border-white/20 hover:bg-white/[0.06] hover:text-white sm:inline-flex"
+              >
+                Local preview
+              </Link>
+              <button
+                type="button"
+                onClick={() => signIn("github")}
+                className="inline-flex items-center rounded-full bg-miransas-cyan px-4 py-2.5 text-sm font-semibold text-black transition hover:brightness-110"
+              >
+                GitHub login
+              </button>
+            </>
+          )}
+        </div>
       </div>
     </header>
   );

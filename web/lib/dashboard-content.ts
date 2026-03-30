@@ -1,31 +1,31 @@
 export const dashboardPageContent = {
   ai: {
-    eyebrow: "Traffic intelligence",
-    title: "AI inspection is not part of the MVP yet",
+    eyebrow: "Developer assistant",
+    title: "Search docs, logs, and tunnel context with a safe assistant",
     description:
-      "The current Binboi MVP focuses on reliable HTTP tunneling, personal access tokens, and a stable control plane. AI traffic inspection should only ship after the relay lifecycle and audit trail are complete.",
+      "The first Binboi AI surface is intentionally read-only. It searches product docs, static guides, and live control-plane data when available, then adds optional server-side summaries without exposing credentials to the browser.",
     highlights: [
-      { label: "Status", value: "Planned", note: "No inline request mutation or model routing is running in production code." },
-      { label: "Safe fallback", value: "Logs only", note: "Use the request log stream and event feed to inspect tunnel behavior today." },
-      { label: "Next step", value: "Read-only analysis", note: "Start with header and status-code inspection before any blocking or rewriting." },
+      { label: "Status", value: "Read only", note: "The assistant answers questions and searches context. It does not mutate traffic." },
+      { label: "Fallback", value: "Docs first", note: "Without AI credentials, Binboi still returns product-search results and troubleshooting guidance." },
+      { label: "Security", value: "Server-side", note: "Environment variables stay on the server. No OpenAI key is exposed to the client." },
     ],
     panels: [
       {
         title: "What works today",
-        description: "The control plane can already show tunnel activity, request events, token usage, and relay connectivity.",
+        description: "The assistant can search product docs, marketing pages, runtime tunnels, and recent events where the control plane exposes them.",
         bullets: [
-          "Live WebSocket logs from the relay.",
-          "Persistent tunnel records stored by the backend.",
-          "Audit events for connect, disconnect, and token actions.",
+          "Live control-plane instance, tunnel, and event context when reachable.",
+          "Docs and troubleshooting search across installation, auth, requests, webhooks, and logs.",
+          "Optional server-side summaries for faster operator answers.",
         ],
       },
       {
-        title: "What should happen before AI features",
-        description: "Ship reliable observability and policy hooks before attaching any AI layer to customer traffic.",
+        title: "What remains out of scope",
+        description: "Binboi still avoids risky autonomous behavior. This feature is for search, explanation, and troubleshooting only.",
         bullets: [
-          "Store request metadata in a structured event stream.",
-          "Add explicit opt-in policies per tunnel.",
-          "Define cost and privacy boundaries for body inspection.",
+          "No traffic rewriting, blocking, or mutation.",
+          "No secret handling in the client.",
+          "No autonomous remediation or tunnel management actions.",
         ],
       },
     ],

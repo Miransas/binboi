@@ -1,52 +1,64 @@
-const logs = [
-  {
-    v: "v0.4.0",
-    date: "2026-03-30",
-    changes: [
-      "Added account-backed access tokens with prefix-plus-hash storage.",
-      "Implemented binboi login, whoami, and config-based CLI authentication.",
-      "Added Homebrew-ready version output and release artifact documentation.",
-    ],
-  },
-  {
-    v: "v0.3.0",
-    date: "2026-03-30",
-    changes: [
-      "Rebuilt the control plane around a coherent SQLite-backed MVP.",
-      "Added real tunnel reservation, token rotation, and domain verification endpoints.",
-      "Replaced blank dashboard pages with useful product content.",
-    ],
-  },
-  {
-    v: "v0.2.0",
-    date: "2026-03-28",
-    changes: [
-      "Improved the landing page and stabilized the dashboard shell.",
-      "Added safer fallback states when backend services are offline.",
-    ],
-  },
-];
+import {
+  SitePageShell,
+  SitePanel,
+  SiteSectionHeader,
+} from "@/components/site/shared/site-primitives";
+import { changelogEntries } from "@/content/site-content";
 
 export default function ChangelogPage() {
   return (
-    <div className="pt-40 max-w-3xl mx-auto px-6 pb-20">
-      <h1 className="text-4xl font-black uppercase mb-16">Changelog</h1>
-      <div className="relative border-l border-white/10 ml-4 space-y-16">
-        {logs.map((log, i) => (
-          <div key={i} className="relative pl-12">
-            <div className="absolute -left-[6px] top-1 w-3 h-3 bg-miransas-cyan rounded-full shadow-[0_0_10px_#00ffd1]" />
-            <div className="flex items-baseline gap-4 mb-4">
-              <h3 className="text-2xl font-black text-white">{log.v}</h3>
-              <span className="text-[10px] text-gray-600 font-mono font-bold uppercase">{log.date}</span>
+    <SitePageShell
+      eyebrow="Changelog"
+      title="Structured release notes for the Binboi control plane"
+      description="Binboi release notes track product changes across the relay, CLI, dashboard, docs, and operator experience. Entries stay clear about what is already implemented and what still acts as a foundation for later releases."
+    >
+      <SitePanel>
+        <SiteSectionHeader
+          eyebrow="Release notes"
+          title="A changelog that explains product movement, not just commit volume"
+          description="Each entry groups the release into themes so operators can understand whether a change affected auth, tunnels, dashboards, docs, packaging, or the product story itself."
+        />
+      </SitePanel>
+
+      <section className="space-y-6">
+        {changelogEntries.map((entry) => (
+          <SitePanel key={entry.version} className="relative overflow-hidden">
+            <div className="absolute left-0 top-0 h-full w-px bg-gradient-to-b from-miransas-cyan/60 via-white/10 to-transparent" />
+            <div className="pl-5">
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="rounded-full border border-miransas-cyan/20 bg-miransas-cyan/8 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-miransas-cyan">
+                  {entry.version}
+                </span>
+                <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
+                  {entry.releasedAt}
+                </span>
+              </div>
+              <h2 className="mt-4 text-2xl font-black tracking-tight text-white">
+                {entry.title}
+              </h2>
+              <p className="mt-4 max-w-3xl text-sm leading-7 text-zinc-400">{entry.summary}</p>
+
+              <div className="mt-6 grid gap-4 lg:grid-cols-2">
+                {entry.sections.map((section) => (
+                  <div
+                    key={section.label}
+                    className="rounded-[1.5rem] border border-white/10 bg-black/35 p-5"
+                  >
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
+                      {section.label}
+                    </p>
+                    <div className="mt-4 space-y-3 text-sm leading-7 text-zinc-300">
+                      {section.items.map((item) => (
+                        <p key={item}>{item}</p>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
-            <ul className="space-y-2">
-              {log.changes.map((c, idx) => (
-                <li key={idx} className="text-sm text-gray-500">- {c}</li>
-              ))}
-            </ul>
-          </div>
+          </SitePanel>
         ))}
-      </div>
-    </div>
+      </section>
+    </SitePageShell>
   );
 }

@@ -16,9 +16,9 @@ import { Sparkles } from "lucide-react"
 export const NAV_LINKS = [
   { label: "Docs", href: "/docs" },
   { label: "Pricing", href: "/pricing" },
+  { label: "Blog", href: "/blog" },
   { label: "Changelog", href: "/changelog" },
   { label: "Typography", href: "/typography" },
-  { label: "Blog", href: "/blog" },
   { label: "Privacy", href: "/privacy" },
 ];
 
@@ -36,7 +36,7 @@ export const DASHBOARD_LINKS = [
     title: "Universal Gateway",
     items: [
       { label: "Endpoints & Traffic Policy", href: "/dashboard/endpoints", icon: FiGlobe },
-      { label: "AI Gateways", href: "/dashboard/ai", icon: Sparkles, badge: "Early Access" },
+      { label: "AI Assistant", href: "/dashboard/ai", icon: Sparkles, badge: "New" },
       { label: "Domains", href: "/dashboard/domains", icon: FiLink },
       { label: "TCP Addresses", href: "/dashboard/tcp", icon: FiLink },
       { label: "TLS Certificates", href: "/dashboard/tls", icon: FiLock },
@@ -70,6 +70,12 @@ export const FOOTER_LINKS = {
   product: [
     { label: "Docs", href: "/docs" },
     { label: "Pricing", href: "/pricing" },
+    { label: "Dashboard", href: "/dashboard" },
+  ],
+  resources: [
+    { label: "Blog", href: "/blog" },
+    { label: "Changelog", href: "/changelog" },
+    { label: "Typography", href: "/typography" },
   ],
   company: [
     { label: "Miransas", href: "https://miransas.com" },

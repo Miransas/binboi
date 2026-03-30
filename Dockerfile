@@ -10,7 +10,7 @@ RUN go mod download
 
 COPY . .
 
-RUN CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o /bin/binboi-server ./cmd/binboi-server
+RUN CGO_ENABLED=1 GOOS=linux go build -ldflags="-s -w" -o /bin/binboi-server ./cmd/binboi-server
 
 FROM alpine:3.21
 WORKDIR /app
