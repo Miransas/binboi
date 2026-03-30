@@ -1,25 +1,8 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Figtree } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { ThemeProvider } from "../components/provider/theme-provider";
 import SessionProvider from "../components/provider/session-provider";
-
-// Font Tanımlamaları
-const figtree = Figtree({ 
-  subsets: ["latin"], 
-  variable: "--font-figtree" 
-});
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
 
 // Binboi SEO & Meta Bilgileri
 export const metadata: Metadata = {
@@ -38,9 +21,6 @@ export default function RootLayout({
       <body
         className={cn(
           "min-h-screen bg-[#000000] text-white antialiased font-sans",
-          figtree.variable,
-          geistSans.variable,
-          geistMono.variable
         )}
       >
         <ThemeProvider

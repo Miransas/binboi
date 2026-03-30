@@ -1,21 +1,26 @@
 "use client";
 
 import useSWR from 'swr';
+import { buildApiUrl } from '@/lib/binboi';
 
-// Fetcher: API Key ile veri çeker
-const fetcher = (url: string, key: string) => 
-  fetch(url, { headers: { "X-Binboi-Key": key } }).then(res => res.json());
+const fetcher = async (url: string) => {
+  const res = await fetch(url);
+  if (!res.ok) {
+    throw new Error(`Tunnel request failed with ${res.status}`);
+  }
+  return res.json();
+};
 
-export function useTunnels(apiKey: string) {
+export function useTunnels(userId?: string) {
   const { data, error, mutate } = useSWR(
-    apiKey ? [`http://localhost:8080/api/tunnels`, apiKey] : null,
-    ([url, key]) => fetcher(url, key),
-    { refreshInterval: 5000 } // Her 5 saniyede bir otomatik yenile!
+    userId ? buildApiUrl(`/api/tunnels/${userId}`) : null,
+    fetcher,
+    { refreshInterval: userId ? 5000 : 0, revalidateOnFocus: false }
   );
 
   return {
-    tunnels: data || [],
-    isLoading: !error && !data,
+    tunnels: Array.isArray(data) ? data : [],
+    isLoading: Boolean(userId) && !error && !data,
     isError: error,
     refresh: mutate
   };

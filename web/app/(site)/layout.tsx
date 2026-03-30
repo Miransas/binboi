@@ -1,9 +1,8 @@
-"use client"
 import React from 'react'
 import Header from '../../components/site/shared/header'
 import { Footer } from '../../components/site/shared/footer'
 
-const SiteLAyout = ({ children }: { children: React.ReactNode }) => {
+const SiteLayout = ({ children }: { children: React.ReactNode }) => {
   return (
     <div>
         <Header />
@@ -13,4 +12,4 @@ const SiteLAyout = ({ children }: { children: React.ReactNode }) => {
   )
 }
 
-export default SiteLAyout
+export default SiteLayout

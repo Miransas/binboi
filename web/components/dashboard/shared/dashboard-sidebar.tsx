@@ -7,10 +7,6 @@ import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { signOut } from "next-auth/react";
 import {
-  LayoutDashboard,
-  Waypoints,
-  Activity,
-  Settings,
   LogOut,
   ChevronLeft,
   ChevronRight
@@ -47,7 +43,7 @@ export default function DashboardSidebar({ user }: { user: any }) {
       <div className="h-16 flex items-center px-6 border-b border-white/5 overflow-hidden">
         <Link href="/" className="flex items-center gap-3 group whitespace-nowrap">
           <div className="">
-           <img src="./logo.png" alt="" className="w-18" />
+           <img src="/logo.png" alt="Binboi logo" className="w-18" />
           </div>
           <AnimatePresence>
             {!isCollapsed && (

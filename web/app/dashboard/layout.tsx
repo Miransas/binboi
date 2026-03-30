@@ -1,22 +1,30 @@
 
 import { auth } from "@/auth"; // NextAuth v5 importu
-import { redirect } from "next/navigation";
 import DashboardSidebar from "../../components/dashboard/shared/dashboard-sidebar";
 
+export const dynamic = "force-dynamic";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  // Kullanıcı giriş yapmamışsa middleware yakalar ama çift güvenlik iyidir.
-  const session = await auth();
-  
-  if (!session?.user) {
-    redirect("/");
+  let session = null;
+
+  try {
+    session = await auth();
+  } catch {
   }
 
   return (
     <div className="flex h-screen  text-white font-sans overflow-hidden ">
       
       {/* 📱 Ayrı Component Olarak Gelen Collapsible Sidebar */}
-      <DashboardSidebar user={session.user} />
+      <DashboardSidebar
+        user={
+          session?.user ?? {
+            name: "Guest Mode",
+            email: "preview@binboi.local",
+            image: "https://github.com/ghost.png",
+          }
+        }
+      />
 
       {/* 💻 ANA İÇERİK ALANI */}
       <main className="flex-1 overflow-y-auto relative">

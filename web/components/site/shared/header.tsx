@@ -2,12 +2,10 @@
 "use client";
 
 import Link from "next/link";
-import { motion } from "framer-motion";
 import { NAV_LINKS } from "@/constants";
-import { useSession, signIn, signOut } from "next-auth/react";
-import { LogOut, LayoutDashboard, Loader2,  } from "lucide-react";
+import { useSession, signIn } from "next-auth/react";
+import { LayoutDashboard, Loader2 } from "lucide-react";
 import { BsGithub } from "react-icons/bs";
-import { div } from "three/src/nodes/math/OperatorNode.js";
 
 export default function Header() {
   // NextAuth
@@ -52,9 +50,6 @@ export default function Header() {
           ) : session ? (
             // Kullanıcı giriş yapmışsa
             <div className="flex items-center gap-4">
-             
-
-              {/* Dashboard Butonu */}
               <Link 
                 href="/dashboard" 
                 className="flex items-center gap-2 text-sm font-medium text-white bg-white/5 hover:bg-white/10 border border-white/10 px-4 py-2 rounded-lg transition-all"
@@ -62,31 +57,19 @@ export default function Header() {
                 <LayoutDashboard className="w-4 h-4" />
                 <span className="hidden sm:inline">Dashboard</span>
               </Link>
-
-              {/* Çıkış Yap Butonu */}
-              {/* <button 
-                onClick={() => signOut()} 
-                className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors"
-                title="Sign out"
-              >
-                <LogOut className="w-5 h-5" />
-              </button> */}
             </div>
           ) : (
             // Kullanıcı giriş yapmamışsa
             <div className="flex items-center gap-4">
-              <button 
-                onClick={() => signIn("github")} 
-                className="text-sm font-medium text-gray-300 hover:text-white transition-colors"
-              >
-                Log in
-              </button>
+              <Link href="/dashboard" className="text-sm font-medium text-gray-300 hover:text-white transition-colors">
+                Local Preview
+              </Link>
               <button 
                 onClick={() => signIn("github")} 
                 className="flex items-center gap-2 text-sm font-bold bg-miransas-cyan text-[#060606] px-5 py-2 rounded-lg hover:bg-[#00ffd1]/90 hover:shadow-[0_0_15px_rgba(0,255,209,0.4)] transition-all"
               >
                 <BsGithub className="w-4 h-4" />
-                Get Started
+                GitHub Login
               </button>
             </div>
           )}

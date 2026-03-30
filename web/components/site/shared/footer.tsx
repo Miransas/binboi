@@ -1,4 +1,4 @@
-    
+import Image from "next/image"
 import {  ExternalLink } from "lucide-react"
 import Link from "next/link"
 import { FOOTER_LINKS } from "../../../constants"
@@ -21,7 +21,7 @@ export function Footer() {
             <Link href="/" className="flex items-center gap-2.5 group w-fit">
               <div className="relative w-14 h-14">
                 <div className="absolute inset-0  transition-colors">
-                  <img src="./logo.png" alt="" />
+                  <Image src="/logo.png" alt="Binboi logo" fill sizes="56px" className="object-contain" />
                 </div>
                 <div className="absolute inset-0 rounded-lg bg-violet-500/10 blur-md" />
               </div>

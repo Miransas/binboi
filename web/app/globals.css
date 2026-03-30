@@ -10,6 +10,8 @@
   --color-miransas-cyan: #00ffd1;
   --color-miransas-dark: #050505;
   --color-miransas-pink: #ff2056;
+  --font-sans:
+    "Avenir Next", "Segoe UI", "Helvetica Neue", "Arial", sans-serif;
 
   /* Yazı Tipleri */
   --font-mono:

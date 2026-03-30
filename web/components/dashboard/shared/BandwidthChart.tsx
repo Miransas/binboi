@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area } from "recharts";
+import { XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area } from "recharts";
 
 export default function BandwidthChart({ currentUsage }: { currentUsage: number }) {
   const [data, setData] = useState<{ time: string; usage: number }[]>([]);

@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { Copy, RefreshCcw, Eye, EyeOff, Check } from "lucide-react";
+import { buildApiUrl } from "@/lib/binboi";
 
 export default function TokenManager({ initialToken }: { initialToken: string }) {
   // Eyaletler (States)
@@ -8,13 +9,13 @@ export default function TokenManager({ initialToken }: { initialToken: string })
   const [isVisible, setIsVisible] = useState(false);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // İŞTE O EKSİK FONKSİYON: generateNewToken
   const generateNewToken = async () => {
     setLoading(true);
+    setError(null);
     try {
-      // Go Backend adresine POST isteği atıyoruz
-      const res = await fetch("http://localhost:8080/api/tokens/generate", { 
+      const res = await fetch(buildApiUrl("/api/tokens/generate"), { 
         method: "POST" 
       });
 
@@ -22,12 +23,10 @@ export default function TokenManager({ initialToken }: { initialToken: string })
 
       const data = await res.json();
       
-      // Backend'den gelen yeni tokenı ekrana basıyoruz
       setToken(data.token);
-      console.log("🚀 [NEURAL_LINK]: New token generated successfully.");
     } catch (err) {
       console.error("🔴 [AUTH_ERROR]:", err);
-      alert("Ustam backend'e ulaşamadım, Go sunucusu açık mı?");
+      setError("Backend'e ulasilamadi. Sunucu aciksa tekrar dene.");
     } finally {
       setLoading(false);
     }
@@ -76,6 +75,7 @@ export default function TokenManager({ initialToken }: { initialToken: string })
       <p className="mt-4 text-[9px] text-gray-600 italic leading-relaxed">
         PRO_TIP: Use this token with the CLI: <span className="text-miransas-cyan">binboi auth [token]</span>
       </p>
+      {error && <p className="mt-3 text-xs text-red-400">{error}</p>}
     </div>
   );
 }

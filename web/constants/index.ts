@@ -8,23 +8,18 @@ import {
   FiBox,
   FiShield,
   FiSlash,
-  FiSearch,
-  FiFileText,
-  FiCpu,
-  FiCreditCard,
-  FiHelpCircle,
-  FiBookOpen,
   FiSliders,
 } from "react-icons/fi"
 
 import { Sparkles } from "lucide-react" 
-import { label } from "three/src/nodes/core/ContextNode.js";
 
 export const NAV_LINKS = [
-  { label: "Home", href: "/" },
   { label: "Docs", href: "/docs" },
   { label: "Pricing", href: "/pricing" },
-  { label: "Status", href: "/status" },
+  { label: "Changelog", href: "/changelog" },
+  { label: "Typography", href: "/typography" },
+  { label: "Blog", href: "/blog" },
+  { label: "Privacy", href: "/privacy" },
 ];
 
 export const DASHBOARD_LINKS = [
@@ -53,26 +48,10 @@ export const DASHBOARD_LINKS = [
     ],
   },
   {
-    title: "Traffic Observability",
+    title: "Security",
     items: [
-      { label: "Traffic Inspector", href: "/dashboard/inspector", icon: FiSearch },
-      { label: "Log Exporting", href: "/dashboard/log-export", icon: FiFileText },
-    ],
-  },
-  {
-    title: "Secure Tunnels",
-    items: [
-      { label: "Agents", href: "/dashboard/agents", icon: FiCpu },
-      { label: "Connect URLs", href: "/dashboard/connect", icon: FiLink },
-    ],
-  },
-  {
-    title: "Other",
-    items: [
-      { label: "Billing & Usage", href: "/dashboard/billing", icon: FiCreditCard },
-      { label: "Early Access", href: "/dashboard/early", icon: FiBox },
-      { label: "Support", href: "/dashboard/support", icon: FiHelpCircle },
-      { label: "Documentation", href: "/dashboard/docs", icon: FiBookOpen },
+      { label: "Vaults & Secrets", href: "/dashboard/secrets", icon: FiShield },
+      { label: "IP Policies", href: "/dashboard/ip", icon: FiSlash },
     ],
   },
 ]
@@ -87,8 +66,8 @@ export const DOCS_LINKS = [
 
 export const FOOTER_LINKS = {
   product: [
-    { label: "Download", href: "/download" },
-    { label: "Changelog", href: "/changelog" },
+    { label: "Docs", href: "/docs" },
+    { label: "Pricing", href: "/pricing" },
   ],
   company: [
     { label: "Miransas", href: "https://miransas.com" },

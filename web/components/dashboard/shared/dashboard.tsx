@@ -4,131 +4,113 @@
 
 import { useSession } from "next-auth/react";
 import { useTunnels } from "@/hooks/useTunnels";
-import { motion } from "framer-motion";
 import BandwidthChart from "@/components/dashboard/shared/BandwidthChart";
-import { TrashIcon, PlusIcon, TerminalIcon } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Activity, Shield, TerminalSquare, Waypoints } from "lucide-react";
 import TerminalLog from "./terminal-log";
-import { useTheme } from "next-themes";
-import { BorderBeam } from "../../ui/border-beam";
 import TokenManager from "./token-manager";
 
 export default function DashboardPage() {
-  const { theme } = useTheme();
   const { data: session } = useSession();
-
-  // Tünelleri Go Backend'den çekiyoruz
-  const { tunnels, isLoading, refresh } = useTunnels(session?.user?.id || "");
+  const { tunnels, isLoading, isError } = useTunnels(session?.user?.id);
 
   const activeCount = tunnels ? tunnels.filter((t: any) => t.status === "ACTIVE").length : 0;
   const totalBandwidth = tunnels ? tunnels.reduce((acc: number, t: any) => acc + (t.bytes_out || 0), 0) : 0;
-
-  // Tünel Silme İşlemi
-  const handleDelete = async (id: string) => {
-    if (window.confirm("⚠️ TERMINATE_LINK: Confirm permanent deletion?")) {
-      try {
-        const res = await fetch(`http://localhost:8080/api/tunnels/${id}`, { method: 'DELETE' });
-        if (res.ok) {
-          refresh(); // ✅ doğru
-        }
-      } catch (err) {
-        console.error("Deletion failed:", err);
-      }
-    }
-  };
+  const statusCards = [
+    {
+      label: "Active tunnels",
+      value: activeCount.toString().padStart(2, "0"),
+      note: activeCount > 0 ? "traffic is flowing" : "waiting for a tunnel",
+      icon: Activity,
+    },
+    {
+      label: "Throughput",
+      value: `${(totalBandwidth / (1024 * 1024)).toFixed(1)} MB`,
+      note: "bandwidth reported by the API",
+      icon: Waypoints,
+    },
+    {
+      label: "Mode",
+      value: session?.user ? "AUTH" : "GUEST",
+      note: session?.user ? "signed in control plane" : "frontend preview mode",
+      icon: Shield,
+    },
+  ];
 
   return (
     <div className="min-h-screen bg-black text-white font-mono selection:bg-miransas-cyan/30">
       <main className="relative z-10 max-w-7xl mx-auto p-6 lg:p-12">
-
-        {/* --- HEADER --- */}
-        <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8 mb-16">
-          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
-            <h1 className="text-7xl font-black italic tracking-tighter text-white">
+        <header className="mb-12 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="text-xs uppercase tracking-[0.3em] text-miransas-cyan">Binboi control plane</p>
+            <h1 className="mt-4 text-5xl font-black italic tracking-tight text-white lg:text-7xl">
               BINBOI<span className="text-miransas-cyan">.</span>CORE
             </h1>
-            <div className="flex items-center gap-3 mt-4 bg-white/5 w-fit px-3 py-1 rounded-md border border-white/10">
-              <span className={`h-2 w-2 rounded-full ${activeCount > 0 ? 'bg-miransas-cyan animate-pulse shadow-[0_0_8px_#00ffd1]' : 'bg-red-600'}`} />
-              <p className="text-[9px] text-gray-400 uppercase tracking-widest font-bold">
-                Status: {activeCount > 0 ? 'NEURAL_LINK_ACTIVE' : 'SYSTEM_IDLE'}
+            <p className="mt-4 max-w-2xl text-sm leading-7 text-gray-400">
+              This dashboard is now safe in empty states as well. If the relay API is down you still
+              get setup guidance instead of a broken screen.
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-white/10 bg-white/5 px-5 py-4">
+            <div className="flex items-center gap-3">
+              <span className={`h-2.5 w-2.5 rounded-full ${activeCount > 0 ? "bg-miransas-cyan shadow-[0_0_10px_#00ffd1]" : "bg-amber-500"}`} />
+              <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-gray-400">
+                {activeCount > 0 ? "relay active" : "waiting for first tunnel"}
               </p>
             </div>
-          </motion.div>
-
-          <div className="flex items-center gap-4">
-            <button className="p-3 bg-white/5 border border-white/10 cursor-pointer rounded-xl hover:bg-white/10 transition-all text-gray-400 hover:text-white">
-              <TerminalIcon size={18} />
-            </button>
-            <button className="flex items-center gap-2 px-8 py-4 bg-miransas-cyan text-white cursor-pointer font-black italic rounded-xl shadow-[0_0_30_rgba(0,255,209,0.3)] hover:scale-105 transition-all text-xs uppercase">
-              <PlusIcon size={16} /> New Link
-            </button>
+            <p className="mt-3 text-xs text-gray-500">
+              {session?.user ? `Signed in as ${session.user.email}` : "Guest preview mode enabled"}
+            </p>
           </div>
         </header>
 
-        {/* --- TOKEN MANAGER SECTION --- */}
-        <div className="mb-12">
+        <div className="mb-12 grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+          <div className="rounded-2xl border border-white/10 bg-[#080808] p-6">
+            <BandwidthChart currentUsage={activeCount > 0 ? 452.8 : 0} />
+          </div>
           <TokenManager initialToken="" />
         </div>
 
-        {/* --- STATS SECTION --- */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
-          <div className="md:col-span-2 relative group">
-            <div className="relative h-full bg-[#080808] border border-white/10 rounded-2xl p-6 backdrop-blur-xl overflow-hidden">
-              <BorderBeam duration={6} size={400} className="from-transparent via-miransas-cyan to-transparent" />
-              <BandwidthChart currentUsage={activeCount > 0 ? 452.8 : 0} />
-            </div>
-          </div>
-
-          <div className="relative group">
-            <div className="relative h-full bg-[#080808] border border-white/10 rounded-2xl p-8 flex flex-col justify-between overflow-hidden">
-              <BorderBeam duration={8} delay={2} size={300} className="from-transparent via-red-500 to-transparent" />
-              <span className="text-[10px] text-gray-500 uppercase font-bold tracking-widest">Active Links</span>
-              <div className="text-6xl font-black italic text-miransas-cyan">
-                {activeCount.toString().padStart(2, '0')}
+        <div className="mb-12 grid gap-6 md:grid-cols-3">
+          {statusCards.map(({ label, value, note, icon: Icon }) => (
+            <article key={label} className="rounded-2xl border border-white/10 bg-[#080808] p-6">
+              <div className="flex items-center justify-between">
+                <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-gray-500">{label}</p>
+                <Icon className="h-4 w-4 text-miransas-cyan" />
               </div>
-            </div>
-          </div>
-
-          <div className="relative group">
-            <div className="relative h-full bg-[#080808] border border-white/10 rounded-2xl p-8 flex flex-col justify-between overflow-hidden">
-              <BorderBeam duration={8} delay={4} size={300} className="from-transparent via-blue-500 to-transparent" />
-              <span className="text-[10px] text-gray-500 uppercase font-bold tracking-widest">Throughput</span>
-              <div className="text-4xl font-black italic text-white">
-                {(totalBandwidth / (1024 * 1024)).toFixed(1)} <span className="text-lg text-gray-600">MB</span>
-              </div>
-            </div>
-          </div>
+              <p className="mt-6 text-4xl font-black italic text-white">{value}</p>
+              <p className="mt-2 text-xs leading-6 text-gray-500">{note}</p>
+            </article>
+          ))}
         </div>
 
-        {/* --- TUNNEL TABLE --- */}
-        <div className="relative mb-12">
-          <div className="relative bg-[#080808] border border-white/10 rounded-2xl overflow-hidden">
+        <div className="mb-12 grid gap-6 xl:grid-cols-[1.3fr_0.7fr]">
+          <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#080808]">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-white/[0.02] text-[10px] text-gray-500 uppercase font-bold tracking-[0.2em]">
                   <th className="p-6 border-b border-white/5">Neural Node</th>
                   <th className="p-6 border-b border-white/5">Signal</th>
-                  <th className="p-6 border-b border-white/5 text-right">Target</th>
-                  <th className="p-6 border-b border-white/5 text-center">Action</th>
+                  <th className="p-6 border-b border-white/5">Target</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
                 {isLoading ? (
                   <tr>
-                    <td colSpan={4} className="p-20 text-center text-miransas-cyan animate-pulse font-bold tracking-widest text-xs italic">
+                    <td colSpan={3} className="p-20 text-center text-miransas-cyan animate-pulse font-bold tracking-widest text-xs italic">
                       SCANNING_NEURAL_LAYERS...
                     </td>
                   </tr>
-                ) : tunnels?.length === 0 ? (
+                ) : tunnels?.length === 0 || isError ? (
                   <tr>
-                    <td colSpan={4} className="p-12 text-center text-gray-600 text-xs italic">
-                      NO_ACTIVE_TUNNELS_FOUND
+                    <td colSpan={3} className="p-12 text-center text-gray-600 text-xs italic">
+                      {isError ? "API_UNREACHABLE" : "NO_ACTIVE_TUNNELS_FOUND"}
                     </td>
                   </tr>
                 ) : tunnels.map((tunnel: any) => (
-                  <motion.tr key={tunnel.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="hover:bg-white/[0.01] transition-colors group/row">
+                  <tr key={tunnel.id} className="transition-colors hover:bg-white/[0.01]">
                     <td className="p-6">
-                      <div className="text-xl font-bold group-hover/row:text-miransas-cyan transition-colors italic">
+                      <div className="text-xl font-bold italic text-white">
                         {tunnel.subdomain}<span className="text-gray-600">.binboi.link</span>
                       </div>
                       <div className="text-[9px] text-gray-600 mt-1 uppercase font-bold tracking-tighter">
@@ -143,25 +125,29 @@ export default function DashboardPage() {
                         {tunnel.status}
                       </div>
                     </td>
-                    <td className="p-6 text-right font-mono text-xs text-gray-400 italic">
+                    <td className="p-6 font-mono text-xs text-gray-400 italic">
                       {tunnel.target}
                     </td>
-                    <td className="p-6 text-center">
-                      <button onClick={() => handleDelete(tunnel.id)} className="p-2 text-gray-700 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all">
-                        <TrashIcon size={16} />
-                      </button>
-                    </td>
-                  </motion.tr>
+                  </tr>
                 ))}
               </tbody>
             </table>
           </div>
+
+          <aside className="rounded-2xl border border-white/10 bg-[#080808] p-6">
+            <div className="flex items-center gap-3">
+              <TerminalSquare className="h-5 w-5 text-miransas-cyan" />
+              <h2 className="text-sm font-bold uppercase tracking-[0.2em] text-gray-300">Quick start</h2>
+            </div>
+            <ol className="mt-6 space-y-4 text-sm leading-7 text-gray-400">
+              <li>1. Start the relay with <span className="text-miransas-cyan">./binboi-server</span>.</li>
+              <li>2. Save a token with <span className="text-miransas-cyan">binboi auth &lt;token&gt;</span>.</li>
+              <li>3. Expose your app using <span className="text-miransas-cyan">binboi start 3000 my-app</span>.</li>
+            </ol>
+          </aside>
         </div>
 
-        {/* --- LIVE TERMINAL --- */}
-        <div className="mt-8">
-          <TerminalLog />
-        </div>
+        <TerminalLog />
       </main>
     </div>
   );
