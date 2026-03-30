@@ -21,8 +21,16 @@ export type AssistantRequestContext = {
   method?: string;
   path?: string;
   status?: number | string;
+  durationMs?: number;
+  provider?: string;
+  source?: string;
   target?: string;
+  destination?: string;
   errorType?: string;
+  requestPreview?: string;
+  responsePreview?: string;
+  tunnelId?: string;
+  timestamp?: string;
   summary?: string;
 };
 
@@ -32,6 +40,14 @@ export type AssistantWebhookContext = {
   endpoint?: string;
   deliveryStatus?: string;
   signatureHeader?: string;
+  retries?: number;
+  latencyMs?: number;
+  destination?: string;
+  receivedAt?: string;
+  errorClassification?: string;
+  payloadPreview?: string;
+  responsePreview?: string;
+  attemptId?: string;
   summary?: string;
 };
 

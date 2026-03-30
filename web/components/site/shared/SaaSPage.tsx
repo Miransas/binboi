@@ -26,6 +26,8 @@ import {
   SectionHeading,
   type Accent,
 } from "./landing-primitives";
+import { LandingSectionDivider } from "./landing-section-divider";
+import { LandingSignalBand } from "./landing-signal-band";
 
 const transition = { duration: 0.8, ease: cubicBezier(0.16, 1, 0.3, 1) };
 
@@ -540,7 +542,7 @@ export default function SaaSPage() {
       <div className="pointer-events-none absolute right-[-18rem] top-[9rem] h-[32rem] w-[32rem] rounded-full bg-miransas-magenta/10 blur-[180px]" />
 
       <section className="relative px-4 pb-10 pt-28 sm:px-6 sm:pt-32 lg:px-8">
-        <div className="mx-auto max-w-[1440px]">
+        <div className="mx-auto max-w-full">
           <div className="mx-auto max-w-5xl text-center">
             <motion.div variants={fadeUp} initial="hidden" animate="visible">
               <AccentBadge accent="cyan" className="mx-auto">
@@ -831,7 +833,7 @@ export default function SaaSPage() {
       </section>
 
       <section className="relative px-4 py-8 sm:px-6 lg:px-8">
-        <div className="mx-auto grid max-w-[1440px] gap-6 xl:grid-cols-[0.95fr_1.05fr]">
+        <div className="mx-auto grid max-w-full gap-6 xl:grid-cols-[0.95fr_1.05fr]">
           <motion.div whileHover={{ y: -4 }} transition={{ duration: 0.18 }}>
             <PremiumSurface accent="cyan" className="h-full">
               <AccentBadge accent="cyan">Quick path</AccentBadge>
@@ -918,8 +920,11 @@ curl https://stripe-dev.binboi.link/health`}</code>
         </div>
       </section>
 
+      <LandingSectionDivider label="Operator surfaces" />
+      <LandingSignalBand />
+
       <section className="relative px-4 py-10 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-[1440px]">
+        <div className="mx-auto max-w-full">
           <SectionHeading
             eyebrow="Inspection surfaces"
             accent="magenta"
@@ -968,6 +973,8 @@ curl https://stripe-dev.binboi.link/health`}</code>
           </div>
         </div>
       </section>
+
+      <LandingSectionDivider label="Provider flows" />
 
       <section className="relative px-4 py-10 sm:px-6 lg:px-8">
         <div className="mx-auto grid max-w-[1440px] gap-6 xl:grid-cols-[1.15fr_0.85fr]">
@@ -1035,6 +1042,8 @@ curl https://stripe-dev.binboi.link/health`}</code>
           </div>
         </div>
       </section>
+
+      <LandingSectionDivider label="Start cleanly" />
 
       <section className="relative px-4 pb-20 pt-8 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-[1440px]">

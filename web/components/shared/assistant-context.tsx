@@ -45,8 +45,20 @@ function mergeContext(base: AssistantContext, override: AssistantContext): Assis
             method: override.requestContext?.method ?? base.requestContext?.method,
             path: override.requestContext?.path ?? base.requestContext?.path,
             status: override.requestContext?.status ?? base.requestContext?.status,
+            durationMs:
+              override.requestContext?.durationMs ?? base.requestContext?.durationMs,
+            provider: override.requestContext?.provider ?? base.requestContext?.provider,
+            source: override.requestContext?.source ?? base.requestContext?.source,
             target: override.requestContext?.target ?? base.requestContext?.target,
+            destination:
+              override.requestContext?.destination ?? base.requestContext?.destination,
             errorType: override.requestContext?.errorType ?? base.requestContext?.errorType,
+            requestPreview:
+              override.requestContext?.requestPreview ?? base.requestContext?.requestPreview,
+            responsePreview:
+              override.requestContext?.responsePreview ?? base.requestContext?.responsePreview,
+            tunnelId: override.requestContext?.tunnelId ?? base.requestContext?.tunnelId,
+            timestamp: override.requestContext?.timestamp ?? base.requestContext?.timestamp,
             summary: override.requestContext?.summary ?? base.requestContext?.summary,
           }
         : undefined,
@@ -60,6 +72,20 @@ function mergeContext(base: AssistantContext, override: AssistantContext): Assis
               override.webhookContext?.deliveryStatus ?? base.webhookContext?.deliveryStatus,
             signatureHeader:
               override.webhookContext?.signatureHeader ?? base.webhookContext?.signatureHeader,
+            retries: override.webhookContext?.retries ?? base.webhookContext?.retries,
+            latencyMs: override.webhookContext?.latencyMs ?? base.webhookContext?.latencyMs,
+            destination:
+              override.webhookContext?.destination ?? base.webhookContext?.destination,
+            receivedAt:
+              override.webhookContext?.receivedAt ?? base.webhookContext?.receivedAt,
+            errorClassification:
+              override.webhookContext?.errorClassification ??
+              base.webhookContext?.errorClassification,
+            payloadPreview:
+              override.webhookContext?.payloadPreview ?? base.webhookContext?.payloadPreview,
+            responsePreview:
+              override.webhookContext?.responsePreview ?? base.webhookContext?.responsePreview,
+            attemptId: override.webhookContext?.attemptId ?? base.webhookContext?.attemptId,
             summary: override.webhookContext?.summary ?? base.webhookContext?.summary,
           }
         : undefined,

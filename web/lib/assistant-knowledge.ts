@@ -203,6 +203,26 @@ export const assistantDocuments: AssistantDocument[] = [
     keywords: ["dashboard", "access tokens", "token manager", "revoke", "plan limits", "last used"],
   },
   {
+    id: "dashboard-webhook-debugger",
+    title: "Webhook debugger",
+    href: "/dashboard/endpoints",
+    kind: "dashboard",
+    excerpt:
+      "Inspect provider deliveries, retries, payload previews, response previews, and AI-assisted failure explanations.",
+    body:
+      "The webhook debugger is built around Stripe, Clerk, Supabase, GitHub, Linear, and Neon-style deliveries. It helps operators filter failures, compare payload and response previews, inspect retries, and explain request errors without inventing missing runtime data.",
+    keywords: [
+      "dashboard",
+      "webhooks",
+      "debugger",
+      "deliveries",
+      "retries",
+      "payload preview",
+      "response preview",
+      "explain error",
+    ],
+  },
+  {
     id: "pricing",
     title: "Pricing foundations",
     href: "/pricing",
@@ -291,15 +311,25 @@ function buildContextTerms(context?: AssistantContext) {
       context.docsContext?.topics?.join(" "),
       context.requestContext?.method,
       context.requestContext?.path,
+      context.requestContext?.provider,
+      context.requestContext?.source,
       context.requestContext?.target,
+      context.requestContext?.destination,
       context.requestContext?.errorType,
+      context.requestContext?.requestPreview,
+      context.requestContext?.responsePreview,
       context.requestContext?.summary,
       String(context.requestContext?.status ?? ""),
+      String(context.requestContext?.durationMs ?? ""),
       context.webhookContext?.provider,
       context.webhookContext?.eventType,
       context.webhookContext?.endpoint,
       context.webhookContext?.deliveryStatus,
+      context.webhookContext?.destination,
+      context.webhookContext?.errorClassification,
       context.webhookContext?.signatureHeader,
+      context.webhookContext?.payloadPreview,
+      context.webhookContext?.responsePreview,
       context.webhookContext?.summary,
       context.logContext?.summary,
       context.logContext?.levels?.join(" "),
@@ -400,9 +430,31 @@ export function buildTroubleshootingHints(
       `The current request context reports ${context.requestContext.errorType}. Focus on the exact route, target service, and whether the failure happened before or after the app handled the request.`,
     );
   }
+  if (
+    typeof context?.requestContext?.status === "number" &&
+    context.requestContext.status >= 500
+  ) {
+    hints.push(
+      "A 5xx status usually means the request reached your app and failed there. Compare the response preview, logs, and local handler behavior before changing tunnel settings.",
+    );
+  }
+  if (
+    typeof context?.requestContext?.status === "number" &&
+    context.requestContext.status >= 400 &&
+    context.requestContext.status < 500
+  ) {
+    hints.push(
+      "A 4xx status often points to route mismatch, auth, signature verification, or schema validation issues rather than transport reachability.",
+    );
+  }
   if (context?.webhookContext?.provider) {
     hints.push(
       `This page is already scoped to ${context.webhookContext.provider}. Check provider-specific signature headers, retry behavior, and the configured endpoint before changing tunnel settings.`,
+    );
+  }
+  if (context?.webhookContext?.errorClassification) {
+    hints.push(
+      `Current webhook classification: ${context.webhookContext.errorClassification}. Use that classification to decide whether to inspect the route, signature validation, provider retries, or your application response body next.`,
     );
   }
   if (context?.logContext?.recent?.length) {

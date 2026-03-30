@@ -115,7 +115,10 @@ function sanitizeContext(context?: AssistantContext): AssistantContext | undefin
   const requestContext =
     context.requestContext &&
     (context.requestContext.path ||
+      context.requestContext.provider ||
+      context.requestContext.source ||
       context.requestContext.target ||
+      context.requestContext.destination ||
       context.requestContext.summary ||
       context.requestContext.errorType)
       ? {
@@ -126,8 +129,19 @@ function sanitizeContext(context?: AssistantContext): AssistantContext | undefin
             typeof context.requestContext.status === "string"
               ? context.requestContext.status
               : undefined,
+          durationMs:
+            typeof context.requestContext.durationMs === "number"
+              ? context.requestContext.durationMs
+              : undefined,
+          provider: clampText(context.requestContext.provider, 80),
+          source: clampText(context.requestContext.source, 80),
           target: clampText(context.requestContext.target, 180),
+          destination: clampText(context.requestContext.destination, 180),
           errorType: clampText(context.requestContext.errorType, 80),
+          requestPreview: clampText(context.requestContext.requestPreview, 320),
+          responsePreview: clampText(context.requestContext.responsePreview, 320),
+          tunnelId: clampText(context.requestContext.tunnelId, 80),
+          timestamp: clampText(context.requestContext.timestamp, 120),
           summary: clampText(context.requestContext.summary),
         }
       : undefined;
@@ -137,6 +151,8 @@ function sanitizeContext(context?: AssistantContext): AssistantContext | undefin
     (context.webhookContext.provider ||
       context.webhookContext.eventType ||
       context.webhookContext.endpoint ||
+      context.webhookContext.destination ||
+      context.webhookContext.errorClassification ||
       context.webhookContext.summary)
       ? {
           provider: clampText(context.webhookContext.provider, 80),
@@ -144,6 +160,20 @@ function sanitizeContext(context?: AssistantContext): AssistantContext | undefin
           endpoint: clampText(context.webhookContext.endpoint, 180),
           deliveryStatus: clampText(context.webhookContext.deliveryStatus, 60),
           signatureHeader: clampText(context.webhookContext.signatureHeader, 60),
+          retries:
+            typeof context.webhookContext.retries === "number"
+              ? context.webhookContext.retries
+              : undefined,
+          latencyMs:
+            typeof context.webhookContext.latencyMs === "number"
+              ? context.webhookContext.latencyMs
+              : undefined,
+          destination: clampText(context.webhookContext.destination, 180),
+          receivedAt: clampText(context.webhookContext.receivedAt, 120),
+          errorClassification: clampText(context.webhookContext.errorClassification, 120),
+          payloadPreview: clampText(context.webhookContext.payloadPreview, 320),
+          responsePreview: clampText(context.webhookContext.responsePreview, 320),
+          attemptId: clampText(context.webhookContext.attemptId, 80),
           summary: clampText(context.webhookContext.summary),
         }
       : undefined;
@@ -231,11 +261,32 @@ function buildContextHits(context?: AssistantContext): AssistantRuntimeHit[] {
         context.requestContext.status
           ? `Status: ${context.requestContext.status}.`
           : undefined,
+        context.requestContext.durationMs
+          ? `Duration: ${context.requestContext.durationMs}ms.`
+          : undefined,
+        context.requestContext.provider || context.requestContext.source
+          ? `Source: ${context.requestContext.provider || context.requestContext.source}.`
+          : undefined,
         context.requestContext.target
           ? `Target: ${context.requestContext.target}.`
           : undefined,
+        context.requestContext.destination
+          ? `Destination: ${context.requestContext.destination}.`
+          : undefined,
         context.requestContext.errorType
           ? `Error type: ${context.requestContext.errorType}.`
+          : undefined,
+        context.requestContext.requestPreview
+          ? `Request preview: ${context.requestContext.requestPreview}.`
+          : undefined,
+        context.requestContext.responsePreview
+          ? `Response preview: ${context.requestContext.responsePreview}.`
+          : undefined,
+        context.requestContext.tunnelId
+          ? `Tunnel: ${context.requestContext.tunnelId}.`
+          : undefined,
+        context.requestContext.timestamp
+          ? `At: ${context.requestContext.timestamp}.`
           : undefined,
       ]
         .filter(Boolean)
@@ -257,11 +308,35 @@ function buildContextHits(context?: AssistantContext): AssistantRuntimeHit[] {
         context.webhookContext.endpoint
           ? `Endpoint: ${context.webhookContext.endpoint}.`
           : undefined,
+        context.webhookContext.destination
+          ? `Destination: ${context.webhookContext.destination}.`
+          : undefined,
         context.webhookContext.deliveryStatus
           ? `Delivery: ${context.webhookContext.deliveryStatus}.`
           : undefined,
+        typeof context.webhookContext.retries === "number"
+          ? `Retries: ${context.webhookContext.retries}.`
+          : undefined,
+        typeof context.webhookContext.latencyMs === "number"
+          ? `Latency: ${context.webhookContext.latencyMs}ms.`
+          : undefined,
+        context.webhookContext.receivedAt
+          ? `Received: ${context.webhookContext.receivedAt}.`
+          : undefined,
+        context.webhookContext.errorClassification
+          ? `Error class: ${context.webhookContext.errorClassification}.`
+          : undefined,
         context.webhookContext.signatureHeader
           ? `Signature header: ${context.webhookContext.signatureHeader}.`
+          : undefined,
+        context.webhookContext.payloadPreview
+          ? `Payload preview: ${context.webhookContext.payloadPreview}.`
+          : undefined,
+        context.webhookContext.responsePreview
+          ? `Response preview: ${context.webhookContext.responsePreview}.`
+          : undefined,
+        context.webhookContext.attemptId
+          ? `Attempt: ${context.webhookContext.attemptId}.`
           : undefined,
       ]
         .filter(Boolean)
@@ -301,9 +376,15 @@ function buildRuntimeHits(input: {
     [
       input.query,
       input.context?.requestContext?.path,
+      input.context?.requestContext?.provider,
+      input.context?.requestContext?.source,
       input.context?.requestContext?.target,
+      input.context?.requestContext?.destination,
+      input.context?.requestContext?.responsePreview,
       input.context?.webhookContext?.provider,
       input.context?.webhookContext?.eventType,
+      input.context?.webhookContext?.destination,
+      input.context?.webhookContext?.errorClassification,
     ]
       .filter(Boolean)
       .join(" "),
@@ -406,11 +487,25 @@ function buildContextNote(context?: AssistantContext) {
       `Request context: ${context.requestContext.summary || context.requestContext.errorType}.`,
     );
   }
+  if (context.requestContext?.status || context.requestContext?.durationMs) {
+    parts.push(
+      `Request status: ${
+        context.requestContext.status ?? "unknown"
+      } with duration ${context.requestContext.durationMs ?? "unknown"}ms.`,
+    );
+  }
   if (context.webhookContext?.provider || context.webhookContext?.summary) {
     parts.push(
       `Webhook context: ${
         context.webhookContext.summary || context.webhookContext.provider
       }.`,
+    );
+  }
+  if (context.webhookContext?.deliveryStatus || context.webhookContext?.errorClassification) {
+    parts.push(
+      `Webhook delivery: ${
+        context.webhookContext.deliveryStatus ?? "unknown"
+      } with class ${context.webhookContext.errorClassification ?? "unspecified"}.`,
     );
   }
   if (context.logContext?.summary) {

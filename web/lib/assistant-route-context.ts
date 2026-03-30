@@ -330,6 +330,18 @@ const routeContextCatalog: Record<string, RouteAssistantContext> = {
       },
     },
   },
+  "/dashboard/endpoints": {
+    label: "Webhook debugger",
+    context: {
+      currentPage: {
+        path: "/dashboard/endpoints",
+        title: "Webhook debugger",
+        area: "dashboard",
+        summary:
+          "Webhook delivery investigation surface with provider filtering, previews, retries, and AI-powered failure explanation.",
+      },
+    },
+  },
   "/dashboard/ai": {
     label: "AI Assistant",
     context: {

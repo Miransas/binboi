@@ -1,7 +1,5 @@
-import { DashboardPageShell } from "@/components/dashboard/shared/page-shell";
-import { dashboardPageContent } from "@/lib/dashboard-content";
+import { WebhookDebugWorkbench } from "@/components/dashboard/webhooks/webhook-debug-workbench";
 
 export default function EndpointsPage() {
-  const content = dashboardPageContent.endpoints;
-  return <DashboardPageShell {...content} />;
+  return <WebhookDebugWorkbench />;
 }

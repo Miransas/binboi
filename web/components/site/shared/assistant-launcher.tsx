@@ -75,9 +75,9 @@ export function AssistantLauncher({
             onClick={() => setOpen(false)}
           />
 
-          <div className="relative z-[81] mx-auto flex min-h-screen max-w-7xl items-start px-4 pb-8 pt-18 sm:px-6 lg:px-8">
-            <div className="w-full">
-              <div className="mb-4 flex justify-end">
+          <div className="relative z-[81] mx-auto flex min-h-screen max-w-7xl items-center px-4 pb-4 pt-20 sm:px-6 lg:px-8">
+            <div className="flex w-full flex-col">
+              <div className="mb-3 flex justify-end">
                 <button
                   type="button"
                   onClick={() => setOpen(false)}
@@ -94,10 +94,10 @@ export function AssistantLauncher({
                 storageKey={storageKey || `launcher-${variant}`}
                 title="Search docs, runtime, and troubleshooting from one place"
                 description="Ask about CLI authentication, tunnels, request failures, webhook signatures, or logs. The assistant keeps history for this browser session and stays useful even without live AI access."
-                className="relative overflow-hidden"
+                className="relative"
               />
 
-              <div className="mt-4 flex flex-wrap items-center gap-2 px-2 text-xs text-zinc-500">
+              <div className="mt-3 flex flex-wrap items-center gap-2 px-2 text-xs text-zinc-500">
                 <Sparkles className="h-3.5 w-3.5 text-miransas-cyan" />
                 Server-side only. No OpenAI credential is exposed to the client.
               </div>

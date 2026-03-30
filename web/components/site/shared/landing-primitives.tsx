@@ -146,6 +146,8 @@ export function PremiumSurface({
       <div className="pointer-events-none absolute inset-[1px] rounded-[calc(2rem-1px)] bg-[linear-gradient(180deg,rgba(10,10,12,0.96),rgba(4,4,5,0.92))]" />
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.06),transparent_24%,transparent_72%,rgba(255,255,255,0.02))]" />
       <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+      <div className="pointer-events-none absolute inset-x-16 bottom-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+      <div className="pointer-events-none absolute left-[-12%] top-[-18%] h-36 w-36 rounded-full bg-white/[0.05] blur-3xl" />
       <div
         className={cn(
           "pointer-events-none absolute -inset-px rounded-[inherit] opacity-0 blur-2xl transition duration-700 group-hover:opacity-100",

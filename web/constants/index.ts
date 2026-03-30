@@ -35,7 +35,7 @@ export const DASHBOARD_LINKS = [
   {
     title: "Universal Gateway",
     items: [
-      { label: "Endpoints & Traffic Policy", href: "/dashboard/endpoints", icon: FiGlobe },
+      { label: "Webhook Debugger", href: "/dashboard/endpoints", icon: FiGlobe },
       { label: "AI Assistant", href: "/dashboard/ai", icon: Sparkles, badge: "New" },
       { label: "Domains", href: "/dashboard/domains", icon: FiLink },
       { label: "TCP Addresses", href: "/dashboard/tcp", icon: FiLink },
