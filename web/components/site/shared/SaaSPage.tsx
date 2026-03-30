@@ -920,8 +920,8 @@ curl https://stripe-dev.binboi.link/health`}</code>
         </div>
       </section>
 
-      <LandingSectionDivider label="Operator surfaces" />
-      <LandingSignalBand />
+      {/* <LandingSectionDivider label="Operator surfaces" />
+      <LandingSignalBand /> */}
 
       <section className="relative px-4 py-10 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-full">
@@ -1043,7 +1043,7 @@ curl https://stripe-dev.binboi.link/health`}</code>
         </div>
       </section>
 
-      <LandingSectionDivider label="Start cleanly" />
+      {/* <LandingSectionDivider label="Start cleanly" /> */}
 
       <section className="relative px-4 pb-20 pt-8 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-[1440px]">

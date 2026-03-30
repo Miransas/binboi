@@ -23,7 +23,7 @@ export function AssistantComposer({
 }: AssistantComposerProps) {
   return (
     <form
-      className="border-t border-white/10 bg-[linear-gradient(180deg,rgba(7,7,9,0.9),rgba(3,3,4,0.98))] px-4 py-4 backdrop-blur sm:px-5"
+      className="sticky bottom-0 z-10 border-t border-white/10 bg-[linear-gradient(180deg,rgba(7,7,9,0.9),rgba(3,3,4,0.98))] px-4 py-4 backdrop-blur sm:px-5"
       onSubmit={(event) => {
         event.preventDefault();
         onSubmit();

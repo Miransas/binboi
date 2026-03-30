@@ -12,7 +12,7 @@ export function AssistantPanelHeader({
   onClear,
 }: AssistantPanelHeaderProps) {
   return (
-    <div className="border-b border-white/10 bg-[linear-gradient(180deg,rgba(10,10,12,0.98),rgba(10,10,12,0.86))] px-4 py-4 backdrop-blur sm:px-5">
+    <div className="sticky top-0 z-10 border-b border-white/10 bg-[linear-gradient(180deg,rgba(10,10,12,0.98),rgba(10,10,12,0.86))] px-4 py-4 backdrop-blur sm:px-5">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="max-w-2xl">
           <div className="inline-flex items-center gap-2 rounded-full border border-miransas-cyan/15 bg-miransas-cyan/8 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-miransas-cyan">

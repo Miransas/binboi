@@ -28,10 +28,11 @@ type StoredAssistantMessage = {
 
 const variantClasses: Record<Variant, string> = {
   hero:
-    "rounded-[2rem] border border-white/10 bg-[#070709]/90 shadow-[0_40px_120px_rgba(0,0,0,0.4)] min-h-[42rem] lg:min-h-[46rem]",
+    "rounded-[2rem] border border-white/10 bg-[#070709]/90 shadow-[0_40px_120px_rgba(0,0,0,0.4)] h-[44rem] max-h-[calc(100dvh-8rem)]",
   drawer:
-    "rounded-[2rem] border border-white/10 bg-[#070709]/95 shadow-[0_30px_90px_rgba(0,0,0,0.35)] h-[calc(100dvh-6.5rem)] sm:h-[min(84vh,58rem)]",
-  dashboard: "rounded-[2rem] border border-white/10 bg-[#080808] min-h-[44rem]",
+    "rounded-[2rem] border border-white/10 bg-[#070709]/95 shadow-[0_30px_90px_rgba(0,0,0,0.35)] h-[calc(100dvh-6.5rem)] max-h-[calc(100dvh-6.5rem)] sm:h-[min(84vh,58rem)] sm:max-h-[min(84vh,58rem)]",
+  dashboard:
+    "rounded-[2rem] border border-white/10 bg-[#080808] h-[48rem] max-h-[calc(100dvh-10rem)]",
 };
 
 function createMessage(
@@ -103,6 +104,7 @@ export function BinboiAssistant({
   const [loading, setLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const transcriptRef = useRef<HTMLDivElement>(null);
+  const transcriptEndRef = useRef<HTMLDivElement>(null);
   const previousMessageCountRef = useRef(0);
 
   const activeTitle =
@@ -156,17 +158,22 @@ export function BinboiAssistant({
 
   useEffect(() => {
     const container = transcriptRef.current;
-    if (!container) {
+    const end = transcriptEndRef.current;
+    if (!container || !end) {
       return;
     }
 
     const nextBehavior =
       messages.length > previousMessageCountRef.current || loading ? "smooth" : "auto";
-    container.scrollTo({
-      top: container.scrollHeight,
-      behavior: nextBehavior,
+    const frame = window.requestAnimationFrame(() => {
+      end.scrollIntoView({
+        block: "end",
+        behavior: nextBehavior,
+      });
+      previousMessageCountRef.current = messages.length;
     });
-    previousMessageCountRef.current = messages.length;
+
+    return () => window.cancelAnimationFrame(frame);
   }, [loading, messages]);
 
   async function submit(nextQuery?: string) {
@@ -242,15 +249,15 @@ export function BinboiAssistant({
 
   return (
     <section className={cn(variantClasses[variant], "min-w-0 overflow-hidden", className)}>
-      <div className="grid h-full min-h-0 grid-rows-[auto,minmax(0,1fr),auto]">
+      <div className="flex h-full min-h-0 flex-col overflow-hidden">
         <AssistantPanelHeader
           title={activeTitle}
           description={activeDescription}
           onClear={clearHistory}
         />
 
-        <div className="min-h-0 overflow-y-auto px-4 py-4 sm:px-5 xl:overflow-hidden">
-          <div className="flex min-h-full flex-col gap-4">
+        <div className="min-h-0 flex-1 overflow-hidden px-4 py-4 sm:px-5">
+          <div className="flex h-full min-h-0 flex-col gap-4">
             {error && (
               <div className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-200">
                 {error}
@@ -262,6 +269,7 @@ export function BinboiAssistant({
                 messages={messages}
                 loading={loading}
                 transcriptRef={transcriptRef}
+                endRef={transcriptEndRef}
               />
 
               <AssistantInsights response={latestResponse} />

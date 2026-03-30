@@ -9,7 +9,7 @@ type AssistantInsightsProps = {
 
 export function AssistantInsights({ response }: AssistantInsightsProps) {
   return (
-    <div className="custom-scrollbar flex min-h-[16rem] flex-col gap-4 overflow-y-auto pr-1 xl:min-h-0">
+    <div className="custom-scrollbar hidden min-h-0 flex-col gap-4 overflow-y-auto overscroll-y-contain pr-1 xl:flex">
       <article className="rounded-[1.75rem] border border-white/10 bg-black/35 p-5">
         <div className="flex items-center gap-2">
           <Waypoints className="h-4 w-4 text-miransas-cyan" />

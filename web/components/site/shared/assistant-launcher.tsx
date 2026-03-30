@@ -67,7 +67,7 @@ export function AssistantLauncher({
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-[80]">
+        <div className="fixed inset-0 z-[80] overflow-hidden">
           <button
             type="button"
             aria-label="Close assistant"

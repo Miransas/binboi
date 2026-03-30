@@ -15,15 +15,17 @@ type AssistantTranscriptProps = {
   messages: AssistantTranscriptMessage[];
   loading: boolean;
   transcriptRef: RefObject<HTMLDivElement | null>;
+  endRef: RefObject<HTMLDivElement | null>;
 };
 
 export function AssistantTranscript({
   messages,
   loading,
   transcriptRef,
+  endRef,
 }: AssistantTranscriptProps) {
   return (
-    <article className="grid min-h-[22rem] overflow-hidden rounded-[1.75rem] border border-white/10 bg-black/35 xl:min-h-0 xl:grid-rows-[auto,minmax(0,1fr)]">
+    <article className="grid h-full min-h-0 overflow-hidden rounded-[1.75rem] border border-white/10 bg-black/35 grid-rows-[auto,minmax(0,1fr)]">
       <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
         <div className="flex items-center gap-2">
           <History className="h-4 w-4 text-miransas-cyan" />
@@ -38,7 +40,7 @@ export function AssistantTranscript({
 
       <div
         ref={transcriptRef}
-        className="custom-scrollbar min-h-0 space-y-4 overflow-y-auto px-5 py-5"
+        className="custom-scrollbar min-h-0 space-y-4 overflow-y-auto overscroll-y-contain px-5 py-5"
       >
         {messages.length === 0 ? (
           <div className="grid gap-4 lg:grid-cols-2">
@@ -133,6 +135,8 @@ export function AssistantTranscript({
             </p>
           </div>
         )}
+
+        <div ref={endRef} className="h-px w-full" />
       </div>
     </article>
   );
