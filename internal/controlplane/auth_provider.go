@@ -21,6 +21,12 @@ type AuthIdentity struct {
 	AuthMode    string
 }
 
+type accessAuthenticator interface {
+	Enabled() bool
+	Mode() string
+	ValidateAccessToken(context.Context, string) (*AuthIdentity, error)
+}
+
 type authProvider struct {
 	pool *pgxpool.Pool
 }

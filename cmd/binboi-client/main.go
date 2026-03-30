@@ -31,6 +31,8 @@ func main() {
 		handleLegacyAuthAlias(os.Args[2:])
 	case "whoami":
 		handleWhoAmI(os.Args[2:])
+	case "http":
+		handleStart()
 	case "start":
 		handleStart()
 	case "version":
@@ -154,7 +156,8 @@ func showHelp() {
 	fmt.Println("\nCommands:")
 	fmt.Println("  login [--token ...]  Verify and save an access token")
 	fmt.Println("  whoami               Show the authenticated account")
-	fmt.Println("  start <port> [sub]   Start a tunnel for the local port")
+	fmt.Println("  http <port> [sub]    Start an HTTP tunnel for the local port")
+	fmt.Println("  start <port> [sub]   Alias for 'http'")
 	fmt.Println("  version              Show the CLI version")
 	fmt.Println("\nEnvironment:")
 	fmt.Println("  BINBOI_API_URL       Control plane API URL for login/whoami")

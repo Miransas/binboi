@@ -1,8 +1,8 @@
-package  auth
-
+package auth
 
 import (
 	"crypto/sha256"
+	"crypto/subtle"
 	"encoding/hex"
 )
 
@@ -15,5 +15,9 @@ func HashToken(token string) string {
 
 // CheckToken validates a raw token against a stored hashed version
 func CheckToken(rawToken, storedHash string) bool {
-	return HashToken(rawToken) == storedHash
+	computed := HashToken(rawToken)
+	if len(computed) != len(storedHash) {
+		return false
+	}
+	return subtle.ConstantTimeCompare([]byte(computed), []byte(storedHash)) == 1
 }

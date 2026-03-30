@@ -1,6 +1,5 @@
 package main
 
-
 import (
 	"testing"
 )
@@ -33,6 +32,13 @@ func TestParseStartArgs(t *testing.T) {
 			fallbackName: "ignore-me",
 			wantPort:     5000,
 			wantSub:      "asardor",
+		},
+		{
+			name:         "supports the http command alias",
+			args:         []string{"binboi", "http", "9090", "preview-app"},
+			fallbackName: "ignore-me",
+			wantPort:     9090,
+			wantSub:      "preview-app",
 		},
 		{
 			name:         "falls back to default port on invalid input",

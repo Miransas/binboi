@@ -332,7 +332,7 @@ export default function DashboardPage() {
           />
         </div>
 
-        <TerminalLog />
+        {/* <TerminalLog /> */}
       </div>
     </div>
   );

@@ -121,6 +121,9 @@ type InstanceToken struct {
 type TunnelRecord struct {
 	ID                 string `gorm:"primaryKey"`
 	Subdomain          string `gorm:"uniqueIndex"`
+	OwnerUserID        string `gorm:"index"`
+	OwnerEmail         string
+	AuthMode           string
 	Target             string
 	TargetPort         int
 	Status             string
@@ -137,6 +140,8 @@ type TunnelRecord struct {
 type DomainRecord struct {
 	ID          uint   `gorm:"primaryKey"`
 	Name        string `gorm:"uniqueIndex"`
+	OwnerUserID string `gorm:"index"`
+	OwnerEmail  string
 	Type        string
 	Status      string
 	ExpectedTXT string
@@ -186,7 +191,7 @@ type activeSession struct {
 type Service struct {
 	cfg          Config
 	db           *gorm.DB
-	authProvider *authProvider
+	authProvider accessAuthenticator
 
 	mu       sync.RWMutex
 	sessions map[string]*activeSession
@@ -194,6 +199,16 @@ type Service struct {
 	logMu   sync.Mutex
 	clients map[*websocket.Conn]struct{}
 	backlog []string
+}
+
+type requestAccess struct {
+	Identity     *AuthIdentity
+	TrustedLocal bool
+}
+
+type routeAccessError struct {
+	Status  int
+	Message string
 }
 
 type TunnelResponse struct {
@@ -346,25 +361,24 @@ func (s *Service) RegisterRoutes(r *gin.Engine) {
 	api.GET("/nodes", func(c *gin.Context) {
 		c.JSON(http.StatusOK, s.listNodes())
 	})
-	api.GET("/events", func(c *gin.Context) {
-		events, err := s.listEvents(maxRecentEventRows)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load events"})
-			return
-		}
-		c.JSON(http.StatusOK, events)
-	})
-	api.GET("/requests", s.handleListRequests)
-	api.GET("/tunnels", s.handleListTunnels)
-	api.GET("/tunnels/:scope", s.handleListTunnels)
-	api.POST("/tunnels", s.handleCreateTunnel)
-	api.DELETE("/tunnels/:id", s.handleDeleteTunnel)
-	api.GET("/tokens/current", s.handleCurrentToken)
-	api.POST("/tokens/generate", s.handleGenerateToken)
-	api.POST("/tokens/revoke", s.handleRevokeSessions)
-	api.GET("/domains", s.handleListDomains)
-	api.POST("/domains", s.handleCreateDomain)
-	api.POST("/domains/verify", s.handleVerifyDomain)
+
+	operator := api.Group("/")
+	operator.Use(s.requireControlPlaneAccess())
+	operator.GET("/events", s.handleListEvents)
+	operator.GET("/requests", s.handleListRequests)
+	operator.GET("/tunnels", s.handleListTunnels)
+	operator.GET("/tunnels/:scope", s.handleListTunnels)
+	operator.POST("/tunnels", s.handleCreateTunnel)
+	operator.DELETE("/tunnels/:id", s.handleDeleteTunnel)
+	operator.GET("/domains", s.handleListDomains)
+	operator.POST("/domains", s.handleCreateDomain)
+	operator.POST("/domains/verify", s.handleVerifyDomain)
+
+	admin := api.Group("/")
+	admin.Use(s.requireTrustedLocalAccess())
+	admin.GET("/tokens/current", s.handleCurrentToken)
+	admin.POST("/tokens/generate", s.handleGenerateToken)
+	admin.POST("/tokens/revoke", s.handleRevokeSessions)
 
 	apiV1 := r.Group("/api/v1")
 	apiV1.GET("/auth/me", s.handleAuthMe)
@@ -410,13 +424,14 @@ func (s *Service) HandleTunnelConnection(conn net.Conn) {
 
 	identity, err := s.authenticateToken(authToken)
 	if err != nil {
-		s.writeHandshakeError(conn, "token rejected")
+		s.writeHandshakeError(conn, err.Error())
 		s.broadcastLog("warn", fmt.Sprintf("Rejected tunnel connection for %s", subdomain), subdomain)
 		return
 	}
 
-	if err := s.upsertTunnelOnConnect(subdomain, payload.LocalPort); err != nil {
-		s.writeHandshakeError(conn, "could not prepare tunnel state")
+	if err := s.upsertTunnelOnConnect(subdomain, payload.LocalPort, identity); err != nil {
+		s.broadcastLog("warn", fmt.Sprintf("Rejected tunnel connection for %s: %v", subdomain, err), subdomain)
+		s.writeHandshakeError(conn, err.Error())
 		return
 	}
 
@@ -578,6 +593,18 @@ func (s *Service) BuildPublicURL(subdomain string) string {
 }
 
 func (s *Service) handleLogsSocket(c *gin.Context) {
+	access, accessErr := s.resolveRequestAccess(c.Request)
+	if accessErr != nil {
+		c.JSON(accessErr.Status, gin.H{"error": accessErr.Message})
+		return
+	}
+	if access.Identity != nil {
+		// The websocket is currently an operator log stream. Machine tokens can use
+		// the HTTP APIs, but live logs stay reserved for local control-plane access.
+		c.JSON(http.StatusForbidden, gin.H{"error": "live log streaming is only available from the local control plane host"})
+		return
+	}
+
 	conn, err := wsUpgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		return
@@ -617,17 +644,107 @@ func (s *Service) requestLogger() gin.HandlerFunc {
 	}
 }
 
-func (s *Service) handleListTunnels(c *gin.Context) {
-	records, err := s.listTunnels()
+func (s *Service) requireControlPlaneAccess() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		access, accessErr := s.resolveRequestAccess(c.Request)
+		if accessErr != nil {
+			c.AbortWithStatusJSON(accessErr.Status, gin.H{"error": accessErr.Message})
+			return
+		}
+
+		c.Set("binboi.request_access", access)
+		c.Next()
+	}
+}
+
+func (s *Service) requireTrustedLocalAccess() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if !isTrustedLocalRequest(c.Request) {
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
+				"error": "This endpoint is only available from the local Binboi control plane host.",
+			})
+			return
+		}
+
+		c.Set("binboi.request_access", requestAccess{TrustedLocal: true})
+		c.Next()
+	}
+}
+
+func (s *Service) resolveRequestAccess(r *http.Request) (requestAccess, *routeAccessError) {
+	token := extractBearerToken(r)
+	if token != "" {
+		identity, err := s.authenticateToken(token)
+		if err != nil {
+			return requestAccess{}, &routeAccessError{
+				Status:  http.StatusUnauthorized,
+				Message: "invalid access token",
+			}
+		}
+		return requestAccess{Identity: identity}, nil
+	}
+
+	if isTrustedLocalRequest(r) {
+		return requestAccess{TrustedLocal: true}, nil
+	}
+
+	return requestAccess{}, &routeAccessError{
+		Status:  http.StatusUnauthorized,
+		Message: "missing access token",
+	}
+}
+
+func currentRequestAccess(c *gin.Context) requestAccess {
+	value, ok := c.Get("binboi.request_access")
+	if !ok {
+		return requestAccess{}
+	}
+
+	access, ok := value.(requestAccess)
+	if !ok {
+		return requestAccess{}
+	}
+
+	return access
+}
+
+func isTrustedLocalRequest(r *http.Request) bool {
+	host, _, err := net.SplitHostPort(strings.TrimSpace(r.RemoteAddr))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list tunnels"})
+		host = strings.TrimSpace(r.RemoteAddr)
+	}
+	ip := net.ParseIP(host)
+	if ip == nil {
+		return false
+	}
+
+	return ip.IsLoopback() || ip.IsPrivate() || ip.IsUnspecified()
+}
+
+func (s *Service) handleListTunnels(c *gin.Context) {
+	records, err := s.listTunnels(currentRequestAccess(c), c.Param("scope"))
+	if err != nil {
+		status := http.StatusInternalServerError
+		if strings.Contains(strings.ToLower(err.Error()), "unsupported tunnel scope") {
+			status = http.StatusBadRequest
+		}
+		c.JSON(status, gin.H{"error": err.Error()})
 		return
 	}
 	c.JSON(http.StatusOK, records)
 }
 
+func (s *Service) handleListEvents(c *gin.Context) {
+	events, err := s.listEvents(maxRecentEventRows, currentRequestAccess(c))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load events"})
+		return
+	}
+	c.JSON(http.StatusOK, events)
+}
+
 func (s *Service) handleListRequests(c *gin.Context) {
-	requests, err := s.listRequests(maxRecentRequestRows)
+	requests, err := s.listRequests(maxRecentRequestRows, currentRequestAccess(c))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list requests"})
 		return
@@ -646,9 +763,13 @@ func (s *Service) handleCreateTunnel(c *gin.Context) {
 		return
 	}
 
-	record, err := s.createTunnel(req.Subdomain, req.Target, req.Region)
+	record, err := s.createTunnel(req.Subdomain, req.Target, req.Region, currentRequestAccess(c))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		status := http.StatusBadRequest
+		if strings.Contains(strings.ToLower(err.Error()), "already reserved") {
+			status = http.StatusConflict
+		}
+		c.JSON(status, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -663,10 +784,12 @@ func (s *Service) handleDeleteTunnel(c *gin.Context) {
 		return
 	}
 
-	if err := s.deleteTunnel(id); err != nil {
+	if err := s.deleteTunnel(id, currentRequestAccess(c)); err != nil {
 		status := http.StatusInternalServerError
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			status = http.StatusNotFound
+		} else if strings.Contains(strings.ToLower(err.Error()), "another account") {
+			status = http.StatusForbidden
 		}
 		c.JSON(status, gin.H{"error": err.Error()})
 		return
@@ -676,7 +799,7 @@ func (s *Service) handleDeleteTunnel(c *gin.Context) {
 }
 
 func (s *Service) handleCurrentToken(c *gin.Context) {
-	if s.authProvider.Enabled() {
+	if s.authProvider != nil && s.authProvider.Enabled() {
 		c.JSON(http.StatusConflict, gin.H{"error": "Personal access tokens are managed through the dashboard API."})
 		return
 	}
@@ -696,7 +819,7 @@ func (s *Service) handleCurrentToken(c *gin.Context) {
 }
 
 func (s *Service) handleGenerateToken(c *gin.Context) {
-	if s.authProvider.Enabled() {
+	if s.authProvider != nil && s.authProvider.Enabled() {
 		c.JSON(http.StatusConflict, gin.H{"error": "Personal access tokens are managed through the dashboard API."})
 		return
 	}
@@ -712,7 +835,7 @@ func (s *Service) handleGenerateToken(c *gin.Context) {
 }
 
 func (s *Service) handleRevokeSessions(c *gin.Context) {
-	if s.authProvider.Enabled() {
+	if s.authProvider != nil && s.authProvider.Enabled() {
 		c.JSON(http.StatusConflict, gin.H{"error": "Personal access tokens are managed through the dashboard API."})
 		return
 	}
@@ -727,7 +850,7 @@ func (s *Service) handleRevokeSessions(c *gin.Context) {
 }
 
 func (s *Service) handleListDomains(c *gin.Context) {
-	domains, err := s.listDomains()
+	domains, err := s.listDomains(currentRequestAccess(c))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load domains"})
 		return
@@ -744,7 +867,7 @@ func (s *Service) handleCreateDomain(c *gin.Context) {
 		return
 	}
 
-	record, err := s.createDomain(req.Domain)
+	record, err := s.createDomain(req.Domain, currentRequestAccess(c))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -768,7 +891,7 @@ func (s *Service) handleVerifyDomain(c *gin.Context) {
 		return
 	}
 
-	result, err := s.verifyDomain(req.DomainName)
+	result, err := s.verifyDomain(req.DomainName, currentRequestAccess(c))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -858,9 +981,24 @@ func (s *Service) rotateToken() (string, error) {
 	return newValue, nil
 }
 
-func (s *Service) listTunnels() ([]TunnelResponse, error) {
+func (s *Service) listTunnels(access requestAccess, scope string) ([]TunnelResponse, error) {
 	var records []TunnelRecord
-	if err := s.db.Order("created_at desc").Find(&records).Error; err != nil {
+	query := s.db.Model(&TunnelRecord{})
+	if access.Identity != nil && s.authProvider != nil && s.authProvider.Enabled() {
+		query = query.Where("owner_user_id = ?", access.Identity.UserID)
+	}
+
+	switch strings.ToLower(strings.TrimSpace(scope)) {
+	case "active":
+		query = query.Where("status = ?", "ACTIVE")
+	case "inactive":
+		query = query.Where("status <> ?", "ACTIVE")
+	case "", "all":
+	default:
+		return nil, errors.New("unsupported tunnel scope")
+	}
+
+	if err := query.Order("created_at desc").Find(&records).Error; err != nil {
 		return nil, err
 	}
 
@@ -886,7 +1024,7 @@ func (s *Service) mapTunnelRecord(record TunnelRecord) TunnelResponse {
 	}
 }
 
-func (s *Service) createTunnel(subdomain, target, region string) (TunnelRecord, error) {
+func (s *Service) createTunnel(subdomain, target, region string, access requestAccess) (TunnelRecord, error) {
 	normalizedSubdomain, err := normalizeSubdomain(subdomain)
 	if err != nil {
 		return TunnelRecord{}, err
@@ -905,6 +1043,11 @@ func (s *Service) createTunnel(subdomain, target, region string) (TunnelRecord, 
 		Status:     "INACTIVE",
 		Region:     fallbackString(region, s.cfg.DefaultRegion),
 	}
+	if access.Identity != nil {
+		record.OwnerUserID = access.Identity.UserID
+		record.OwnerEmail = access.Identity.Email
+		record.AuthMode = access.Identity.AuthMode
+	}
 
 	if err := s.db.Create(&record).Error; err != nil {
 		if strings.Contains(strings.ToLower(err.Error()), "unique") {
@@ -916,7 +1059,7 @@ func (s *Service) createTunnel(subdomain, target, region string) (TunnelRecord, 
 	return record, nil
 }
 
-func (s *Service) upsertTunnelOnConnect(subdomain string, localPort int) error {
+func (s *Service) upsertTunnelOnConnect(subdomain string, localPort int, identity *AuthIdentity) error {
 	now := time.Now().UTC()
 	target := fmt.Sprintf("http://localhost:%d", localPort)
 
@@ -926,6 +1069,9 @@ func (s *Service) upsertTunnelOnConnect(subdomain string, localPort int) error {
 		record = TunnelRecord{
 			ID:              uuid.NewString(),
 			Subdomain:       subdomain,
+			OwnerUserID:     identity.UserID,
+			OwnerEmail:      identity.Email,
+			AuthMode:        identity.AuthMode,
 			Target:          target,
 			TargetPort:      localPort,
 			Status:          "ACTIVE",
@@ -937,8 +1083,14 @@ func (s *Service) upsertTunnelOnConnect(subdomain string, localPort int) error {
 	if err != nil {
 		return err
 	}
+	if s.authProvider != nil && s.authProvider.Enabled() && record.OwnerUserID != "" && record.OwnerUserID != identity.UserID {
+		return errors.New("subdomain is reserved by another account")
+	}
 
 	return s.db.Model(&record).Updates(map[string]any{
+		"owner_user_id":     fallbackString(record.OwnerUserID, identity.UserID),
+		"owner_email":       fallbackString(record.OwnerEmail, identity.Email),
+		"auth_mode":         fallbackString(record.AuthMode, identity.AuthMode),
 		"target":            target,
 		"target_port":       localPort,
 		"status":            "ACTIVE",
@@ -948,10 +1100,13 @@ func (s *Service) upsertTunnelOnConnect(subdomain string, localPort int) error {
 	}).Error
 }
 
-func (s *Service) deleteTunnel(id string) error {
+func (s *Service) deleteTunnel(id string, access requestAccess) error {
 	var record TunnelRecord
 	if err := s.db.Where("id = ?", id).First(&record).Error; err != nil {
 		return err
+	}
+	if access.Identity != nil && s.authProvider != nil && s.authProvider.Enabled() && record.OwnerUserID != "" && record.OwnerUserID != access.Identity.UserID {
+		return errors.New("tunnel belongs to another account")
 	}
 
 	s.mu.Lock()
@@ -1041,9 +1196,13 @@ func (s *Service) incrementRequestCount(subdomain string) error {
 		Error
 }
 
-func (s *Service) listDomains() ([]DomainResponse, error) {
+func (s *Service) listDomains(access requestAccess) ([]DomainResponse, error) {
 	var records []DomainRecord
-	if err := s.db.Order("created_at asc").Find(&records).Error; err != nil {
+	query := s.db.Model(&DomainRecord{})
+	if access.Identity != nil && s.authProvider != nil && s.authProvider.Enabled() {
+		query = query.Where("owner_user_id = ? OR type = ?", access.Identity.UserID, "MANAGED")
+	}
+	if err := query.Order("created_at asc").Find(&records).Error; err != nil {
 		return nil, err
 	}
 
@@ -1060,7 +1219,7 @@ func (s *Service) listDomains() ([]DomainResponse, error) {
 	return response, nil
 }
 
-func (s *Service) createDomain(name string) (DomainRecord, error) {
+func (s *Service) createDomain(name string, access requestAccess) (DomainRecord, error) {
 	domain := strings.ToLower(strings.TrimSpace(name))
 	if domain == "" {
 		return DomainRecord{}, errors.New("domain name is required")
@@ -1068,9 +1227,15 @@ func (s *Service) createDomain(name string) (DomainRecord, error) {
 
 	record := DomainRecord{
 		Name:        domain,
+		OwnerUserID: "",
+		OwnerEmail:  "",
 		Type:        "CUSTOM",
 		Status:      "PENDING",
 		ExpectedTXT: fmt.Sprintf("binboi-verification=%s", uuid.NewString()),
+	}
+	if access.Identity != nil {
+		record.OwnerUserID = access.Identity.UserID
+		record.OwnerEmail = access.Identity.Email
 	}
 
 	if err := s.db.Create(&record).Error; err != nil {
@@ -1083,14 +1248,18 @@ func (s *Service) createDomain(name string) (DomainRecord, error) {
 	return record, nil
 }
 
-func (s *Service) verifyDomain(name string) (DomainResponse, error) {
+func (s *Service) verifyDomain(name string, access requestAccess) (DomainResponse, error) {
 	domain := strings.ToLower(strings.TrimSpace(name))
 	if domain == "" {
 		return DomainResponse{}, errors.New("domain name is required")
 	}
 
 	var record DomainRecord
-	if err := s.db.Where("name = ?", domain).First(&record).Error; err != nil {
+	query := s.db.Where("name = ?", domain)
+	if access.Identity != nil && s.authProvider != nil && s.authProvider.Enabled() {
+		query = query.Where("(owner_user_id = ? OR type = ?)", access.Identity.UserID, "MANAGED")
+	}
+	if err := query.First(&record).Error; err != nil {
 		return DomainResponse{}, err
 	}
 
@@ -1154,9 +1323,14 @@ func (s *Service) listNodes() []NodeResponse {
 	}
 }
 
-func (s *Service) listEvents(limit int) ([]EventResponse, error) {
+func (s *Service) listEvents(limit int, access requestAccess) ([]EventResponse, error) {
 	var records []EventRecord
-	if err := s.db.Order("created_at desc").Limit(limit).Find(&records).Error; err != nil {
+	query := s.db.Model(&EventRecord{})
+	if access.Identity != nil && s.authProvider != nil && s.authProvider.Enabled() {
+		query = query.Joins("JOIN tunnel_records ON tunnel_records.subdomain = event_records.tunnel_subdomain").
+			Where("tunnel_records.owner_user_id = ?", access.Identity.UserID)
+	}
+	if err := query.Order("event_records.created_at desc").Limit(limit).Find(&records).Error; err != nil {
 		return nil, err
 	}
 
@@ -1172,9 +1346,14 @@ func (s *Service) listEvents(limit int) ([]EventResponse, error) {
 	return response, nil
 }
 
-func (s *Service) listRequests(limit int) ([]RequestResponse, error) {
+func (s *Service) listRequests(limit int, access requestAccess) ([]RequestResponse, error) {
 	var records []RequestRecord
-	if err := s.db.Order("created_at desc").Limit(limit).Find(&records).Error; err != nil {
+	query := s.db.Model(&RequestRecord{})
+	if access.Identity != nil && s.authProvider != nil && s.authProvider.Enabled() {
+		query = query.Joins("JOIN tunnel_records ON tunnel_records.id = request_records.tunnel_id").
+			Where("tunnel_records.owner_user_id = ?", access.Identity.UserID)
+	}
+	if err := query.Order("request_records.created_at desc").Limit(limit).Find(&records).Error; err != nil {
 		return nil, err
 	}
 
@@ -1240,16 +1419,16 @@ func (s *Service) activeTunnelCount() int {
 }
 
 func (s *Service) renderProxyLanding(w http.ResponseWriter) {
-	tunnels, err := s.listTunnels()
+	tunnels, err := s.listTunnels(requestAccess{TrustedLocal: true}, "")
 	if err != nil {
 		http.Error(w, "Control plane is unavailable", http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	authCopy := `Create an access token in the dashboard, run <code>binboi login --token &lt;token&gt;</code>, and then expose your local app with <code>binboi start 3000 your-subdomain</code>.`
+	authCopy := `Create an access token in the dashboard, run <code>binboi login --token &lt;token&gt;</code>, and then expose your local app with <code>binboi http 3000 your-subdomain</code>.`
 	if s.authProvider == nil || !s.authProvider.Enabled() {
-		authCopy = `This local preview mode uses one instance token in SQLite. Save it with <code>binboi login --token &lt;token&gt;</code> and then expose your local app with <code>binboi start 3000 your-subdomain</code>.`
+		authCopy = `This local preview mode uses one instance token in SQLite. Save it with <code>binboi login --token &lt;token&gt;</code> and then expose your local app with <code>binboi http 3000 your-subdomain</code>.`
 	}
 	fmt.Fprintf(w, `<!doctype html>
 <html>

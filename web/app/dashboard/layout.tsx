@@ -32,14 +32,14 @@ export default async function DashboardLayout({ children }: { children: React.Re
           }
         />
 
-        <main className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
+        <main className="relative flex min-w-0 flex-1 flex-col overflow-hidden min-h-screen">
           <div className="pointer-events-none absolute inset-0">
             <div className="absolute left-[10%] top-[-8rem] h-72 w-72 rounded-full bg-miransas-cyan/8 blur-[150px]" />
             <div className="absolute bottom-[-8rem] right-[14%] h-72 w-72 rounded-full bg-violet-400/8 blur-[160px]" />
             <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(8,12,18,0.16),transparent_24%,transparent_78%,rgba(8,12,18,0.14))]" />
           </div>
           <DashboardHeader />
-          <div className="relative z-10 min-h-0 flex-1 overflow-y-auto">
+          <div className="relative z-10 min-h- flex-1 overflow-y-auto">
             {children}
           </div>
         </main>
