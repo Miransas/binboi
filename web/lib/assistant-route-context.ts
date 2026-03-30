@@ -24,7 +24,7 @@ const routeContextCatalog: Record<string, RouteAssistantContext> = {
         path: "/pricing",
         title: "Pricing",
         area: "site",
-        summary: "Free and Pro plan foundations with token and tunnel limits.",
+        summary: "Free, Pro, and Scale plans with AI, history, and tunnel-limit packaging.",
       },
     },
   },

@@ -9,7 +9,9 @@ import { ChevronLeft, ChevronRight, LogOut, Sparkles } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { useState } from "react";
 
+import { usePricingPlan } from "@/components/provider/pricing-plan-provider";
 import { DASHBOARD_LINKS } from "@/constants";
+import { getPricingPlan } from "@/lib/pricing";
 import { cn } from "@/lib/utils";
 
 function SidebarSectionLabel({
@@ -37,6 +39,8 @@ export default function DashboardSidebar({ user }: { user: any }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const pathname = usePathname();
   const isGuest = user?.email === "preview@binboi.local";
+  const { plan, nextPlan } = usePricingPlan();
+  const activePlan = getPricingPlan(plan);
 
   return (
     <motion.aside
@@ -105,6 +109,19 @@ export default function DashboardSidebar({ user }: { user: any }) {
                   <p className="mt-2 text-sm leading-6 text-zinc-300">
                     Tunnels, webhooks, logs, and AI guidance from one place.
                   </p>
+                  <div className="mt-3 flex items-center gap-2">
+                    <span className="rounded-full border border-white/10 bg-white/[0.03] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-400">
+                      {activePlan.name}
+                    </span>
+                    {nextPlan ? (
+                      <Link
+                        href={`/pricing?focus=${nextPlan.toLowerCase()}`}
+                        className="rounded-full border border-miransas-cyan/18 bg-miransas-cyan/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-miransas-cyan transition hover:border-miransas-cyan/28 hover:bg-miransas-cyan/14"
+                      >
+                        {nextPlan === "PRO" ? "Upgrade" : "Scale"}
+                      </Link>
+                    ) : null}
+                  </div>
                 </motion.div>
               )}
             </AnimatePresence>

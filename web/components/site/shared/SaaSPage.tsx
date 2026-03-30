@@ -459,8 +459,8 @@ export default function SaaSPage() {
       <LandingSectionDivider label="Operator surfaces" />
       <LandingSignalBand />
 
-      <section className="relative px-4 py-10 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-full">
+      <section className="relative px-4 py-10 sm:px-6 lg:px-8 rounded-xl">
+        <div className="mx-auto max-w-full  ">
           <SectionHeading
             eyebrow="Inspection surfaces"
             accent="magenta"
@@ -468,7 +468,7 @@ export default function SaaSPage() {
             description="The rest of the landing now follows the same visual language as the hero: beam-edged panels, glowing control surfaces, and product sections that stay focused on debugging, not generic SaaS filler."
           />
 
-          <div className="mt-8 grid gap-6 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="mt-8 grid gap-6 rounded-xl lg:grid-cols-3 xl:grid-cols-4">
             {featureCards.map((card) => {
               const Icon = card.icon;
 
@@ -513,7 +513,7 @@ export default function SaaSPage() {
       <LandingSectionDivider label="Provider flows" />
 
       <section className="relative px-4 py-10 sm:px-6 lg:px-8">
-        <div className="mx-auto grid max-w-[1440px] gap-6 xl:grid-cols-[1.15fr_0.85fr]">
+        <div className="mx-auto grid max-w-[1440px] rounded-lg gap-6 xl:grid-cols-[1.15fr_0.85fr]">
           <div>
             <SectionHeading
               eyebrow="Integrations"
@@ -522,7 +522,7 @@ export default function SaaSPage() {
               description="Stripe, Clerk, Supabase, GitHub, Neon, and Linear all force you to care about callback URLs, signature handling, retries, or target routes. Binboi keeps those realities close to the product instead of hiding them behind a single tunnel command."
             />
 
-            <div className="mt-8 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+            <div className="mt-8 grid gap-5 md:grid-cols-2 xl:grid-cols-3 ">
               {integrationCards.map((card, index) => (
                 <motion.div
                   key={card.name}

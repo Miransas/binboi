@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, Loader2, Sparkles, X } from "lucide-react";
 
+import { usePricingPlan } from "@/components/provider/pricing-plan-provider";
 import { useAssistantContext } from "@/components/shared/assistant-context";
 import type {
   AssistantContext,
@@ -59,6 +60,7 @@ export function RequestErrorExplainer({
   buttonLabel?: string;
 }) {
   const { context: ambientContext } = useAssistantContext();
+  const { consumeAiExplain, plan } = usePricingPlan();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -74,6 +76,12 @@ export function RequestErrorExplainer({
     setError(null);
 
     if (response || loading) {
+      return;
+    }
+
+    if (!consumeAiExplain()) {
+      setResponse(null);
+      setError("AI limit reached. Upgrade for unlimited debugging help.");
       return;
     }
 
@@ -190,7 +198,16 @@ export function RequestErrorExplainer({
 
               {error && (
                 <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-sm leading-7 text-red-200">
-                  {error}
+                  <p>{error}</p>
+                  {plan === "FREE" && error.includes("AI limit reached") ? (
+                    <Link
+                      href="/pricing?focus=pro"
+                      className="mt-3 inline-flex items-center gap-2 rounded-full bg-miransas-cyan px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-black transition hover:brightness-110"
+                    >
+                      Upgrade to Pro
+                      <ArrowRight className="h-3.5 w-3.5" />
+                    </Link>
+                  ) : null}
                 </div>
               )}
 

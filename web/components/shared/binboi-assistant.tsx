@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { usePricingPlan } from "@/components/provider/pricing-plan-provider";
 import { useAssistantContext } from "@/components/shared/assistant-context";
 import { AssistantComposer } from "@/components/shared/assistant/assistant-composer";
 import { AssistantInsights } from "@/components/shared/assistant/assistant-insights";
@@ -98,9 +99,17 @@ export function BinboiAssistant({
 }) {
   const pathname = usePathname();
   const { context: providedContext } = useAssistantContext();
+  const {
+    plan,
+    planConfig,
+    aiExplainsRemaining,
+    aiExplainsUsedToday,
+    consumeAiExplain,
+  } = usePricingPlan();
   const [query, setQuery] = useState(initialQuery);
   const [messages, setMessages] = useState<StoredAssistantMessage[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [limitReached, setLimitReached] = useState(false);
   const [loading, setLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const transcriptRef = useRef<HTMLDivElement>(null);
@@ -157,6 +166,12 @@ export function BinboiAssistant({
   }, [messages, resolvedStorageKey]);
 
   useEffect(() => {
+    if (planConfig.limits.aiExplainsPerDay === null || (aiExplainsRemaining ?? 1) > 0) {
+      setLimitReached(false);
+    }
+  }, [aiExplainsRemaining, planConfig.limits.aiExplainsPerDay]);
+
+  useEffect(() => {
     const container = transcriptRef.current;
     const end = transcriptEndRef.current;
     if (!container || !end) {
@@ -182,12 +197,18 @@ export function BinboiAssistant({
       setError("Enter a question to search docs, requests, webhooks, or logs.");
       return;
     }
+    if (!consumeAiExplain()) {
+      setLimitReached(true);
+      setError(null);
+      return;
+    }
 
     const userMessage = createMessage("user", value);
     const nextMessages = [...messages, userMessage];
 
     setQuery("");
     setError(null);
+    setLimitReached(false);
     setLoading(true);
     setMessages(nextMessages);
 
@@ -247,6 +268,10 @@ export function BinboiAssistant({
     .find((message) => message.role === "assistant");
   const latestResponse = latestAssistantMessage?.response ?? null;
   const panelMode: "idle" | "conversation" = messages.length > 0 || loading ? "conversation" : "idle";
+  const aiUsageLabel =
+    planConfig.limits.aiExplainsPerDay === null
+      ? `${planConfig.name} includes unlimited AI debugging help.`
+      : `${planConfig.name} includes ${planConfig.limits.aiExplainsPerDay} AI explains per day. ${aiExplainsUsedToday} used${aiExplainsRemaining !== null ? `, ${aiExplainsRemaining} left today` : ""}.`;
 
   return (
     <section className={cn(variantClasses[variant], "min-w-0 overflow-hidden", className)}>
@@ -301,6 +326,8 @@ export function BinboiAssistant({
           }}
           loading={loading}
           inputRef={inputRef}
+          aiUsageLabel={plan === "FREE" ? aiUsageLabel : undefined}
+          limitReached={limitReached}
         />
       </div>
     </section>

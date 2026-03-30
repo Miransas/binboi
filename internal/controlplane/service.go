@@ -42,7 +42,7 @@ const (
 	defaultRegion        = "local"
 	maxLogBacklog        = 100
 	maxRecentEventRows   = 50
-	maxRecentRequestRows = 80
+	maxRecentRequestRows = 200
 	maxHeaderPreviewRows = 10
 	maxBodyPreviewBytes  = 4096
 )

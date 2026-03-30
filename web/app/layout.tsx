@@ -3,6 +3,7 @@ import "./globals.css";
 import { cn } from "@/lib/utils";
 import { ThemeProvider } from "../components/provider/theme-provider";
 import SessionProvider from "../components/provider/session-provider";
+import { PricingPlanProvider } from "../components/provider/pricing-plan-provider";
 
 // Binboi SEO & Meta Bilgileri
 export const metadata: Metadata = {
@@ -30,7 +31,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <SessionProvider>
-            {children}
+            <PricingPlanProvider>{children}</PricingPlanProvider>
           </SessionProvider>
         </ThemeProvider>
       </body>

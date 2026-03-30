@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Loader2, Search, Sparkles } from "lucide-react";
 
 import type { RefObject } from "react";
@@ -11,6 +12,8 @@ type AssistantComposerProps = {
   onSuggestionClick: (value: string) => void;
   loading: boolean;
   inputRef: RefObject<HTMLInputElement | null>;
+  aiUsageLabel?: string;
+  limitReached?: boolean;
 };
 
 export function AssistantComposer({
@@ -22,6 +25,8 @@ export function AssistantComposer({
   onSuggestionClick,
   loading,
   inputRef,
+  aiUsageLabel,
+  limitReached = false,
 }: AssistantComposerProps) {
   const conversationActive = mode === "conversation";
 
@@ -60,7 +65,17 @@ export function AssistantComposer({
           </button>
         </div>
 
-        {conversationActive ? (
+        {limitReached ? (
+          <div className="mt-3 flex flex-col gap-3 rounded-[1.25rem] border border-amber-300/18 bg-amber-400/10 px-4 py-3 text-sm text-amber-100 sm:flex-row sm:items-center sm:justify-between">
+            <p>AI limit reached. Upgrade for unlimited debugging help.</p>
+            <Link
+              href="/pricing?focus=pro"
+              className="inline-flex shrink-0 items-center justify-center rounded-full bg-miransas-cyan px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-black transition hover:brightness-110"
+            >
+              Upgrade
+            </Link>
+          </div>
+        ) : conversationActive ? (
           <p className="mt-3 text-xs text-zinc-500">
             Conversation mode keeps the transcript in focus. Ask follow-ups, paste an error, or
             compare runtime clues against the latest answer.
@@ -79,6 +94,18 @@ export function AssistantComposer({
             ))}
           </div>
         )}
+
+        {!limitReached && aiUsageLabel ? (
+          <div className="mt-3 flex items-center justify-between gap-3 text-xs text-zinc-500">
+            <span>{aiUsageLabel}</span>
+            <Link
+              href="/pricing?focus=pro"
+              className="text-miransas-cyan transition hover:text-white"
+            >
+              Upgrade
+            </Link>
+          </div>
+        ) : null}
       </div>
     </form>
   );

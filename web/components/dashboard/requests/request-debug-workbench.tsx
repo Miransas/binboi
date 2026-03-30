@@ -9,8 +9,10 @@ import {
   DashboardSurface,
   DashboardTimeline,
 } from "@/components/dashboard/shared/dashboard-primitives";
+import { usePricingPlan } from "@/components/provider/pricing-plan-provider";
 import { RequestInspectionCard } from "@/components/dashboard/requests/request-inspection-card";
 import { RequestInspectionDrawer } from "@/components/dashboard/requests/request-inspection-drawer";
+import { UpgradePrompt } from "@/components/shared/upgrade-prompt";
 import { useRegisterAssistantContext } from "@/components/shared/assistant-context";
 import { useRequests } from "@/hooks/useRequests";
 import {
@@ -24,6 +26,7 @@ type KindFilter = "ALL" | "REQUEST" | "WEBHOOK";
 
 export function RequestDebugWorkbench() {
   const { requests, isError, isLoading } = useRequests();
+  const { plan, planConfig } = usePricingPlan();
   const [query, setQuery] = useState("");
   const [kind, setKind] = useState<KindFilter>("ALL");
   const [status, setStatus] = useState<StatusFilter>("ALL");
@@ -38,11 +41,24 @@ export function RequestDebugWorkbench() {
       ),
     [dataMode, requests],
   );
+  const historyCap = planConfig.limits.requestHistory;
+  const visibleSourceRecords = useMemo(
+    () => (historyCap === null ? sourceRecords : sourceRecords.slice(0, historyCap)),
+    [historyCap, sourceRecords],
+  );
+  const historyLimited = historyCap !== null && sourceRecords.length > historyCap;
+  const todayRequestCount = useMemo(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    return sourceRecords.filter((record) => record.created_at.slice(0, 10) === today).length;
+  }, [sourceRecords]);
+  const requestLimitReached =
+    planConfig.limits.requestsPerDay !== null &&
+    todayRequestCount >= planConfig.limits.requestsPerDay;
 
   const filtered = useMemo(() => {
     const lower = query.trim().toLowerCase();
 
-    return sourceRecords.filter((record) => {
+    return visibleSourceRecords.filter((record) => {
       if (kind !== "ALL" && record.kind !== kind) {
         return false;
       }
@@ -75,7 +91,7 @@ export function RequestDebugWorkbench() {
 
       return haystack.includes(lower);
     });
-  }, [kind, query, sourceRecords, status]);
+  }, [kind, query, status, visibleSourceRecords]);
 
   const selected = filtered.find((record) => record.id === selectedId) ?? filtered[0] ?? null;
   const errorCount = sourceRecords.filter((record) => record.status >= 400).length;
@@ -199,6 +215,27 @@ export function RequestDebugWorkbench() {
             accent="cyan"
           />
         </div>
+
+        {plan === "FREE" ? (
+          <UpgradePrompt
+            className="mt-8"
+            title={
+              requestLimitReached
+                ? "You’ve reached your daily request limit. Upgrade to continue."
+                : historyLimited
+                ? "You’ve reached your request history limit. Upgrade to continue."
+                : "Free keeps the request feed lightweight."
+            }
+            description={
+              requestLimitReached
+                ? "Free is designed for light debugging. Upgrade for higher request volume, full history, and unlimited AI explain."
+                : historyLimited
+                ? "Free keeps the last 50 requests and basic debugging. Upgrade for full request history, unlimited AI explain, and deeper webhook investigation."
+                : "You get 100 requests per day, the last 50 requests in history, and 5 AI explains per day. Upgrade when you want full history and unlimited debugging help."
+            }
+            compact
+          />
+        ) : null}
 
         <DashboardSurface accent="violet" className="mt-10 p-6">
           <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_0.85fr] xl:items-end">

@@ -2,12 +2,15 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { ExternalLink, Globe, Plus, RefreshCcw, Trash2 } from "lucide-react";
+import { usePricingPlan } from "@/components/provider/pricing-plan-provider";
 import { useRegisterAssistantContext } from "@/components/shared/assistant-context";
+import { UpgradePrompt } from "@/components/shared/upgrade-prompt";
 import { DashboardPageShell } from "@/components/dashboard/shared/page-shell";
 import { DashboardSurface } from "@/components/dashboard/shared/dashboard-primitives";
 import { fetchControlPlane, type ControlPlaneTunnel } from "@/lib/controlplane";
 
 export default function TunnelPage() {
+  const { plan } = usePricingPlan();
   const [tunnels, setTunnels] = useState<ControlPlaneTunnel[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -33,11 +36,20 @@ export default function TunnelPage() {
   }, []);
 
   const createTunnel = async () => {
+    if (freeTunnelLimitReached) {
+      setError("You’ve reached your limit. Upgrade to continue.");
+      return;
+    }
+
     setCreating(true);
     try {
       await fetchControlPlane("/api/tunnels", {
         method: "POST",
-        body: JSON.stringify({ subdomain, target, region: "local" }),
+        body: JSON.stringify({
+          subdomain: plan === "FREE" ? "" : subdomain,
+          target,
+          region: "local",
+        }),
       });
       setSubdomain("");
       setTarget("localhost:3000");
@@ -69,6 +81,7 @@ export default function TunnelPage() {
     const transfer = tunnels.reduce((sum, tunnel) => sum + tunnel.bytes_out, 0);
     return { active, requests, transfer };
   }, [tunnels]);
+  const freeTunnelLimitReached = plan === "FREE" && metrics.active >= 1;
 
   useRegisterAssistantContext("dashboard-tunnel-page", {
     currentPage: {
@@ -100,7 +113,10 @@ export default function TunnelPage() {
         {
           label: "Reserved tunnels",
           value: String(tunnels.length),
-          note: "Reserved subdomains remain visible even when no agent is connected.",
+          note:
+            plan === "FREE"
+              ? "Free keeps the tunnel flow lightweight and assigns random public URLs."
+              : "Reserved subdomains remain visible even when no agent is connected.",
         },
         {
           label: "Active tunnels",
@@ -124,18 +140,38 @@ export default function TunnelPage() {
         },
       ]}
     >
+      {plan === "FREE" ? (
+        <UpgradePrompt
+          className="mb-8"
+          compact
+          title={
+            freeTunnelLimitReached
+              ? "You’ve reached your limit. Upgrade to continue."
+              : "Free includes one active tunnel and random public URLs."
+          }
+          description={
+            freeTunnelLimitReached
+              ? "Upgrade for unlimited tunnels, custom domains, and a more flexible debugging workflow."
+              : "Free is great for the first local workflow. Upgrade when you want stable named URLs, custom domains, and more than one active tunnel."
+          }
+        />
+      ) : null}
+
       <section className="grid gap-6 xl:grid-cols-[1fr_1.2fr]">
         <DashboardSurface accent="neutral" className="p-6">
           <h2 className="text-xl font-semibold text-white">Create a tunnel reservation</h2>
           <p className="mt-3 text-sm leading-7 text-zinc-400">
-            Reserve a subdomain and target port first. Then connect the agent with the same subdomain.
+            {plan === "FREE"
+              ? "Free tunnels get a random public URL automatically. Paid plans can reserve specific subdomains and custom domains."
+              : "Reserve a subdomain and target port first. Then connect the agent with the same subdomain."}
           </p>
           <div className="mt-6 space-y-4">
             <input
               value={subdomain}
               onChange={(event) => setSubdomain(event.target.value)}
-              placeholder="my-app"
-              className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white outline-none transition focus:border-miransas-cyan"
+              placeholder={plan === "FREE" ? "Random URL assigned automatically on Free" : "my-app"}
+              disabled={plan === "FREE"}
+              className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white outline-none transition focus:border-miransas-cyan disabled:cursor-not-allowed disabled:text-zinc-500"
             />
             <input
               value={target}
@@ -145,11 +181,11 @@ export default function TunnelPage() {
             />
             <button
               onClick={createTunnel}
-              disabled={creating}
+              disabled={creating || freeTunnelLimitReached}
               className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-miransas-cyan px-4 py-3 text-sm font-semibold text-black transition hover:brightness-110 disabled:opacity-50"
             >
               <Plus className="h-4 w-4" />
-              Reserve tunnel
+              {freeTunnelLimitReached ? "Upgrade for more tunnels" : "Reserve tunnel"}
             </button>
           </div>
           {error && <p className="mt-4 text-sm text-red-400">{error}</p>}

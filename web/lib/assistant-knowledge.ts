@@ -239,10 +239,10 @@ export const assistantDocuments: AssistantDocument[] = [
     href: "/pricing",
     kind: "marketing",
     excerpt:
-      "Free and Pro plan foundations clarify token and tunnel limits without pretending billing is fully mature.",
+      "Free, Pro, and Scale plans clarify tunnel limits, AI usage, request history, and upgrade paths.",
     body:
-      "Free is designed for local development and self-hosted evaluation. Pro increases token and tunnel limits and sets expectations for future managed infrastructure, custom domains, and usage insights. Enterprise remains a future operator motion, not a finished checkout flow.",
-    keywords: ["pricing", "free", "pro", "limits", "plans", "tokens", "tunnels"],
+      "Free is designed for local development and quick validation. Pro unlocks unlimited tunnels, custom domains, full request history, and unlimited AI explain. Scale builds on Pro with advanced logs, higher infrastructure priority, and future-ready team and API surfaces.",
+    keywords: ["pricing", "free", "pro", "scale", "limits", "plans", "tokens", "tunnels", "ai"],
   },
   {
     id: "privacy",
