@@ -1,21 +1,66 @@
-version: '3.8'
+version: "3.8"
+
 services:
   core:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: binboi-core
+    restart: unless-stopped
+
     ports:
-      - "8080:8080"
-      - "8081:8081"
-      - "8000:8000"
+      - "8080:8080" # API
+      - "8081:8081" # tunnel
+      - "8000:8000" # public proxy
+
     environment:
       BINBOI_API_ADDR: ":8080"
       BINBOI_TUNNEL_ADDR: ":8081"
       BINBOI_PROXY_ADDR: ":8000"
+
       BINBOI_BASE_DOMAIN: "binboi.localhost"
       BINBOI_PUBLIC_SCHEME: "http"
       BINBOI_PUBLIC_PORT: "8000"
+
       BINBOI_DATABASE_PATH: "/data/binboi.db"
+
+      BINBOI_ENV: "development"
+      BINBOI_LOG_LEVEL: "debug"
+
     volumes:
       - binboi-data:/data
 
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+    networks:
+      - binboi-net
+
+  postgres:
+    image: postgres:15
+    container_name: binboi-postgres
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_USER: binboi
+      POSTGRES_PASSWORD: binboi
+      POSTGRES_DB: binboi
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+
+    networks:
+      - binboi-net
+
 volumes:
   binboi-data:
+  pg-data:
+
+networks:
+  binboi-net:

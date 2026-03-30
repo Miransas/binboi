@@ -57,11 +57,13 @@ export const DASHBOARD_LINKS = [
 ]
 
 export const DOCS_LINKS = [
-    
   { label: "Introduction", href: "/docs" },
   { label: "Quick Start", href: "/docs/quick-start" },
+  { label: "Authentication", href: "/docs/authentication" },
   { label: "CLI Reference", href: "/docs/cli" },
-  { label: "Self-Hosting", href: "/docs/self-hosting" },
+  { label: "HTTP Tunnels", href: "/docs/http-tunnels" },
+  { label: "Webhooks", href: "/docs/webhooks" },
+  { label: "Troubleshooting", href: "/docs/troubleshooting" },
 ];
 
 export const FOOTER_LINKS = {
