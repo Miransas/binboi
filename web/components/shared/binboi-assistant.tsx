@@ -30,7 +30,7 @@ const variantClasses: Record<Variant, string> = {
   hero:
     "rounded-[2rem] border border-white/10 bg-[#070709]/90 shadow-[0_40px_120px_rgba(0,0,0,0.4)] h-[44rem] max-h-[calc(100dvh-8rem)]",
   drawer:
-    "rounded-[2rem] border border-white/10 bg-[#070709]/95 shadow-[0_30px_90px_rgba(0,0,0,0.35)] h-[calc(100dvh-6.5rem)] max-h-[calc(100dvh-6.5rem)] sm:h-[min(84vh,58rem)] sm:max-h-[min(84vh,58rem)]",
+    "rounded-[2rem] border border-white/10 bg-[#070709]/95 shadow-[0_30px_90px_rgba(0,0,0,0.35)] h-full min-h-0",
   dashboard:
     "rounded-[2rem] border border-white/10 bg-[#080808] h-[48rem] max-h-[calc(100dvh-10rem)]",
 };

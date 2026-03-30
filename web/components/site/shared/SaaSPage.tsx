@@ -27,7 +27,6 @@ import {
   type Accent,
 } from "./landing-primitives";
 import { LandingSectionDivider } from "./landing-section-divider";
-import { LandingSignalBand } from "./landing-signal-band";
 
 const transition = { duration: 0.8, ease: cubicBezier(0.16, 1, 0.3, 1) };
 

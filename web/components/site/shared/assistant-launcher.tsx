@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Search, Sparkles, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Search } from "lucide-react";
 
 import { BinboiAssistant } from "@/components/shared/binboi-assistant";
 import { cn } from "@/lib/utils";
+
+import { AssistantOverlay } from "./assistant-overlay";
 
 export function AssistantLauncher({
   variant = "site",
@@ -14,6 +16,7 @@ export function AssistantLauncher({
   storageKey?: string;
 }) {
   const [open, setOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -46,6 +49,7 @@ export function AssistantLauncher({
   return (
     <>
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => setOpen(true)}
         className={cn(
@@ -67,43 +71,21 @@ export function AssistantLauncher({
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-[80] overflow-hidden">
-          <button
-            type="button"
-            aria-label="Close assistant"
-            className="absolute inset-0 bg-black/75 backdrop-blur-md"
-            onClick={() => setOpen(false)}
+        <AssistantOverlay
+          open={open}
+          variant={variant}
+          anchorRef={triggerRef}
+          onClose={() => setOpen(false)}
+        >
+          <BinboiAssistant
+            variant="drawer"
+            autoFocus
+            storageKey={storageKey || `launcher-${variant}`}
+            title="Search docs, runtime, and troubleshooting from one place"
+            description="Ask about CLI authentication, tunnels, request failures, webhook signatures, or logs. The assistant keeps history for this browser session and stays useful even without live AI access."
+            className="h-full"
           />
-
-          <div className="relative z-[81] mx-auto flex min-h-screen max-w-7xl items-center px-4 pb-4 pt-20 sm:px-6 lg:px-8">
-            <div className="flex w-full flex-col">
-              <div className="mb-3 flex justify-end">
-                <button
-                  type="button"
-                  onClick={() => setOpen(false)}
-                  className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-[#070709]/90 px-4 py-2 text-sm text-zinc-300 transition hover:border-white/20 hover:text-white"
-                >
-                  <X className="h-4 w-4" />
-                  Close
-                </button>
-              </div>
-
-              <BinboiAssistant
-                variant="drawer"
-                autoFocus
-                storageKey={storageKey || `launcher-${variant}`}
-                title="Search docs, runtime, and troubleshooting from one place"
-                description="Ask about CLI authentication, tunnels, request failures, webhook signatures, or logs. The assistant keeps history for this browser session and stays useful even without live AI access."
-                className="relative"
-              />
-
-              <div className="mt-3 flex flex-wrap items-center gap-2 px-2 text-xs text-zinc-500">
-                <Sparkles className="h-3.5 w-3.5 text-miransas-cyan" />
-                Server-side only. No OpenAI credential is exposed to the client.
-              </div>
-            </div>
-          </div>
-        </div>
+        </AssistantOverlay>
       )}
     </>
   );
