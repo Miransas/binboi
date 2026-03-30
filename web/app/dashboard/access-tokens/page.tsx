@@ -181,7 +181,7 @@ export default function AccessTokensPage() {
       ]}
     >
       <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
-        <DashboardSurface accent="amber" className="p-6">
+        <DashboardSurface accent="neutral" className="p-6">
           <div className="flex items-center gap-3">
             <KeyRound className="h-5 w-5 text-miransas-cyan" />
             <h2 className="text-xl font-semibold text-white">Create a new token</h2>

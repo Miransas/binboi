@@ -168,7 +168,7 @@ export default function DomainsPage() {
           </div>
         </DashboardSurface>
 
-        <DashboardSurface accent="amber" className="p-6">
+        <DashboardSurface accent="violet" className="p-6">
           <h2 className="text-xl font-semibold text-white">Add a custom domain</h2>
           <p className="mt-3 text-sm leading-7 text-zinc-400">
             Add a domain you control. The control plane will create a pending entry and generate the TXT value required for verification.

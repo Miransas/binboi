@@ -43,8 +43,9 @@ export function WebhookDeliveryDrawer({
         onClick={onClose}
       />
 
-      <aside className="absolute inset-y-0 right-0 flex w-full max-w-2xl flex-col border-l border-white/10 bg-[#060608]/97 shadow-[-24px_0_80px_rgba(0,0,0,0.55)]">
-        <div className="border-b border-white/10 px-5 py-5">
+      <aside className="absolute inset-y-0 right-0 flex w-full max-w-2xl flex-col border-l border-white/10 bg-[linear-gradient(180deg,rgba(20,26,36,0.98),rgba(10,14,21,0.99))] shadow-[-24px_0_80px_rgba(2,6,23,0.46)]">
+        <div className="relative border-b border-white/10 px-5 py-5">
+          <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-white/12 to-transparent" />
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
@@ -93,25 +94,25 @@ export function WebhookDeliveryDrawer({
 
         <div className="custom-scrollbar min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-5">
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+            <div className="rounded-2xl border border-white/10 bg-white/[0.025] px-4 py-3">
               <p className="text-[10px] uppercase tracking-[0.22em] text-zinc-600">Status</p>
               <p className="mt-2 text-sm font-medium text-white">{record.status}</p>
             </div>
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+            <div className="rounded-2xl border border-white/10 bg-white/[0.025] px-4 py-3">
               <p className="text-[10px] uppercase tracking-[0.22em] text-zinc-600">Latency</p>
               <p className="mt-2 inline-flex items-center gap-2 text-sm font-medium text-white">
                 <Clock3 className="h-3.5 w-3.5 text-miransas-cyan" />
                 {record.durationMs} ms
               </p>
             </div>
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+            <div className="rounded-2xl border border-white/10 bg-white/[0.025] px-4 py-3">
               <p className="text-[10px] uppercase tracking-[0.22em] text-zinc-600">Retries</p>
               <p className="mt-2 inline-flex items-center gap-2 text-sm font-medium text-white">
                 <RotateCcw className="h-3.5 w-3.5 text-zinc-400" />
                 {record.retries}
               </p>
             </div>
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+            <div className="rounded-2xl border border-white/10 bg-white/[0.025] px-4 py-3">
               <p className="text-[10px] uppercase tracking-[0.22em] text-zinc-600">Received</p>
               <p className="mt-2 text-sm font-medium text-white">
                 {new Date(record.receivedAt).toLocaleString()}
@@ -119,7 +120,7 @@ export function WebhookDeliveryDrawer({
             </div>
           </div>
 
-          <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-5">
+          <div className="rounded-3xl border border-white/10 bg-white/[0.025] p-5">
             <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
               Delivery path
             </p>
@@ -132,13 +133,13 @@ export function WebhookDeliveryDrawer({
           </div>
 
           <div className="grid gap-4 xl:grid-cols-2">
-            <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-5">
+            <div className="rounded-3xl border border-white/10 bg-white/[0.025] p-5">
               <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
                 Request preview
               </p>
               <p className="mt-4 text-sm leading-7 text-zinc-300">{record.requestPreview}</p>
             </div>
-            <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-5">
+            <div className="rounded-3xl border border-white/10 bg-white/[0.025] p-5">
               <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
                 Response preview
               </p>
@@ -146,7 +147,7 @@ export function WebhookDeliveryDrawer({
             </div>
           </div>
 
-          <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-5">
+          <div className="rounded-3xl border border-white/10 bg-white/[0.025] p-5">
             <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
               Payload preview
             </p>
@@ -155,7 +156,7 @@ export function WebhookDeliveryDrawer({
             </pre>
           </div>
 
-          <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-5">
+          <div className="rounded-3xl border border-white/10 bg-white/[0.025] p-5">
             <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
               Response headers
             </p>

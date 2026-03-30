@@ -41,10 +41,10 @@ export default function TokenManager() {
   }, []);
 
   return (
-    <DashboardSurface accent="amber" className="p-6">
+    <DashboardSurface accent="neutral" className="p-6">
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-amber-300/20 bg-amber-300/10 text-amber-200">
+          <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-miransas-cyan/16 bg-miransas-cyan/8 text-[#8aefe7]">
             <KeyRound className="h-4.5 w-4.5" />
           </div>
           <div>

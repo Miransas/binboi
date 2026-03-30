@@ -279,7 +279,7 @@ export function WebhookDebugWorkbench() {
         <section className="mt-10 grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_0.9fr]">
           <div className="space-y-4">
             {filtered.length === 0 ? (
-              <DashboardSurface accent="amber" className="border-dashed p-8">
+              <DashboardSurface accent="neutral" className="border-dashed p-8">
                 <p className="text-sm leading-7 text-zinc-500">
                   No deliveries matched the current filters. Broaden the provider or status
                   filters, or search for a different event type.
@@ -301,7 +301,7 @@ export function WebhookDebugWorkbench() {
           </div>
 
           <aside className="space-y-4 xl:sticky xl:top-8">
-            <DashboardSurface accent="amber" className="p-6">
+            <DashboardSurface accent="neutral" className="p-6">
               <div className="flex items-center gap-2">
                 <Sparkles className="h-4 w-4 text-miransas-cyan" />
                 <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-zinc-300">

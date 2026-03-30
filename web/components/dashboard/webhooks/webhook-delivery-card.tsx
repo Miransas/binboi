@@ -22,17 +22,17 @@ function statusClass(status: WebhookDeliveryRecord["deliveryStatus"]) {
 function providerGlow(provider: WebhookDeliveryRecord["provider"]) {
   switch (provider) {
     case "Stripe":
-      return "from-violet-400/18";
+      return "from-violet-300/10";
     case "Clerk":
-      return "from-sky-400/18";
+      return "from-miransas-cyan/10";
     case "Supabase":
-      return "from-emerald-400/18";
+      return "from-miransas-cyan/8";
     case "GitHub":
-      return "from-zinc-300/18";
+      return "from-white/6";
     case "Linear":
-      return "from-fuchsia-400/18";
+      return "from-violet-300/10";
     case "Neon":
-      return "from-cyan-300/18";
+      return "from-miransas-cyan/10";
   }
 }
 
@@ -50,19 +50,19 @@ export function WebhookDeliveryCard({
   return (
     <article
       className={cn(
-        "group relative overflow-hidden rounded-[1.75rem] border bg-[#070709]/92 p-5 transition duration-200",
+        "group relative overflow-hidden rounded-[1.75rem] border bg-[linear-gradient(180deg,rgba(20,26,36,0.96),rgba(10,14,21,0.98))] p-5 transition duration-200 [box-shadow:inset_0_1px_0_rgba(255,255,255,0.04),0_20px_60px_rgba(2,6,23,0.28)]",
         active
-          ? "border-miransas-cyan/30 shadow-[0_0_0_1px_rgba(0,255,209,0.18),0_24px_80px_rgba(0,0,0,0.36)]"
+          ? "border-miransas-cyan/18 shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_0_0_1px_rgba(0,255,209,0.10),0_20px_60px_rgba(2,6,23,0.32)]"
           : "border-white/10 hover:border-white/18",
       )}
     >
       <div
         className={cn(
-          "pointer-events-none absolute inset-0 bg-gradient-to-br to-transparent opacity-90",
+          "pointer-events-none absolute inset-0 bg-gradient-to-br to-transparent opacity-80",
           providerGlow(record.provider),
         )}
       />
-      <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-white/15 to-transparent" />
+      <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-white/12 to-transparent" />
 
       <div className="relative z-10">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -108,25 +108,25 @@ export function WebhookDeliveryCard({
         </div>
 
         <div className="mt-5 grid gap-3 sm:grid-cols-4">
-          <div className="rounded-2xl border border-white/8 bg-black/25 px-4 py-3">
+          <div className="rounded-2xl border border-white/10 bg-white/[0.025] px-4 py-3">
             <p className="text-[10px] uppercase tracking-[0.22em] text-zinc-600">Status</p>
             <p className="mt-2 text-sm font-medium text-white">{record.status}</p>
           </div>
-          <div className="rounded-2xl border border-white/8 bg-black/25 px-4 py-3">
+          <div className="rounded-2xl border border-white/10 bg-white/[0.025] px-4 py-3">
             <p className="text-[10px] uppercase tracking-[0.22em] text-zinc-600">Latency</p>
             <p className="mt-2 inline-flex items-center gap-2 text-sm font-medium text-white">
               <Clock3 className="h-3.5 w-3.5 text-miransas-cyan" />
               {record.durationMs} ms
             </p>
           </div>
-          <div className="rounded-2xl border border-white/8 bg-black/25 px-4 py-3">
+          <div className="rounded-2xl border border-white/10 bg-white/[0.025] px-4 py-3">
             <p className="text-[10px] uppercase tracking-[0.22em] text-zinc-600">Retries</p>
             <p className="mt-2 inline-flex items-center gap-2 text-sm font-medium text-white">
               <RotateCcw className="h-3.5 w-3.5 text-zinc-400" />
               {record.retries}
             </p>
           </div>
-          <div className="rounded-2xl border border-white/8 bg-black/25 px-4 py-3">
+          <div className="rounded-2xl border border-white/10 bg-white/[0.025] px-4 py-3">
             <p className="text-[10px] uppercase tracking-[0.22em] text-zinc-600">Destination</p>
             <p className="mt-2 max-h-12 overflow-hidden text-sm font-medium text-white">
               {record.destination}
@@ -135,7 +135,7 @@ export function WebhookDeliveryCard({
         </div>
 
         <div className="mt-4 grid gap-3 xl:grid-cols-2">
-          <div className="rounded-2xl border border-white/8 bg-black/25 p-4">
+          <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-4">
             <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
               <ShieldAlert className="h-3.5 w-3.5 text-zinc-500" />
               Payload preview
@@ -144,7 +144,7 @@ export function WebhookDeliveryCard({
               {record.payloadPreview}
             </p>
           </div>
-          <div className="rounded-2xl border border-white/8 bg-black/25 p-4">
+          <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-4">
             <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
               <ShieldAlert className="h-3.5 w-3.5 text-zinc-500" />
               Response preview

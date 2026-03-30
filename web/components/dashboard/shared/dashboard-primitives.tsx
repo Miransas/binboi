@@ -2,7 +2,7 @@ import type { ElementType, ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 
-type Accent = "cyan" | "amber" | "violet" | "emerald" | "rose";
+type Accent = "neutral" | "cyan" | "amber" | "violet" | "emerald" | "rose";
 
 const accentClasses: Record<
   Accent,
@@ -14,44 +14,52 @@ const accentClasses: Record<
     icon: string;
   }
 > = {
+  neutral: {
+    glow:
+      "bg-[radial-gradient(circle_at_top_left,rgba(148,163,184,0.05),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(148,163,184,0.03),transparent_30%)]",
+    beam: "from-transparent via-white/12 to-transparent",
+    ring: "border-white/10",
+    dot: "bg-slate-300/30 shadow-[0_0_16px_rgba(148,163,184,0.12)]",
+    icon: "text-zinc-200",
+  },
   cyan: {
     glow:
-      "bg-[radial-gradient(circle_at_top_left,rgba(0,255,209,0.16),transparent_38%),radial-gradient(circle_at_bottom_right,rgba(91,173,255,0.12),transparent_34%)]",
-    beam: "from-transparent via-miransas-cyan/45 to-transparent",
-    ring: "border-miransas-cyan/25",
-    dot: "bg-miransas-cyan shadow-[0_0_18px_rgba(0,255,209,0.55)]",
-    icon: "text-miransas-cyan",
+      "bg-[radial-gradient(circle_at_top_left,rgba(94,217,208,0.10),transparent_34%),radial-gradient(circle_at_85%_15%,rgba(94,217,208,0.05),transparent_24%)]",
+    beam: "from-transparent via-miransas-cyan/28 to-transparent",
+    ring: "border-miransas-cyan/18",
+    dot: "bg-miransas-cyan/70 shadow-[0_0_18px_rgba(0,255,209,0.22)]",
+    icon: "text-[#89efe8]",
   },
   amber: {
     glow:
-      "bg-[radial-gradient(circle_at_top_left,rgba(251,191,36,0.16),transparent_36%),radial-gradient(circle_at_bottom_right,rgba(255,153,0,0.12),transparent_34%)]",
-    beam: "from-transparent via-amber-300/40 to-transparent",
-    ring: "border-amber-300/25",
-    dot: "bg-amber-300 shadow-[0_0_18px_rgba(251,191,36,0.42)]",
+      "bg-[radial-gradient(circle_at_top_left,rgba(250,204,21,0.09),transparent_32%),radial-gradient(circle_at_88%_18%,rgba(217,119,6,0.05),transparent_24%)]",
+    beam: "from-transparent via-amber-300/24 to-transparent",
+    ring: "border-amber-300/16",
+    dot: "bg-amber-300/70 shadow-[0_0_16px_rgba(251,191,36,0.16)]",
     icon: "text-amber-200",
   },
   violet: {
     glow:
-      "bg-[radial-gradient(circle_at_top_left,rgba(192,132,252,0.18),transparent_38%),radial-gradient(circle_at_bottom_right,rgba(124,58,237,0.12),transparent_34%)]",
-    beam: "from-transparent via-violet-300/40 to-transparent",
-    ring: "border-violet-300/25",
-    dot: "bg-violet-300 shadow-[0_0_18px_rgba(192,132,252,0.42)]",
-    icon: "text-violet-200",
+      "bg-[radial-gradient(circle_at_top_left,rgba(167,139,250,0.10),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(129,140,248,0.05),transparent_26%)]",
+    beam: "from-transparent via-violet-300/22 to-transparent",
+    ring: "border-violet-300/16",
+    dot: "bg-violet-300/65 shadow-[0_0_18px_rgba(167,139,250,0.18)]",
+    icon: "text-[#c8bbff]",
   },
   emerald: {
     glow:
-      "bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.16),transparent_38%),radial-gradient(circle_at_bottom_right,rgba(52,211,153,0.1),transparent_34%)]",
-    beam: "from-transparent via-emerald-300/40 to-transparent",
-    ring: "border-emerald-300/25",
-    dot: "bg-emerald-300 shadow-[0_0_18px_rgba(16,185,129,0.45)]",
+      "bg-[radial-gradient(circle_at_top_left,rgba(52,211,153,0.09),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(16,185,129,0.05),transparent_26%)]",
+    beam: "from-transparent via-emerald-300/22 to-transparent",
+    ring: "border-emerald-300/18",
+    dot: "bg-emerald-300/70 shadow-[0_0_18px_rgba(52,211,153,0.18)]",
     icon: "text-emerald-200",
   },
   rose: {
     glow:
-      "bg-[radial-gradient(circle_at_top_left,rgba(251,113,133,0.18),transparent_38%),radial-gradient(circle_at_bottom_right,rgba(225,29,72,0.12),transparent_34%)]",
-    beam: "from-transparent via-rose-300/40 to-transparent",
-    ring: "border-rose-300/25",
-    dot: "bg-rose-300 shadow-[0_0_18px_rgba(251,113,133,0.45)]",
+      "bg-[radial-gradient(circle_at_top_left,rgba(251,113,133,0.10),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(225,29,72,0.05),transparent_26%)]",
+    beam: "from-transparent via-rose-300/24 to-transparent",
+    ring: "border-rose-300/18",
+    dot: "bg-rose-300/70 shadow-[0_0_18px_rgba(251,113,133,0.18)]",
     icon: "text-rose-200",
   },
 };
@@ -59,7 +67,7 @@ const accentClasses: Record<
 export function DashboardSurface({
   children,
   className,
-  accent = "cyan",
+  accent = "neutral",
   padded = true,
 }: {
   children: ReactNode;
@@ -72,22 +80,22 @@ export function DashboardSurface({
   return (
     <section
       className={cn(
-        "group relative overflow-hidden rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(19,22,31,0.92),rgba(7,9,14,0.98))] shadow-[0_24px_80px_rgba(0,0,0,0.34)] backdrop-blur-xl",
+        "group relative overflow-hidden rounded-[2rem] border border-white/8 bg-[linear-gradient(180deg,rgba(20,26,36,0.96),rgba(10,14,21,0.98))] backdrop-blur-xl [box-shadow:inset_0_1px_0_rgba(255,255,255,0.04),0_20px_60px_rgba(2,6,23,0.34)]",
         padded && "p-6",
         className,
       )}
     >
-      <div className={cn("pointer-events-none absolute inset-0 opacity-90", tones.glow)} />
-      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),transparent_22%,transparent_78%,rgba(255,255,255,0.02))]" />
+      <div className={cn("pointer-events-none absolute inset-0 opacity-75", tones.glow)} />
+      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),transparent_22%,transparent_78%,rgba(255,255,255,0.015))]" />
       <div
         className={cn(
-          "pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r",
+          "pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r",
           tones.beam,
         )}
       />
       <div
         className={cn(
-          "pointer-events-none absolute -right-16 top-8 h-32 w-32 rounded-full blur-3xl opacity-35",
+          "pointer-events-none absolute right-6 top-4 h-24 w-24 rounded-full blur-3xl opacity-20",
           tones.dot,
         )}
       />
@@ -112,7 +120,7 @@ export function DashboardStatCard({
   const tones = accentClasses[accent];
 
   return (
-    <DashboardSurface accent={accent} className="min-h-[12rem]">
+    <DashboardSurface accent="neutral" className="min-h-[12rem]">
       <div className="flex items-center justify-between gap-4">
         <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-zinc-500">{label}</p>
         {Icon ? (
@@ -151,7 +159,7 @@ export function DashboardMiniPill({
       )}
     >
       <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-500">{label}</p>
-      <p className="mt-2 text-sm font-medium text-white">{value}</p>
+      <p className={cn("mt-2 text-sm font-medium", tones.icon)}>{value}</p>
     </div>
   );
 }
@@ -191,17 +199,17 @@ function timelineTone(status: DashboardTimelineItem["status"]) {
     case "complete":
       return {
         dot: accentClasses.emerald.dot,
-        ring: "border-emerald-300/20 bg-emerald-400/10 text-emerald-100",
+        ring: "border-emerald-300/16 bg-emerald-400/8 text-emerald-100",
       };
     case "error":
       return {
         dot: accentClasses.rose.dot,
-        ring: "border-rose-300/20 bg-rose-400/10 text-rose-100",
+        ring: "border-rose-300/16 bg-rose-400/8 text-rose-100",
       };
     case "active":
       return {
         dot: accentClasses.cyan.dot,
-        ring: "border-miransas-cyan/20 bg-miransas-cyan/10 text-miransas-cyan",
+        ring: "border-miransas-cyan/16 bg-miransas-cyan/8 text-[#8aefe7]",
       };
     default:
       return {
@@ -244,7 +252,7 @@ export function DashboardTimeline({
               <div className="relative z-10 flex w-8 shrink-0 justify-center">
                 <span className={cn("mt-1.5 h-3.5 w-3.5 rounded-full", tones.dot)} />
               </div>
-              <div className="min-w-0 flex-1 rounded-[1.5rem] border border-white/10 bg-black/25 px-4 py-4">
+              <div className="min-w-0 flex-1 rounded-[1.5rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(5,8,12,0.28))] px-4 py-4">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
                     {item.label}

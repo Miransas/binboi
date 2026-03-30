@@ -10,6 +10,8 @@ import {
   FiSlash,
   FiSliders,
 } from "react-icons/fi"
+import { MdOutlineSettingsInputComposite } from "react-icons/md";
+
 
 import { Sparkles } from "lucide-react" 
 
@@ -27,7 +29,7 @@ export const DASHBOARD_LINKS = [
     title: "Getting Started",
     items: [
       {label: "Welcome", href: "/dashboard", icon: FiHome },
-      { label: "Setup & Installation", href: "/dashboard/setup", icon: FiHome },
+      { label: "Setup & Installation", href: "/dashboard/setup", icon: MdOutlineSettingsInputComposite },
       { label: "Access Tokens", href: "/dashboard/access-tokens", icon: FiKey },
       { label: "Tunnel", href: "/dashboard/tunnel", icon: FiSliders },
     ],

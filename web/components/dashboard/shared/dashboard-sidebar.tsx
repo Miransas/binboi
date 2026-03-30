@@ -43,10 +43,10 @@ export default function DashboardSidebar({ user }: { user: any }) {
       initial={false}
       animate={{ width: isCollapsed ? 92 : 292 }}
       transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-      className="relative z-40 flex h-screen shrink-0 flex-col border-r border-white/10 bg-[linear-gradient(180deg,rgba(8,10,16,0.98),rgba(5,7,12,0.96))] shadow-[24px_0_80px_rgba(0,0,0,0.24)]"
+      className="relative z-40 flex h-screen shrink-0 flex-col border-r border-white/8 bg-[linear-gradient(180deg,rgba(11,18,28,0.98),rgba(7,12,20,0.98))] shadow-[24px_0_80px_rgba(2,6,23,0.24)]"
     >
       <div className="pointer-events-none absolute inset-0">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(0,255,209,0.14),transparent_26%),radial-gradient(circle_at_bottom_left,rgba(139,92,246,0.08),transparent_28%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(86,220,208,0.10),transparent_24%),radial-gradient(circle_at_bottom_left,rgba(167,139,250,0.05),transparent_28%)]" />
         <div className="absolute right-0 top-0 h-full w-px bg-gradient-to-b from-transparent via-white/12 to-transparent" />
         <div className="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
       </div>
@@ -86,7 +86,7 @@ export default function DashboardSidebar({ user }: { user: any }) {
       </div>
 
       <div className="relative z-10 flex-1 overflow-y-auto px-3 py-5">
-        <div className="mb-5 rounded-[1.75rem] border border-white/10 bg-white/[0.03] p-3">
+        <div className="mb-5 rounded-[1.75rem] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.035),rgba(255,255,255,0.015))] p-3">
           <div className={cn("flex items-start gap-3", isCollapsed && "justify-center")}>
             <div className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-miransas-cyan/20 bg-miransas-cyan/10 text-miransas-cyan">
               <Sparkles className="h-4 w-4" />
@@ -135,7 +135,7 @@ export default function DashboardSidebar({ user }: { user: any }) {
                       {isActive ? (
                         <motion.span
                           layoutId="dashboard-sidebar-active"
-                          className="absolute inset-0 rounded-2xl border border-miransas-cyan/20 bg-[linear-gradient(180deg,rgba(0,255,209,0.12),rgba(10,16,20,0.9))] shadow-[0_14px_40px_rgba(0,0,0,0.22)]"
+                          className="absolute inset-0 rounded-2xl border border-miransas-cyan/16 bg-[linear-gradient(180deg,rgba(20,33,40,0.96),rgba(13,18,25,0.96))] shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_14px_40px_rgba(2,6,23,0.22)]"
                         />
                       ) : null}
                       <span
@@ -166,7 +166,7 @@ export default function DashboardSidebar({ user }: { user: any }) {
                             >
                               <span className="truncate text-sm font-medium">{link.label}</span>
                               {link.badge ? (
-                                <span className="rounded-full border border-amber-300/20 bg-amber-300/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-amber-100">
+                                <span className="rounded-full border border-miransas-cyan/16 bg-miransas-cyan/8 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-[#8aefe7]">
                                   {link.badge}
                                 </span>
                               ) : null}
@@ -186,7 +186,7 @@ export default function DashboardSidebar({ user }: { user: any }) {
       <div className="relative z-10 border-t border-white/10 p-4">
         <div
           className={cn(
-            "rounded-[1.75rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] p-3",
+            "rounded-[1.75rem] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.035),rgba(255,255,255,0.015))] p-3",
             isCollapsed && "px-2",
           )}
         >

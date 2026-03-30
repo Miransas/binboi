@@ -47,7 +47,7 @@ export function DashboardPageShell({
             <DashboardSectionHeading eyebrow={eyebrow} title={title} description={description} />
 
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
-              <DashboardSurface accent="violet" className="p-5">
+              <DashboardSurface accent="neutral" className="p-5">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-zinc-500">
                   Product posture
                 </p>
@@ -56,7 +56,7 @@ export function DashboardPageShell({
                   boundaries over decorative placeholders.
                 </p>
               </DashboardSurface>
-              <DashboardSurface accent="amber" className="p-5">
+              <DashboardSurface accent="violet" className="p-5">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-zinc-500">
                   What to expect
                 </p>

@@ -65,7 +65,7 @@ export default function DashboardPage() {
       value: session?.user ? "AUTH" : "GUEST",
       note: session?.user ? "Signed-in control plane mode is active." : "Local preview mode is still available for MVP testing.",
       icon: Shield,
-      accent: "amber" as const,
+      accent: "neutral" as const,
     },
   ];
 

@@ -430,20 +430,20 @@ function ProcessNode({ node }: { node: EngineNode }) {
 }
 
 const LandingSaas = () => {
-     const [scenario, setScenario] = useState<EngineScenario>(() => generateScenario());
-    
-      useEffect(() => {
-        const timer = window.setInterval(() => {
-          setScenario((current) => generateScenario(current.module.id));
-        }, 4200);
-    
-        return () => window.clearInterval(timer);
-      }, []);
+  const [scenario, setScenario] = useState<EngineScenario>(() => generateScenario());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setScenario((current) => generateScenario(current.module.id));
+    }, 4200);
+
+    return () => window.clearInterval(timer);
+  }, []);
   return (
-    <div>
-       <section className="relative ">
+    <>
+      <section className="relative ">
         <div className="mx-auto max-w-full">
-     
+
 
           <motion.div
             variants={fadeUp}
@@ -650,52 +650,52 @@ const LandingSaas = () => {
             </PremiumSurface>
           </motion.div>
         </div>
-         <motion.div
-              variants={fadeUp}
-              initial="hidden"
-              animate="visible"
-              transition={{ ...transition, delay: 0.22 }}
-              className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row"
-            >
-              <Link
-                href="/dashboard"
-                className="inline-flex items-center justify-center gap-2 rounded-full bg-miransas-cyan px-6 py-3.5 text-sm font-semibold text-black transition hover:brightness-110"
-              >
-                Open dashboard
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-              <Link
-                href="/docs/quick-start"
-                className="inline-flex items-center justify-center rounded-full border border-white/12 bg-white/[0.04] px-6 py-3.5 text-sm font-semibold text-white transition hover:border-white/20 hover:bg-white/[0.07]"
-              >
-                Read quick start
-              </Link>
-              <Link
-                href="/dashboard/access-tokens"
-                className="inline-flex items-center justify-center rounded-full border border-miransas-magenta/18 bg-miransas-magenta/8 px-6 py-3.5 text-sm font-semibold text-white transition hover:brightness-110"
-              >
-                Create access token
-              </Link>
-            </motion.div>
+        <motion.div
+          variants={fadeUp}
+          initial="hidden"
+          animate="visible"
+          transition={{ ...transition, delay: 0.22 }}
+          className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row"
+        >
+          <Link
+            href="/dashboard"
+            className="inline-flex items-center justify-center gap-2 rounded-full bg-miransas-cyan px-6 py-3.5 text-sm font-semibold text-black transition hover:brightness-110"
+          >
+            Open dashboard
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+          <Link
+            href="/docs/quick-start"
+            className="inline-flex items-center justify-center rounded-full border border-white/12 bg-white/[0.04] px-6 py-3.5 text-sm font-semibold text-white transition hover:border-white/20 hover:bg-white/[0.07]"
+          >
+            Read quick start
+          </Link>
+          <Link
+            href="/dashboard/access-tokens"
+            className="inline-flex items-center justify-center rounded-full border border-miransas-magenta/18 bg-miransas-magenta/8 px-6 py-3.5 text-sm font-semibold text-white transition hover:brightness-110"
+          >
+            Create access token
+          </Link>
+        </motion.div>
 
-            <motion.div
-              variants={fadeUp}
-              initial="hidden"
-              animate="visible"
-              transition={{ ...transition, delay: 0.3 }}
-              className="mt-8 flex flex-wrap items-center justify-center gap-3"
+        <motion.div
+          variants={fadeUp}
+          initial="hidden"
+          animate="visible"
+          transition={{ ...transition, delay: 0.3 }}
+          className="mt-8 flex flex-wrap items-center justify-center gap-3"
+        >
+          {heroSignals.map((signal) => (
+            <span
+              key={signal}
+              className="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-xs font-medium uppercase tracking-[0.18em] text-zinc-300"
             >
-              {heroSignals.map((signal) => (
-                <span
-                  key={signal}
-                  className="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-xs font-medium uppercase tracking-[0.18em] text-zinc-300"
-                >
-                  {signal}
-                </span>
-              ))}
-            </motion.div>
-      </section>  
-    </div>
+              {signal}
+            </span>
+          ))}
+        </motion.div>
+      </section>
+    </>
   )
 }
 

@@ -15,10 +15,10 @@ export default function DashboardHeader() {
 
   return (
     <div className="sticky top-0 z-30 px-4 pb-2 pt-4 sm:px-6 lg:px-8">
-      <DashboardSurface accent="cyan" className="p-0">
+      <DashboardSurface accent="neutral" className="p-0">
         <div className="grid gap-5 px-5 py-5 xl:grid-cols-[minmax(0,1.15fr)_minmax(24rem,0.85fr)] xl:items-center xl:px-6">
           <div className="flex items-start gap-4">
-            <div className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-miransas-cyan/20 bg-miransas-cyan/10 text-miransas-cyan shadow-[0_0_32px_rgba(0,255,209,0.14)]">
+            <div className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-miransas-cyan/16 bg-miransas-cyan/8 text-[#8aefe7] shadow-[0_0_24px_rgba(0,255,209,0.08)]">
               <LayoutDashboard className="h-5 w-5" />
             </div>
             <div className="min-w-0">
@@ -38,7 +38,7 @@ export default function DashboardHeader() {
             <div className="grid gap-3 sm:grid-cols-3">
               <DashboardMiniPill label="Surface" value="Operator-ready" accent="cyan" />
               <DashboardMiniPill label="Context" value="Page-aware" accent="violet" />
-              <DashboardMiniPill label="Security" value="Server-side AI" accent="amber" />
+              <DashboardMiniPill label="Security" value="Server-side AI" accent="neutral" />
             </div>
             <div className="flex items-center gap-2 px-1 text-xs text-zinc-500">
               <Sparkles className="h-3.5 w-3.5 text-miransas-cyan" />

@@ -125,7 +125,7 @@ export default function TunnelPage() {
       ]}
     >
       <section className="grid gap-6 xl:grid-cols-[1fr_1.2fr]">
-        <DashboardSurface accent="amber" className="p-6">
+        <DashboardSurface accent="neutral" className="p-6">
           <h2 className="text-xl font-semibold text-white">Create a tunnel reservation</h2>
           <p className="mt-3 text-sm leading-7 text-zinc-400">
             Reserve a subdomain and target port first. Then connect the agent with the same subdomain.
