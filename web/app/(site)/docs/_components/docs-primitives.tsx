@@ -4,6 +4,8 @@ import { ArrowRight } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
+import { DocsTimeline } from "./docs-timeline";
+
 export type TocItem = {
   id: string;
   title: string;
@@ -74,22 +76,7 @@ export function DocsPageShell({
 
         {toc && toc.length > 0 && (
           <aside className="hidden xl:block">
-            <div className="sticky top-24 rounded-[2rem] border border-white/10 bg-[#070707]/95 p-5 backdrop-blur">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-zinc-500">
-                On this page
-              </p>
-              <nav className="mt-4 space-y-2">
-                {toc.map((item) => (
-                  <a
-                    key={item.id}
-                    href={`#${item.id}`}
-                    className="block rounded-xl px-3 py-2 text-sm text-zinc-400 transition hover:bg-white/5 hover:text-white"
-                  >
-                    {item.title}
-                  </a>
-                ))}
-              </nav>
-            </div>
+            <DocsTimeline toc={toc} />
           </aside>
         )}
       </div>
