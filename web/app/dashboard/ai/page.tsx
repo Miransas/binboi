@@ -8,6 +8,7 @@ export default function AiGatewaysPage() {
     <DashboardPageShell {...content}>
       <BinboiAssistant
         variant="dashboard"
+        storageKey="dashboard-ai-page"
         title="Ask Binboi about requests, webhooks, logs, and setup"
         description="This assistant is designed for read-only product search and troubleshooting. It uses server-side runtime context when available and stays useful even when AI credentials are not configured."
       />

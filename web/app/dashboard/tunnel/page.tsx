@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { ExternalLink, Globe, Plus, RefreshCcw, Trash2 } from "lucide-react";
+import { useRegisterAssistantContext } from "@/components/shared/assistant-context";
 import { DashboardPageShell } from "@/components/dashboard/shared/page-shell";
 import { fetchControlPlane, type ControlPlaneTunnel } from "@/lib/controlplane";
 
@@ -67,6 +68,27 @@ export default function TunnelPage() {
     const transfer = tunnels.reduce((sum, tunnel) => sum + tunnel.bytes_out, 0);
     return { active, requests, transfer };
   }, [tunnels]);
+
+  useRegisterAssistantContext("dashboard-tunnel-page", {
+    currentPage: {
+      path: "/dashboard/tunnel",
+      title: "Tunnels",
+      area: "dashboard",
+      summary: error
+        ? `Tunnel inventory is degraded: ${error}`
+        : `There are ${tunnels.length} reserved tunnels, ${metrics.active} active tunnels, and ${metrics.requests} forwarded requests in the current inventory.`,
+    },
+    requestContext: {
+      summary: error
+        ? `The tunnel page failed to load cleanly: ${error}`
+        : tunnels[0]
+          ? `The first listed tunnel is ${tunnels[0].subdomain} with status ${tunnels[0].status} and target ${tunnels[0].target}.`
+          : "No tunnel reservations exist yet.",
+      target: tunnels[0]?.target,
+      path: tunnels[0]?.public_url,
+      errorType: error ? "CONTROL_PLANE_UNAVAILABLE" : undefined,
+    },
+  });
 
   return (
     <DashboardPageShell

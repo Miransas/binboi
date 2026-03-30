@@ -4,6 +4,7 @@
 
 import { useSession } from "next-auth/react";
 import { useTunnels } from "@/hooks/useTunnels";
+import { useRegisterAssistantContext } from "@/components/shared/assistant-context";
 import BandwidthChart from "@/components/dashboard/shared/BandwidthChart";
 import { Activity, Shield, TerminalSquare, Waypoints } from "lucide-react";
 import TerminalLog from "./terminal-log";
@@ -15,6 +16,22 @@ export default function DashboardPage() {
 
   const activeCount = tunnels ? tunnels.filter((t: any) => t.status === "ACTIVE").length : 0;
   const totalBandwidth = tunnels ? tunnels.reduce((acc: number, t: any) => acc + (t.bytes_out || 0), 0) : 0;
+  useRegisterAssistantContext("dashboard-overview-metrics", {
+    currentPage: {
+      path: "/dashboard",
+      title: "Dashboard overview",
+      area: "dashboard",
+      summary: isError
+        ? "The overview is in a degraded state because the control plane is currently unreachable."
+        : `The overview reports ${activeCount} active tunnels and ${(totalBandwidth / (1024 * 1024)).toFixed(1)} MB of observed throughput.`,
+    },
+    logContext: {
+      summary: isError
+        ? "The main dashboard could not load tunnel data from the control plane."
+        : "The overview is connected to tunnel metrics and relay stream visibility.",
+    },
+  });
+
   const statusCards = [
     {
       label: "Active tunnels",

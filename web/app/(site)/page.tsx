@@ -126,6 +126,7 @@ binboi start 3000 my-app`}</code>
 
         <BinboiAssistant
           variant="hero"
+          storageKey="site-home-hero"
           title="Ask Binboi before you start redeploying"
           description="Search docs, product pages, live tunnel context, and troubleshooting guidance from one assistant surface. When server-side AI credentials are configured, it adds concise summaries without exposing any secret to the browser."
         />

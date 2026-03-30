@@ -1,4 +1,5 @@
 import { blogPosts, changelogEntries } from "@/content/site-content";
+import type { AssistantContext } from "@/lib/assistant-types";
 
 export type AssistantDocument = {
   id: string;
@@ -169,6 +170,39 @@ export const assistantDocuments: AssistantDocument[] = [
     keywords: ["ai", "assistant", "search", "summaries", "troubleshooting", "logs"],
   },
   {
+    id: "dashboard-overview",
+    title: "Dashboard overview",
+    href: "/dashboard",
+    kind: "dashboard",
+    excerpt:
+      "The control-plane overview shows active tunnels, throughput, authentication mode, and relay event visibility.",
+    body:
+      "Use the dashboard overview to understand whether the relay is online, how many tunnels are active, and whether the current session is signed in or running in preview mode. It is the fastest path to current operational state.",
+    keywords: ["dashboard", "overview", "relay", "throughput", "preview", "active tunnels"],
+  },
+  {
+    id: "dashboard-tunnel",
+    title: "Tunnel inventory",
+    href: "/dashboard/tunnel",
+    kind: "dashboard",
+    excerpt:
+      "Reserve subdomains, connect agents, inspect request counts, and manage tunnel lifecycle state.",
+    body:
+      "The tunnel page models the real Binboi MVP lifecycle: reserve a tunnel first, connect the CLI later, then inspect status, request count, bandwidth, and current target mapping from the dashboard.",
+    keywords: ["dashboard", "tunnel", "subdomain", "reservation", "active", "request count"],
+  },
+  {
+    id: "dashboard-access-tokens",
+    title: "Access token manager",
+    href: "/dashboard/access-tokens",
+    kind: "dashboard",
+    excerpt:
+      "Create, copy once, inspect last-used timestamps, and revoke CLI credentials from the dashboard.",
+    body:
+      "The access token manager is the source of truth for dashboard-issued machine tokens. It supports Free and Pro plan limits, one-time token display, and immediate revocation for compromised credentials.",
+    keywords: ["dashboard", "access tokens", "token manager", "revoke", "plan limits", "last used"],
+  },
+  {
     id: "pricing",
     title: "Pricing foundations",
     href: "/pricing",
@@ -242,9 +276,49 @@ function tokenize(input: string) {
     .filter((token) => token.length >= 2);
 }
 
-export function searchAssistantDocuments(query: string): AssistantSearchResult[] {
-  const terms = tokenize(query);
-  if (!terms.length) {
+function buildContextTerms(context?: AssistantContext) {
+  if (!context) {
+    return [];
+  }
+
+  return tokenize(
+    [
+      context.currentPage?.title,
+      context.currentPage?.summary,
+      context.currentPage?.path,
+      context.docsContext?.section,
+      context.docsContext?.summary,
+      context.docsContext?.topics?.join(" "),
+      context.requestContext?.method,
+      context.requestContext?.path,
+      context.requestContext?.target,
+      context.requestContext?.errorType,
+      context.requestContext?.summary,
+      String(context.requestContext?.status ?? ""),
+      context.webhookContext?.provider,
+      context.webhookContext?.eventType,
+      context.webhookContext?.endpoint,
+      context.webhookContext?.deliveryStatus,
+      context.webhookContext?.signatureHeader,
+      context.webhookContext?.summary,
+      context.logContext?.summary,
+      context.logContext?.levels?.join(" "),
+      context.logContext?.recent?.join(" "),
+    ]
+      .filter(Boolean)
+      .join(" "),
+  );
+}
+
+export function searchAssistantDocuments(
+  query: string,
+  options?: { context?: AssistantContext; conversationTerms?: string[] },
+): AssistantSearchResult[] {
+  const queryTerms = tokenize(query);
+  const contextTerms = buildContextTerms(options?.context);
+  const conversationTerms = tokenize((options?.conversationTerms ?? []).join(" "));
+  const allTerms = Array.from(new Set([...queryTerms, ...contextTerms, ...conversationTerms]));
+  if (!allTerms.length) {
     return [];
   }
 
@@ -256,11 +330,32 @@ export function searchAssistantDocuments(query: string): AssistantSearchResult[]
       const keywords = document.keywords.join(" ").toLowerCase();
 
       let score = 0;
-      for (const term of terms) {
-        if (title.includes(term)) score += 12;
-        if (keywords.includes(term)) score += 8;
-        if (excerpt.includes(term)) score += 5;
-        if (body.includes(term)) score += 3;
+      for (const term of queryTerms) {
+        if (title.includes(term)) score += 16;
+        if (keywords.includes(term)) score += 11;
+        if (excerpt.includes(term)) score += 7;
+        if (body.includes(term)) score += 4;
+      }
+
+      for (const term of contextTerms) {
+        if (title.includes(term)) score += 8;
+        if (keywords.includes(term)) score += 6;
+        if (excerpt.includes(term)) score += 4;
+        if (body.includes(term)) score += 2;
+      }
+
+      for (const term of conversationTerms) {
+        if (title.includes(term)) score += 4;
+        if (keywords.includes(term)) score += 3;
+        if (excerpt.includes(term)) score += 2;
+        if (body.includes(term)) score += 1;
+      }
+
+      if (
+        options?.context?.currentPage?.path &&
+        options.context.currentPage.path === document.href
+      ) {
+        score += 14;
       }
 
       return { ...document, score };
@@ -271,7 +366,10 @@ export function searchAssistantDocuments(query: string): AssistantSearchResult[]
   return scored;
 }
 
-export function buildTroubleshootingHints(query: string): string[] {
+export function buildTroubleshootingHints(
+  query: string,
+  context?: AssistantContext,
+): string[] {
   const lower = query.toLowerCase();
   const hints: string[] = [];
 
@@ -296,6 +394,22 @@ export function buildTroubleshootingHints(query: string): string[] {
   }
   if (lower.includes("log") || lower.includes("event")) {
     hints.push("Start with raw relay logs for transport truth, then use request or webhook context to understand application-level failures.");
+  }
+  if (context?.requestContext?.errorType) {
+    hints.push(
+      `The current request context reports ${context.requestContext.errorType}. Focus on the exact route, target service, and whether the failure happened before or after the app handled the request.`,
+    );
+  }
+  if (context?.webhookContext?.provider) {
+    hints.push(
+      `This page is already scoped to ${context.webhookContext.provider}. Check provider-specific signature headers, retry behavior, and the configured endpoint before changing tunnel settings.`,
+    );
+  }
+  if (context?.logContext?.recent?.length) {
+    hints.push("Recent logs are available in context. Compare the latest log lines against the tunnel status and the request path before assuming the relay is broken.");
+  }
+  if (context?.currentPage?.area === "docs") {
+    hints.push("You are already in the docs flow, so the assistant should prefer guide-backed answers and related documentation links over speculative runtime guesses.");
   }
 
   if (hints.length === 0) {

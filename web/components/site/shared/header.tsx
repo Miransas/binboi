@@ -52,8 +52,8 @@ export default function Header() {
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="hidden lg:block">
-            <AssistantLauncher />
+          <div className="hidden md:block md:w-[18rem] xl:w-[22rem]">
+            <AssistantLauncher variant="site" storageKey="site-global" />
           </div>
 
           {status === "loading" ? (

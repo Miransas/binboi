@@ -11,7 +11,10 @@ export async function POST(request: Request) {
   const query = body.query?.trim() || "";
 
   if (!query) {
-    return NextResponse.json({ error: "Enter a question to search Binboi." }, { status: 400 });
+    return NextResponse.json(
+      { error: "Enter a question to search Binboi." },
+      { status: 400 },
+    );
   }
 
   const payload = await runAssistantAssist(body);
