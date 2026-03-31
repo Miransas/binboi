@@ -20,7 +20,7 @@ type Panel = {
   bullets?: ReadonlyArray<string>;
 };
 
-const highlightAccents = ["cyan", "violet", "amber"] as const;
+const highlightAccents = ["cyan", "neutral", "violet"] as const;
 
 export function DashboardPageShell({
   eyebrow,
@@ -38,38 +38,45 @@ export function DashboardPageShell({
   children?: ReactNode;
 }) {
   return (
-    <div className="relative px-4 pb-12 pt-6 text-white sm:px-6 lg:px-8">
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-[radial-gradient(circle_at_top,rgba(0,255,209,0.08),transparent_58%)]" />
+    <div className="relative px-4 pb-8 pt-4 text-white sm:px-6 lg:px-8">
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-[radial-gradient(circle_at_top,rgba(94,217,208,0.045),transparent_64%)]" />
 
       <div className="relative mx-auto max-w-7xl">
-        <DashboardSurface accent="cyan" className="px-6 py-7 sm:px-8 lg:px-10">
-          <div className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(20rem,0.85fr)] xl:items-end">
+        <DashboardSurface accent="neutral" className="px-6 py-6 sm:px-8 lg:px-9">
+          <div className="grid gap-5 xl:grid-cols-[minmax(0,1.12fr)_minmax(18rem,0.88fr)] xl:items-start">
             <DashboardSectionHeading eyebrow={eyebrow} title={title} description={description} />
 
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
-              <DashboardSurface accent="neutral" className="p-5">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-zinc-500">
-                  Product posture
-                </p>
-                <p className="mt-3 text-sm leading-7 text-zinc-300">
-                  The dashboard favors operator clarity, live tunnel context, and honest MVP
-                  boundaries over decorative placeholders.
-                </p>
-              </DashboardSurface>
-              <DashboardSurface accent="violet" className="p-5">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-zinc-500">
-                  What to expect
-                </p>
-                <p className="mt-3 text-sm leading-7 text-zinc-300">
-                  Every page is designed to surface the next useful action, whether that means setup,
-                  inspection, or moving from fallback mode into a real tunnel workflow.
-                </p>
-              </DashboardSurface>
+            <div className="grid gap-3">
+              {panels.map((panel, index) => (
+                <DashboardSurface
+                  key={panel.title}
+                  accent={index === 0 ? "neutral" : "cyan"}
+                  className="p-5"
+                >
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-zinc-500">
+                    {index === 0 ? "Operator note" : "Expected behavior"}
+                  </p>
+                  <h2 className="mt-3 text-lg font-semibold text-white">{panel.title}</h2>
+                  <p className="mt-2 text-sm leading-7 text-zinc-400">{panel.description}</p>
+                  {panel.bullets && panel.bullets.length > 0 ? (
+                    <ul className="mt-4 space-y-2.5 text-sm leading-6 text-zinc-300">
+                      {panel.bullets.slice(0, 3).map((bullet) => (
+                        <li
+                          key={bullet}
+                          className="rounded-[1.25rem] border border-white/10 bg-white/[0.025] px-3.5 py-3"
+                        >
+                          {bullet}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </DashboardSurface>
+              ))}
             </div>
           </div>
         </DashboardSurface>
 
-        <div className="mt-8 grid gap-6 md:grid-cols-3">
+        <div className="mt-6 grid gap-5 md:grid-cols-3">
           {highlights.map((item, index) => (
             <DashboardStatCard
               key={item.label}
@@ -82,31 +89,6 @@ export function DashboardPageShell({
         </div>
 
         {children ? <div className="mt-8">{children}</div> : null}
-
-        <div className="mt-8 grid gap-6 lg:grid-cols-2">
-          {panels.map((panel, index) => (
-            <DashboardSurface
-              key={panel.title}
-              accent={index % 2 === 0 ? "violet" : "cyan"}
-              className="p-6"
-            >
-              <h2 className="text-xl font-semibold text-white">{panel.title}</h2>
-              <p className="mt-3 text-sm leading-7 text-zinc-400">{panel.description}</p>
-              {panel.bullets && panel.bullets.length > 0 ? (
-                <ul className="mt-5 space-y-3 text-sm leading-7 text-zinc-300">
-                  {panel.bullets.map((bullet) => (
-                    <li
-                      key={bullet}
-                      className="rounded-[1.5rem] border border-white/10 bg-black/20 px-4 py-3"
-                    >
-                      {bullet}
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-            </DashboardSurface>
-          ))}
-        </div>
       </div>
     </div>
   );

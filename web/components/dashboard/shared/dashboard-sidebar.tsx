@@ -45,27 +45,28 @@ export default function DashboardSidebar({ user }: { user: any }) {
   return (
     <motion.aside
       initial={false}
-      animate={{ width: isCollapsed ? 92 : 292 }}
+      animate={{ width: isCollapsed ? 88 : 280 }}
       transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-      className="relative z-40 flex h-screen shrink-0 flex-col border-r border-white/8 bg-[linear-gradient(180deg,rgba(11,18,28,0.98),rgba(7,12,20,0.98))] shadow-[24px_0_80px_rgba(2,6,23,0.24)]"
+      className="relative z-40 flex h-screen shrink-0 flex-col border-r border-white/8 bg-[linear-gradient(180deg,rgba(12,18,28,0.99),rgba(10,15,24,0.995))] shadow-[16px_0_40px_rgba(2,6,23,0.12)]"
     >
       <div className="pointer-events-none absolute inset-0">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(86,220,208,0.10),transparent_24%),radial-gradient(circle_at_bottom_left,rgba(167,139,250,0.05),transparent_28%)]" />
-        <div className="absolute right-0 top-0 h-full w-px bg-gradient-to-b from-transparent via-white/12 to-transparent" />
-        <div className="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(86,220,208,0.045),transparent_22%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.016),transparent_16%,transparent_84%,rgba(255,255,255,0.008))]" />
+        <div className="absolute right-0 top-0 h-full w-px bg-gradient-to-b from-transparent via-white/10 to-transparent" />
+        <div className="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-white/12 to-transparent" />
       </div>
 
       <button
         type="button"
         onClick={() => setIsCollapsed((value) => !value)}
-        className="absolute -right-3 top-7 z-50 inline-flex h-7 w-7 items-center justify-center rounded-full border border-white/10 bg-[#0d1118] text-zinc-400 shadow-[0_8px_24px_rgba(0,0,0,0.24)] transition hover:border-miransas-cyan/30 hover:text-white"
+        className="absolute -right-3 top-6 z-50 inline-flex h-7 w-7 items-center justify-center rounded-full border border-white/10 bg-[#101722] text-zinc-400 shadow-[0_8px_20px_rgba(0,0,0,0.18)] transition hover:border-miransas-cyan/18 hover:text-white"
       >
         {isCollapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronLeft className="h-3.5 w-3.5" />}
       </button>
 
-      <div className="relative z-10 flex h-20 items-center border-b border-white/10 px-5">
+      <div className="relative z-10 flex h-[4.5rem] items-center border-b border-white/8 px-5">
         <Link href="/" className="flex min-w-0 items-center gap-3">
-          <div className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] shadow-[0_0_32px_rgba(0,255,209,0.12)]">
+          <div className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-white/[0.025]">
             <img src="/logo.png" alt="Binboi logo" className="h-9 w-9 object-contain" />
           </div>
 
@@ -80,7 +81,7 @@ export default function DashboardSidebar({ user }: { user: any }) {
                 <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-zinc-500">
                   Binboi
                 </p>
-                <p className="mt-1 truncate text-base font-black tracking-tight text-white">
+                <p className="mt-1 truncate text-[15px] font-black tracking-tight text-white">
                   Control plane
                 </p>
               </motion.div>
@@ -89,10 +90,10 @@ export default function DashboardSidebar({ user }: { user: any }) {
         </Link>
       </div>
 
-      <div className="relative z-10 flex-1 overflow-y-auto px-3 py-5">
-        <div className="mb-5 rounded-[1.75rem] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.035),rgba(255,255,255,0.015))] p-3">
+      <div className="relative z-10 flex-1 overflow-y-auto px-3 py-4">
+        <div className="mb-4 rounded-[1.5rem] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01))] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]">
           <div className={cn("flex items-start gap-3", isCollapsed && "justify-center")}>
-            <div className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-miransas-cyan/20 bg-miransas-cyan/10 text-miransas-cyan">
+            <div className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-miransas-cyan/14 bg-miransas-cyan/7 text-miransas-cyan">
               <Sparkles className="h-4 w-4" />
             </div>
             <AnimatePresence initial={false}>
@@ -110,13 +111,13 @@ export default function DashboardSidebar({ user }: { user: any }) {
                     Tunnels, webhooks, logs, and AI guidance from one place.
                   </p>
                   <div className="mt-3 flex items-center gap-2">
-                    <span className="rounded-full border border-white/10 bg-white/[0.03] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-400">
+                    <span className="rounded-full border border-white/10 bg-white/[0.02] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-400">
                       {activePlan.name}
                     </span>
                     {nextPlan ? (
                       <Link
                         href="/dashboard/billing"
-                        className="rounded-full border border-miransas-cyan/18 bg-miransas-cyan/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-miransas-cyan transition hover:border-miransas-cyan/28 hover:bg-miransas-cyan/14"
+                        className="rounded-full border border-white/10 bg-white/[0.02] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-300 transition hover:border-miransas-cyan/16 hover:text-white"
                       >
                         {nextPlan === "PRO" ? "Upgrade" : "Scale"}
                       </Link>
@@ -133,7 +134,7 @@ export default function DashboardSidebar({ user }: { user: any }) {
             <div key={section.title}>
               <SidebarSectionLabel isCollapsed={isCollapsed} label={section.title} />
 
-              <div className="space-y-1.5">
+              <div className="space-y-1">
                 {section.items.map((link) => {
                   const isActive = pathname === link.href;
                   const Icon = link.icon;
@@ -144,7 +145,7 @@ export default function DashboardSidebar({ user }: { user: any }) {
                       href={link.href}
                       title={isCollapsed ? link.label : undefined}
                       className={cn(
-                        "group relative flex items-center gap-3 overflow-hidden rounded-2xl px-3 py-3 transition-all duration-200",
+                        "group relative flex items-center gap-3 overflow-hidden rounded-2xl px-3 py-2.5 transition-all duration-200",
                         isCollapsed ? "justify-center" : "justify-start",
                         isActive ? "text-white" : "text-zinc-400 hover:text-white",
                       )}
@@ -152,13 +153,13 @@ export default function DashboardSidebar({ user }: { user: any }) {
                       {isActive ? (
                         <motion.span
                           layoutId="dashboard-sidebar-active"
-                          className="absolute inset-0 rounded-2xl border border-miransas-cyan/16 bg-[linear-gradient(180deg,rgba(20,33,40,0.96),rgba(13,18,25,0.96))] shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_14px_40px_rgba(2,6,23,0.22)]"
+                          className="absolute inset-0 rounded-2xl border border-miransas-cyan/12 bg-[linear-gradient(180deg,rgba(18,26,36,0.985),rgba(12,18,27,0.985))] shadow-[inset_0_1px_0_rgba(255,255,255,0.03),0_10px_22px_rgba(2,6,23,0.12)]"
                         />
                       ) : null}
                       <span
                         className={cn(
                           "absolute inset-x-4 top-0 h-px bg-gradient-to-r from-transparent to-transparent opacity-0 transition-opacity duration-200 group-hover:opacity-100",
-                          isActive ? "via-miransas-cyan/45 opacity-100" : "via-white/18",
+                          isActive ? "via-miransas-cyan/24 opacity-100" : "via-white/12",
                         )}
                       />
                       <div className="relative z-10 flex min-w-0 items-center gap-3">
@@ -166,8 +167,8 @@ export default function DashboardSidebar({ user }: { user: any }) {
                           className={cn(
                             "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border transition-colors",
                             isActive
-                              ? "border-miransas-cyan/25 bg-miransas-cyan/12 text-miransas-cyan"
-                              : "border-white/10 bg-white/[0.03] text-zinc-500 group-hover:text-zinc-200",
+                              ? "border-miransas-cyan/16 bg-miransas-cyan/7 text-miransas-cyan"
+                              : "border-white/10 bg-white/[0.02] text-zinc-500 group-hover:text-zinc-200",
                           )}
                         >
                           {Icon ? <Icon size={18} /> : null}
@@ -183,7 +184,7 @@ export default function DashboardSidebar({ user }: { user: any }) {
                             >
                               <span className="truncate text-sm font-medium">{link.label}</span>
                               {link.badge ? (
-                                <span className="rounded-full border border-miransas-cyan/16 bg-miransas-cyan/8 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-[#8aefe7]">
+                                <span className="rounded-full border border-miransas-cyan/14 bg-miransas-cyan/7 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-[#8aefe7]">
                                   {link.badge}
                                 </span>
                               ) : null}
@@ -200,10 +201,10 @@ export default function DashboardSidebar({ user }: { user: any }) {
         </nav>
       </div>
 
-      <div className="relative z-10 border-t border-white/10 p-4">
+      <div className="relative z-10 border-t border-white/8 p-4">
         <div
           className={cn(
-            "rounded-[1.75rem] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.035),rgba(255,255,255,0.015))] p-3",
+            "rounded-[1.5rem] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01))] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]",
             isCollapsed && "px-2",
           )}
         >
@@ -237,7 +238,7 @@ export default function DashboardSidebar({ user }: { user: any }) {
               }
             }}
             className={cn(
-              "mt-3 inline-flex w-full items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-2.5 text-sm text-zinc-400 transition hover:border-red-400/20 hover:bg-red-500/10 hover:text-red-200",
+              "mt-3 inline-flex w-full items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.02] px-3 py-2.5 text-sm text-zinc-400 transition hover:border-red-400/14 hover:bg-red-500/7 hover:text-red-200",
               isCollapsed && "justify-center px-0",
             )}
             title={isCollapsed ? (isGuest ? "Local Preview" : "Sign Out") : undefined}
