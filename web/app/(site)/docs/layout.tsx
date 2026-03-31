@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 
 import { DocsSidebar } from "./_components/docs-sidebar";
+import { Footer } from "../../../components/site/shared/footer";
 
 export default function DocsLayout({ children }: { children: ReactNode }) {
   return (
@@ -12,7 +13,9 @@ export default function DocsLayout({ children }: { children: ReactNode }) {
         
         <div className="flex flex-col gap-8 lg:flex-row">
           <DocsSidebar />
-          <div className="min-w-0 flex-1 mt-20">{children}</div>
+          <div className="min-w-0 flex-1 mt-20">{children}
+            <Footer/>
+          </div>
         </div>
       </div>
     </div>

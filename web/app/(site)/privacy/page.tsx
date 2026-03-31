@@ -3,6 +3,7 @@ import {
   SitePanel,
   SiteSectionHeader,
 } from "@/components/site/shared/site-primitives";
+import { Footer } from "../../../components/site/shared/footer";
 
 const privacySections = [
   {
@@ -78,6 +79,7 @@ export default function PrivacyPage() {
           </SitePanel>
         ))}
       </section>
+      <Footer/>
     </SitePageShell>
   );
 }

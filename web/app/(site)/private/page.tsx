@@ -3,6 +3,7 @@ import {
   SitePanel,
   SiteSectionHeader,
 } from "@/components/site/shared/site-primitives";
+import { Footer } from "../../../components/site/shared/footer";
 
 export default function PrivateNetworkingPage() {
   return (
@@ -36,6 +37,7 @@ export default function PrivateNetworkingPage() {
           </div>
         </SitePanel>
       </section>
+      <Footer/>
     </SitePageShell>
   );
 }

@@ -7,12 +7,12 @@ export default function AiGatewaysPage() {
   const content = dashboardPageContent.ai;
 
   return (
-    <PremiumDashboardShell {...content}>
-      <div className="dashboard-route-frame dashboard-route-frame--ai">
-        <section className={dashboardPanelClass("blue", "overflow-hidden p-1")}>
+    <PremiumDashboardShell {...content} className="flex min-h-full flex-col">
+      <div className="dashboard-route-frame dashboard-route-frame--ai flex min-h-full flex-col">
+        <section className={dashboardPanelClass("blue", "flex min-h-[32rem] flex-1 flex-col overflow-hidden p-1 lg:min-h-[40rem]")}>
           <BinboiAssistant
             variant="dashboard"
-            className="h-[46rem] max-h-[calc(100dvh-12rem)] border-0 bg-transparent shadow-none"
+            className="h-full min-h-[32rem] max-h-none flex-1 border-0 bg-transparent shadow-none lg:min-h-[40rem]"
             storageKey="dashboard-ai-page"
             title="Ask Binboi about requests, webhooks, logs, and setup"
             description="This assistant is designed for read-only product search and troubleshooting. It uses server-side runtime context when available and stays useful even when AI credentials are not configured."

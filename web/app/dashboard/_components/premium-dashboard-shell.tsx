@@ -54,11 +54,11 @@ export function PremiumDashboardShell({
 }) {
   return (
     <DashboardRouteFrame variant="shell" className={className}>
-      <div className="relative px-4 pb-6 pt-4 text-white sm:px-6 lg:px-8">
+      <div className="relative flex min-h-full flex-col px-4 pb-6 pt-4 text-white sm:px-6 lg:px-8">
         <div className="pointer-events-none absolute left-6 top-0 h-56 w-56 rounded-full bg-[radial-gradient(circle,rgba(126,162,255,0.16),transparent_70%)] blur-3xl" />
         <div className="pointer-events-none absolute right-8 top-14 h-64 w-64 rounded-full bg-[radial-gradient(circle,rgba(43,86,201,0.18),transparent_72%)] blur-3xl" />
 
-        <div className="relative mx-auto max-w-7xl space-y-6">
+        <div className="relative mx-auto flex min-h-full w-full max-w-7xl flex-1 flex-col gap-6">
           <div className="grid gap-6 xl:grid-cols-[minmax(0,1.08fr)_minmax(18rem,0.92fr)] xl:items-end">
             <div className="max-w-4xl">
               <span className={dashboardBadgeClass("blue")}>{eyebrow}</span>
@@ -143,7 +143,7 @@ export function PremiumDashboardShell({
             </div>
           ) : null}
 
-          {children ? <div>{children}</div> : null}
+          {children ? <div className="flex-1">{children}</div> : null}
         </div>
       </div>
     </DashboardRouteFrame>

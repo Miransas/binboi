@@ -99,8 +99,8 @@ export default function DashboardPage() {
   const recentRequests = requests.slice(0, 5);
 
   return (
-    <div className="relative px-4 pb-8 pt-4 text-white sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-7xl">
+    <div className="relative flex min-h-full flex-col px-4 pb-8 pt-4 text-white sm:px-6 lg:px-8">
+      <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col">
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(24rem,0.85fr)] xl:items-end">
           <DashboardSectionHeading
             eyebrow="Binboi control plane"

@@ -12,6 +12,7 @@ import {
   SiteSectionHeader,
 } from "@/components/site/shared/site-primitives";
 import { pricingPlans } from "@/lib/pricing";
+import { Footer } from "../site/shared/footer";
 
 export function PricingPageClient() {
   const { plan, planConfig, aiExplainsRemaining } = usePricingPlan();
@@ -151,6 +152,7 @@ export function PricingPageClient() {
           </div>
         </div>
       </SitePanel>
+      <Footer/>
     </SitePageShell>
   );
 }

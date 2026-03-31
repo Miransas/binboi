@@ -3,6 +3,7 @@ import {
   SitePanel,
   SiteSectionHeader,
 } from "@/components/site/shared/site-primitives";
+import { Footer } from "../../../components/site/shared/footer";
 
 const termsSections = [
   {
@@ -90,6 +91,7 @@ export default function TermsPage() {
           </SitePanel>
         ))}
       </section>
+      <Footer/>
     </SitePageShell>
   );
 }

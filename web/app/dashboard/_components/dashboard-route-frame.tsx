@@ -13,7 +13,11 @@ export function DashboardRouteFrame({
 }) {
   return (
     <div
-      className={cn("dashboard-route-frame", `dashboard-route-frame--${variant}`, className)}
+      className={cn(
+        "dashboard-route-frame flex min-h-full flex-col",
+        `dashboard-route-frame--${variant}`,
+        className,
+      )}
     >
       {children}
     </div>
