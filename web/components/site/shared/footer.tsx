@@ -12,9 +12,9 @@ export function Footer() {
   ];
 
   return (
-    <footer className="border-t border-white/10 bg-[#050506] text-white">
+    <footer className="border-t  bg-[#050506] text-white">
       <div className="mx-auto max-w-[1440px] px-6 pb-8 pt-14 lg:px-8">
-        <div className="grid gap-8 rounded-[2.5rem] border border-white/10 bg-[#070709]/88 p-8 shadow-[0_40px_140px_rgba(0,0,0,0.35)] lg:grid-cols-[1.15fr_0.85fr]">
+        <div className="grid gap-8  bg-[#070709]/88 p-8 shadow-[0_40px_140px_rgba(0,0,0,0.35)] lg:grid-cols-[1.15fr_0.85fr]">
           <div>
             <div className="inline-flex items-center gap-2 rounded-full border border-miransas-cyan/15 bg-miransas-cyan/8 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-miransas-cyan">
               <Sparkles className="h-3.5 w-3.5" />
