@@ -91,10 +91,11 @@ export function DocsTimeline({ toc }: { toc: TocItem[] }) {
   );
 
   return (
-    <div className="sticky top-24 overflow-hidden rounded-[2rem] border border-white/10 bg-[#070707]/95 p-5 shadow-[0_30px_90px_rgba(0,0,0,0.35)] backdrop-blur">
+    <div className="relative flex max-h-[calc(100dvh-7.5rem)] flex-col overflow-hidden rounded-[2rem] border border-white/[0.08] bg-[linear-gradient(180deg,rgba(8,13,23,0.94),rgba(5,9,18,0.98))] p-5 shadow-[0_34px_110px_rgba(0,0,0,0.32),inset_0_1px_0_rgba(255,255,255,0.03)] backdrop-blur-xl">
       <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-[radial-gradient(circle_at_top,_rgba(0,255,209,0.14),_transparent_62%)] opacity-80" />
+      <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
 
-      <div className="relative">
+      <div className="relative flex min-h-0 flex-1 flex-col">
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-zinc-500">
@@ -109,7 +110,7 @@ export function DocsTimeline({ toc }: { toc: TocItem[] }) {
           </div>
         </div>
 
-        <nav className="relative mt-6">
+        <nav className="relative mt-6 min-h-0 flex-1 overflow-y-auto pr-1">
           <div className="absolute left-[11px] top-3 bottom-3 w-px rounded-full bg-white/10" />
           <div className="absolute left-[11px] top-3 bottom-3 w-px overflow-hidden rounded-full">
             <div

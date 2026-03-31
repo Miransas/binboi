@@ -1,23 +1,26 @@
 import type { ReactNode } from "react";
-import Link from "next/link";
 
 import { DocsSidebar } from "./_components/docs-sidebar";
 import { Footer } from "../../../components/site/shared/footer";
 
 export default function DocsLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="min-h-screen bg-[#040404] text-white">
-      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(0,255,209,0.1),_transparent_30%),radial-gradient(circle_at_top_right,_rgba(255,255,255,0.05),_transparent_28%)]" />
+    <div className="min-h-screen bg-[#03060d] text-white">
+      <div className="pointer-events-none fixed inset-0">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_10%_0%,rgba(134,169,255,0.18),transparent_24%),radial-gradient(circle_at_88%_10%,rgba(255,255,255,0.05),transparent_20%),linear-gradient(180deg,rgba(255,255,255,0.02),transparent_14%,transparent_86%,rgba(255,255,255,0.01))]" />
+        <div className="absolute left-[-8%] top-12 h-[26rem] w-[26rem] rounded-full bg-[radial-gradient(circle,rgba(56,93,200,0.18),transparent_72%)] blur-3xl" />
+      </div>
 
-      <div className="relative mx-auto max-w-[1580px] px-4 pb-20 pt-24 sm:px-6 lg:px-8">
-        
-        <div className="flex flex-col gap-8 lg:flex-row">
-          <DocsSidebar />
-          <div className="min-w-0 flex-1 mt-20">{children}
-            <Footer/>
+      <main className="relative">
+        <div className="relative mx-auto max-w-[1680px] px-4 pb-20 pt-24 sm:px-6 lg:px-8">
+          <div className="grid gap-8 xl:grid-cols-[18.5rem_minmax(0,1fr)] xl:items-start 2xl:gap-10">
+            <DocsSidebar />
+            <div className="min-w-0 pt-4 xl:pt-0">{children}</div>
           </div>
         </div>
-      </div>
+      </main>
+
+      <Footer />
     </div>
   );
 }

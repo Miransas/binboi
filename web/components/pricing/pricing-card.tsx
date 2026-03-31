@@ -14,7 +14,13 @@ const accentClasses: Record<PricingPlan["accent"], string> = {
     "bg-[radial-gradient(circle_at_top_left,rgba(167,139,250,0.14),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(167,139,250,0.08),transparent_28%)]",
 };
 
-export function PricingCard({ plan }: { plan: PricingPlan }) {
+export function PricingCard({
+  plan,
+  className,
+}: {
+  plan: PricingPlan;
+  className?: string;
+}) {
   const href =
     plan.id === "FREE"
       ? "/dashboard"
@@ -25,14 +31,15 @@ export function PricingCard({ plan }: { plan: PricingPlan }) {
   return (
     <section
       className={cn(
-        "group relative overflow-hidden rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(15,21,30,0.96),rgba(7,11,17,0.98))] p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_30px_100px_rgba(0,0,0,0.32)]",
+        "group relative h-full overflow-hidden rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(15,21,30,0.96),rgba(7,11,17,0.98))] p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_30px_100px_rgba(0,0,0,0.32)]",
         plan.featured && "border-miransas-cyan/24 shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_0_0_1px_rgba(0,255,209,0.08),0_30px_100px_rgba(0,0,0,0.34)]",
+        className,
       )}
     >
       <div className={cn("pointer-events-none absolute inset-0 opacity-90", accentClasses[plan.accent])} />
       <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-white/18 to-transparent" />
 
-      <div className="relative z-10">
+      <div className="relative z-10 flex h-full flex-col">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-zinc-500">
@@ -59,7 +66,7 @@ export function PricingCard({ plan }: { plan: PricingPlan }) {
           </div>
         </div>
 
-        <div className="mt-6 space-y-3">
+        <div className="mt-6 flex-1 space-y-3">
           {plan.cardFeatures.map((feature) => (
             <div
               key={feature}
@@ -71,22 +78,24 @@ export function PricingCard({ plan }: { plan: PricingPlan }) {
           ))}
         </div>
 
-        {plan.id === "FREE" ? (
-          <PricingActionButton
-            plan={plan.id}
-            href={href}
-            label={plan.ctaLabel}
-            className="mt-6 w-full"
-            variant={plan.featured ? "primary" : "secondary"}
-          />
-        ) : (
-          <BillingCheckoutButton
-            plan={plan.id}
-            label={plan.ctaLabel}
-            className="mt-6 w-full"
-            variant={plan.featured ? "primary" : "secondary"}
-          />
-        )}
+        <div className="mt-6">
+          {plan.id === "FREE" ? (
+            <PricingActionButton
+              plan={plan.id}
+              href={href}
+              label={plan.ctaLabel}
+              className="w-full"
+              variant={plan.featured ? "primary" : "secondary"}
+            />
+          ) : (
+            <BillingCheckoutButton
+              plan={plan.id}
+              label={plan.ctaLabel}
+              className="w-full"
+              variant={plan.featured ? "primary" : "secondary"}
+            />
+          )}
+        </div>
       </div>
     </section>
   );

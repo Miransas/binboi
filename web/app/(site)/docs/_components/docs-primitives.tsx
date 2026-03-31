@@ -40,22 +40,50 @@ export function DocsPageShell({
   children: ReactNode;
 }) {
   return (
-    <div className="space-y-8">
-      <header className="overflow-hidden rounded-[2rem] border border-white/10 bg-[#070707]/95 shadow-[0_30px_90px_rgba(0,0,0,0.25)] backdrop-blur">
-        <div className="border-b border-white/10 px-6 py-8 sm:px-8 lg:px-10">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-miransas-cyan">
-            {eyebrow}
-          </p>
-          <h1 className="mt-4 max-w-4xl text-4xl font-black tracking-tight text-white sm:text-5xl">
-            {title}
-          </h1>
-          <p className="mt-5 max-w-3xl text-base leading-8 text-zinc-300">
-            {description}
-          </p>
+    <div className="space-y-10">
+      <header className="relative overflow-hidden rounded-[2.25rem] border border-white/[0.08] bg-[linear-gradient(180deg,rgba(8,13,23,0.94),rgba(5,9,18,0.985))] shadow-[0_38px_120px_rgba(0,0,0,0.36),inset_0_1px_0_rgba(255,255,255,0.03)] backdrop-blur-xl">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_14%_0%,rgba(134,169,255,0.16),transparent_34%),radial-gradient(circle_at_86%_8%,rgba(255,255,255,0.05),transparent_18%),linear-gradient(180deg,rgba(255,255,255,0.02),transparent_20%,transparent_100%)]" />
+        <div className="pointer-events-none absolute inset-x-12 top-0 h-px bg-gradient-to-r from-transparent via-white/14 to-transparent" />
+
+        <div className="relative border-b border-white/10 px-6 py-8 sm:px-8 lg:px-10 lg:py-10">
+          <div className={cn("grid gap-6", toc && toc.length > 0 && "xl:grid-cols-[minmax(0,1fr)_15rem] xl:items-end")}>
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-[#dfe7ff]">
+                {eyebrow}
+              </p>
+              <h1 className="mt-4 max-w-4xl text-4xl font-black tracking-[-0.04em] text-white sm:text-5xl lg:text-[3.6rem]">
+                {title}
+              </h1>
+              <p className="mt-5 max-w-3xl text-base leading-8 text-[rgba(194,203,219,0.8)]">
+                {description}
+              </p>
+            </div>
+
+            {toc && toc.length > 0 ? (
+              <div className="hidden xl:grid gap-3">
+                <div className="rounded-[1.5rem] border border-white/10 bg-black/25 px-4 py-4">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-zinc-500">
+                    Guide sections
+                  </p>
+                  <p className="mt-3 text-3xl font-black tracking-[-0.04em] text-white">
+                    {String(toc.length).padStart(2, "0")}
+                  </p>
+                </div>
+                <div className="rounded-[1.5rem] border border-white/10 bg-black/25 px-4 py-4">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-zinc-500">
+                    Reading flow
+                  </p>
+                  <p className="mt-3 text-sm leading-7 text-zinc-300">
+                    Use the left guide rail for navigation and the right rail to stay anchored while reading.
+                  </p>
+                </div>
+              </div>
+            ) : null}
+          </div>
         </div>
 
         {toc && toc.length > 0 && (
-          <div className="overflow-x-auto px-4 py-4 lg:hidden">
+          <div className="relative overflow-x-auto px-4 py-4 lg:hidden">
             <div className="flex min-w-max gap-2 px-2">
               {toc.map((item) => (
                 <a
@@ -71,11 +99,11 @@ export function DocsPageShell({
         )}
       </header>
 
-      <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_240px]">
+      <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_18rem] xl:items-start 2xl:gap-10">
         <div className="min-w-0 space-y-8">{children}</div>
 
         {toc && toc.length > 0 && (
-          <aside className="hidden xl:block">
+          <aside className="hidden xl:block xl:sticky xl:top-28 xl:self-start">
             <DocsTimeline toc={toc} />
           </aside>
         )}
@@ -100,22 +128,26 @@ export function DocsSection({
   return (
     <section
       id={id}
-      className="scroll-mt-28 rounded-[2rem] border border-white/10 bg-[#070707]/95 p-6 shadow-[0_30px_90px_rgba(0,0,0,0.2)] backdrop-blur sm:p-8"
+      className="relative scroll-mt-32 overflow-hidden rounded-[2rem] border border-white/[0.08] bg-[linear-gradient(180deg,rgba(8,13,23,0.92),rgba(5,9,18,0.98))] p-6 shadow-[0_34px_110px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.03)] backdrop-blur-xl sm:p-8 lg:p-9"
     >
-      {eyebrow && (
-        <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-miransas-cyan">
-          {eyebrow}
-        </p>
-      )}
-      <h2 className="mt-3 text-2xl font-black tracking-tight text-white sm:text-3xl">
-        {title}
-      </h2>
-      {description && (
-        <p className="mt-4 max-w-4xl text-base leading-8 text-zinc-300">
-          {description}
-        </p>
-      )}
-      <div className="mt-6 space-y-6">{children}</div>
+      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.02),transparent_24%,transparent_100%)]" />
+      <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+      <div className="relative z-10">
+        {eyebrow && (
+          <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-[#dfe7ff]">
+            {eyebrow}
+          </p>
+        )}
+        <h2 className="mt-3 text-2xl font-black tracking-[-0.03em] text-white sm:text-3xl">
+          {title}
+        </h2>
+        {description && (
+          <p className="mt-4 max-w-4xl text-base leading-8 text-[rgba(194,203,219,0.8)]">
+            {description}
+          </p>
+        )}
+        <div className="mt-6 space-y-6">{children}</div>
+      </div>
     </section>
   );
 }
@@ -130,8 +162,8 @@ export function DocsCardGrid({
   return (
     <div
       className={cn(
-        "grid gap-4",
-        columns === 3 ? "lg:grid-cols-3" : "lg:grid-cols-2",
+        "grid gap-5",
+        columns === 3 ? "xl:grid-cols-3" : "lg:grid-cols-2",
       )}
     >
       {children}
@@ -155,7 +187,7 @@ export function DocsCard({
   children?: ReactNode;
 }) {
   return (
-    <article className={cn("rounded-3xl border p-5", toneClasses(tone))}>
+    <article className={cn("rounded-3xl border p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]", toneClasses(tone))}>
       <div className="flex flex-wrap items-center gap-2">
         {eyebrow && (
           <span className="text-[10px] font-semibold uppercase tracking-[0.24em] text-zinc-500">
@@ -185,7 +217,7 @@ export function DocsCallout({
   tone?: Exclude<Tone, "zinc">;
 }) {
   return (
-    <div className={cn("rounded-3xl border p-5", toneClasses(tone))}>
+    <div className={cn("rounded-3xl border p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]", toneClasses(tone))}>
       <h3 className="text-lg font-semibold text-white">{title}</h3>
       <div className="mt-3 text-sm leading-7 text-zinc-200">{children}</div>
     </div>
@@ -204,7 +236,7 @@ export function DocsCodeBlock({
   note?: string;
 }) {
   return (
-    <div className="overflow-hidden rounded-3xl border border-white/10 bg-black/35">
+    <div className="overflow-hidden rounded-3xl border border-white/10 bg-black/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]">
       <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
         <div>
           <h3 className="text-sm font-semibold uppercase tracking-[0.24em] text-zinc-400">
@@ -237,7 +269,7 @@ export function DocsTable({
   rows: string[][];
 }) {
   return (
-    <div className="overflow-hidden rounded-3xl border border-white/10 bg-black/25">
+    <div className="overflow-hidden rounded-3xl border border-white/10 bg-black/25 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]">
       <div className="border-b border-white/10 px-5 py-4">
         <h3 className="text-lg font-semibold text-white">{title}</h3>
       </div>
@@ -284,7 +316,7 @@ export function DocsLinkCard({
   return (
     <Link
       href={href}
-      className="group rounded-3xl border border-white/10 bg-black/25 p-5 transition hover:border-miransas-cyan/20 hover:bg-miransas-cyan/6"
+      className="group rounded-3xl border border-white/10 bg-black/25 p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)] transition hover:border-miransas-cyan/20 hover:bg-miransas-cyan/6"
     >
       <div className="flex items-center justify-between gap-4">
         <h3 className="text-lg font-semibold text-white">{title}</h3>
