@@ -25,6 +25,7 @@ export const users = pgTable("user", {
   email: text("email").notNull().unique(),
   emailVerified: timestamp("emailVerified", { mode: "date" }),
   image: text("image"),
+  passwordHash: text("password_hash"),
   plan: text("plan").$type<UserPlan>().notNull().default("FREE"),
   isActive: boolean("is_active").default(true),
   paddleCustomerId: text("paddle_customer_id").unique(),
@@ -73,6 +74,43 @@ export const verificationTokens = pgTable(
     compoundKey: primaryKey({ columns: [vt.identifier, vt.token] }),
   })
 );
+
+export const emailVerificationRequests = pgTable("email_verification_request", {
+  id: text("id").notNull().primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  email: text("email").notNull(),
+  tokenHash: text("token_hash").notNull().unique(),
+  expiresAt: timestamp("expires_at", { mode: "date" }).notNull(),
+  createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+});
+
+export const passwordResetRequests = pgTable("password_reset_request", {
+  id: text("id").notNull().primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  email: text("email").notNull(),
+  tokenHash: text("token_hash").notNull().unique(),
+  expiresAt: timestamp("expires_at", { mode: "date" }).notNull(),
+  createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+});
+
+export const invites = pgTable("invite", {
+  id: text("id").notNull().primaryKey(),
+  email: text("email").notNull(),
+  tokenHash: text("token_hash").notNull().unique(),
+  invitedByUserId: text("invited_by_user_id").references(() => users.id, {
+    onDelete: "set null",
+  }),
+  acceptedByUserId: text("accepted_by_user_id").references(() => users.id, {
+    onDelete: "set null",
+  }),
+  expiresAt: timestamp("expires_at", { mode: "date" }).notNull(),
+  acceptedAt: timestamp("accepted_at", { mode: "date" }),
+  createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+});
 
 export const accessTokens = pgTable("access_token", {
   id: text("id").notNull().primaryKey(),

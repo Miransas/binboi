@@ -1,9 +1,6 @@
-import React from 'react'
+import { CheckEmailView } from "../_components/auth-forms";
+import { authDatabaseEnabled } from "@/lib/auth-system";
 
-const page = () => {
-  return (
-    <div>page</div>
-  )
+export default function CheckEmailPage() {
+  return <CheckEmailView authConfigured={authDatabaseEnabled} />;
 }
-
-export default page

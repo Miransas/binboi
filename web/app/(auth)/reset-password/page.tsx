@@ -1,9 +1,6 @@
-import React from 'react'
+import { ResetPasswordForm } from "../_components/auth-forms";
+import { authDatabaseEnabled } from "@/lib/auth-system";
 
-const page = () => {
-  return (
-    <div>page</div>
-  )
+export default function ResetPasswordPage() {
+  return <ResetPasswordForm authConfigured={authDatabaseEnabled} />;
 }
-
-export default page

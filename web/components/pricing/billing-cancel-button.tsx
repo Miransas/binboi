@@ -2,12 +2,14 @@
 
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 export function BillingCancelButton({
   onCanceled,
 }: {
   onCanceled?: () => void;
 }) {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -27,6 +29,11 @@ export function BillingCancelButton({
         method: "POST",
       });
       const body = (await response.json().catch(() => ({}))) as { error?: string };
+
+      if (response.status === 401) {
+        router.push("/login?callbackUrl=%2Fdashboard%2Fbilling");
+        return;
+      }
 
       if (!response.ok) {
         throw new Error(body.error || "Could not cancel this subscription.");

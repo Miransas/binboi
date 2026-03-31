@@ -18,7 +18,7 @@ export default function CreateTunnelForm({ onSuccess }: { onSuccess: () => void 
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          user_id: session?.user?.email, // Şimdilik email'i ID olarak kullanıyoruz
+          user_id: session?.user?.id,
           subdomain: formData.subdomain,
           target: formData.target,
           region: "eu-central",

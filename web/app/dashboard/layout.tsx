@@ -1,5 +1,6 @@
-import { auth } from "@/auth";
 import { AssistantContextProvider } from "@/components/shared/assistant-context";
+import { getRequiredDashboardSession } from "@/lib/auth-session";
+import { authDatabaseEnabled } from "@/lib/auth-system";
 import DashboardSidebar from "../../components/dashboard/shared/dashboard-sidebar";
 import DashboardHeader from "../../components/dashboard/shared/dashboard-header";
 import "./dashboard-theme.css";
@@ -7,12 +8,7 @@ import "./dashboard-theme.css";
 export const dynamic = "force-dynamic";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  let session = null;
-
-  try {
-    session = await auth();
-  } catch {
-  }
+  const session = authDatabaseEnabled ? await getRequiredDashboardSession() : null;
 
   return (
     <AssistantContextProvider>

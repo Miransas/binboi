@@ -41,7 +41,7 @@ export function BillingCheckoutButton({
       };
 
       if (response.status === 401) {
-        router.push("/login");
+        router.push("/login?callbackUrl=%2Fdashboard%2Fbilling");
         return;
       }
 

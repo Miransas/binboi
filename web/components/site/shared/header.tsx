@@ -2,7 +2,8 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { signIn, useSession } from "next-auth/react";
+import { usePathname } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { LayoutDashboard, Loader2 } from "lucide-react";
 
 import { NAV_LINKS } from "@/constants";
@@ -13,6 +14,8 @@ const primaryNav = NAV_LINKS.slice(0, 5);
 
 export default function Header() {
   const { data: session, status } = useSession();
+  const pathname = usePathname();
+  const callbackUrl = pathname && pathname !== "/" ? `?callbackUrl=${encodeURIComponent(pathname)}` : "";
 
   return (
     <header className="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-[#050506]/78 backdrop-blur-xl">
@@ -76,13 +79,18 @@ export default function Header() {
               >
                 Local preview
               </Link>
-              <button
-                type="button"
-                onClick={() => signIn("github")}
+              <Link
+                href={`/login${callbackUrl}`}
+                className="hidden rounded-full border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm text-zinc-300 transition hover:border-white/20 hover:bg-white/[0.06] hover:text-white sm:inline-flex"
+              >
+                Sign in
+              </Link>
+              <Link
+                href={`/register${callbackUrl}`}
                 className="inline-flex items-center rounded-full bg-miransas-cyan px-4 py-2.5 text-sm font-semibold text-black transition hover:brightness-110"
               >
-                GitHub login
-              </button>
+                Create account
+              </Link>
             </>
           )}
         </div>

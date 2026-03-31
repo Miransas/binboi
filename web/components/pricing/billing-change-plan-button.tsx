@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 import type { BillingPlan } from "@/lib/pricing";
 
@@ -14,6 +15,7 @@ export function BillingChangePlanButton({
   label: string;
   onChanged?: () => void;
 }) {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -30,6 +32,11 @@ export function BillingChangePlanButton({
         body: JSON.stringify({ plan }),
       });
       const body = (await response.json().catch(() => ({}))) as { error?: string };
+
+      if (response.status === 401) {
+        router.push("/login?callbackUrl=%2Fdashboard%2Fbilling");
+        return;
+      }
 
       if (!response.ok) {
         throw new Error(body.error || "Could not change the subscription plan.");
