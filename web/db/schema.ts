@@ -6,6 +6,7 @@ import {
   integer,
   serial,
   boolean,
+  index,
 } from "drizzle-orm/pg-core";
 import type { AdapterAccount } from "next-auth/adapters";
 
@@ -84,7 +85,10 @@ export const emailVerificationRequests = pgTable("email_verification_request", {
   tokenHash: text("token_hash").notNull().unique(),
   expiresAt: timestamp("expires_at", { mode: "date" }).notNull(),
   createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
-});
+}, (table) => ({
+  userIdIdx: index("email_verification_request_user_id_idx").on(table.userId),
+  emailIdx: index("email_verification_request_email_idx").on(table.email),
+}));
 
 export const passwordResetRequests = pgTable("password_reset_request", {
   id: text("id").notNull().primaryKey(),
@@ -95,7 +99,10 @@ export const passwordResetRequests = pgTable("password_reset_request", {
   tokenHash: text("token_hash").notNull().unique(),
   expiresAt: timestamp("expires_at", { mode: "date" }).notNull(),
   createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
-});
+}, (table) => ({
+  userIdIdx: index("password_reset_request_user_id_idx").on(table.userId),
+  emailIdx: index("password_reset_request_email_idx").on(table.email),
+}));
 
 export const invites = pgTable("invite", {
   id: text("id").notNull().primaryKey(),
@@ -110,7 +117,9 @@ export const invites = pgTable("invite", {
   expiresAt: timestamp("expires_at", { mode: "date" }).notNull(),
   acceptedAt: timestamp("accepted_at", { mode: "date" }),
   createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
-});
+}, (table) => ({
+  emailIdx: index("invite_email_idx").on(table.email),
+}));
 
 export const accessTokens = pgTable("access_token", {
   id: text("id").notNull().primaryKey(),
@@ -124,7 +133,9 @@ export const accessTokens = pgTable("access_token", {
   lastUsedAt: timestamp("last_used_at", { mode: "date" }),
   revokedAt: timestamp("revoked_at", { mode: "date" }),
   createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
-});
+}, (table) => ({
+  userIdIdx: index("access_token_user_id_idx").on(table.userId),
+}));
 
 export const tunnels = pgTable("tunnels", {
   id: serial("id").primaryKey(),
@@ -159,4 +170,6 @@ export const billingSubscriptions = pgTable("billing_subscriptions", {
   cancelAtPeriodEnd: boolean("cancel_at_period_end").notNull().default(false),
   createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
-});
+}, (table) => ({
+  userIdIdx: index("billing_subscriptions_user_id_idx").on(table.userId),
+}));
