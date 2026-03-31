@@ -19,7 +19,6 @@ export default function DocsLayout({ children }: { children: ReactNode }) {
           </div>
         </div>
       </main>
-
       <Footer />
     </div>
   );
