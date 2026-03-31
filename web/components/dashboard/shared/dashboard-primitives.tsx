@@ -16,50 +16,50 @@ const accentClasses: Record<
 > = {
   neutral: {
     glow:
-      "bg-[radial-gradient(circle_at_top_left,rgba(148,163,184,0.02),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(67,85,107,0.03),transparent_30%)]",
-    beam: "from-transparent via-white/8 to-transparent",
+      "bg-[linear-gradient(180deg,rgba(255,255,255,0.018),transparent_28%,transparent_100%)]",
+    beam: "from-transparent via-white/7 to-transparent",
     ring: "border-white/12",
-    dot: "bg-slate-300/18 shadow-[0_0_14px_rgba(148,163,184,0.05)]",
+    dot: "bg-slate-300/18 shadow-[0_0_12px_rgba(148,163,184,0.04)]",
     icon: "text-zinc-200",
   },
   cyan: {
     glow:
-      "bg-[radial-gradient(circle_at_top_left,rgba(94,217,208,0.045),transparent_34%),radial-gradient(circle_at_85%_15%,rgba(94,217,208,0.02),transparent_24%)]",
-    beam: "from-transparent via-miransas-cyan/14 to-transparent",
+      "bg-[linear-gradient(145deg,rgba(94,217,208,0.13)_0%,rgba(94,217,208,0.06)_24%,transparent_54%)]",
+    beam: "from-transparent via-miransas-cyan/18 to-transparent",
     ring: "border-miransas-cyan/14",
-    dot: "bg-miransas-cyan/34 shadow-[0_0_16px_rgba(0,255,209,0.08)]",
+    dot: "bg-miransas-cyan/30 shadow-[0_0_14px_rgba(0,255,209,0.06)]",
     icon: "text-[#9af4ee]",
   },
   amber: {
     glow:
-      "bg-[radial-gradient(circle_at_top_left,rgba(250,204,21,0.04),transparent_32%),radial-gradient(circle_at_88%_18%,rgba(217,119,6,0.02),transparent_24%)]",
-    beam: "from-transparent via-amber-300/12 to-transparent",
+      "bg-[linear-gradient(145deg,rgba(251,146,60,0.13)_0%,rgba(251,146,60,0.05)_24%,transparent_54%)]",
+    beam: "from-transparent via-orange-300/18 to-transparent",
     ring: "border-amber-300/14",
-    dot: "bg-amber-300/38 shadow-[0_0_16px_rgba(251,191,36,0.08)]",
-    icon: "text-amber-200",
+    dot: "bg-orange-300/28 shadow-[0_0_14px_rgba(251,146,60,0.06)]",
+    icon: "text-orange-200",
   },
   violet: {
     glow:
-      "bg-[radial-gradient(circle_at_top_left,rgba(167,139,250,0.04),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(129,140,248,0.02),transparent_26%)]",
-    beam: "from-transparent via-violet-300/10 to-transparent",
+      "bg-[linear-gradient(145deg,rgba(167,139,250,0.13)_0%,rgba(167,139,250,0.05)_26%,transparent_56%)]",
+    beam: "from-transparent via-violet-300/16 to-transparent",
     ring: "border-violet-300/14",
-    dot: "bg-violet-300/34 shadow-[0_0_18px_rgba(167,139,250,0.07)]",
+    dot: "bg-violet-300/26 shadow-[0_0_14px_rgba(167,139,250,0.05)]",
     icon: "text-[#d2c9ff]",
   },
   emerald: {
     glow:
-      "bg-[radial-gradient(circle_at_top_left,rgba(52,211,153,0.09),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(16,185,129,0.05),transparent_26%)]",
-    beam: "from-transparent via-emerald-300/22 to-transparent",
+      "bg-[linear-gradient(145deg,rgba(52,211,153,0.12)_0%,rgba(52,211,153,0.05)_24%,transparent_54%)]",
+    beam: "from-transparent via-emerald-300/16 to-transparent",
     ring: "border-emerald-300/18",
-    dot: "bg-emerald-300/70 shadow-[0_0_18px_rgba(52,211,153,0.18)]",
+    dot: "bg-emerald-300/32 shadow-[0_0_14px_rgba(52,211,153,0.06)]",
     icon: "text-emerald-200",
   },
   rose: {
     glow:
-      "bg-[radial-gradient(circle_at_top_left,rgba(251,113,133,0.10),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(225,29,72,0.05),transparent_26%)]",
-    beam: "from-transparent via-rose-300/24 to-transparent",
+      "bg-[linear-gradient(145deg,rgba(251,113,133,0.13)_0%,rgba(251,113,133,0.05)_24%,transparent_54%)]",
+    beam: "from-transparent via-rose-300/18 to-transparent",
     ring: "border-rose-300/18",
-    dot: "bg-rose-300/70 shadow-[0_0_18px_rgba(251,113,133,0.18)]",
+    dot: "bg-rose-300/34 shadow-[0_0_14px_rgba(251,113,133,0.06)]",
     icon: "text-rose-200",
   },
 };
@@ -81,29 +81,21 @@ export function DashboardSurface({
   return (
     <section
       className={cn(
-        "group relative overflow-hidden rounded-[1.75rem] border border-white/8 bg-[linear-gradient(180deg,rgba(17,24,35,0.985),rgba(12,18,28,0.99))] [box-shadow:inset_0_1px_0_rgba(255,255,255,0.04),0_12px_28px_rgba(2,6,23,0.18)]",
+        "group relative overflow-hidden rounded-[1.75rem] border border-white/8 bg-[linear-gradient(180deg,rgba(20,27,39,0.99),rgba(15,21,31,0.995))] [box-shadow:inset_0_1px_0_rgba(255,255,255,0.04),0_8px_22px_rgba(2,6,23,0.12)]",
         padded && "p-6",
         className,
       )}
     >
       {!isNeutral ? (
-        <div className={cn("pointer-events-none absolute inset-0 opacity-60", tones.glow)} />
+        <div className={cn("pointer-events-none absolute inset-0 opacity-100", tones.glow)} />
       ) : null}
-      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.02),transparent_26%,transparent_84%,rgba(255,255,255,0.012))]" />
+      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.018),transparent_24%,transparent_86%,rgba(255,255,255,0.01))]" />
       <div
         className={cn(
           "pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r opacity-90",
           isNeutral ? "from-transparent via-white/8 to-transparent" : tones.beam,
         )}
       />
-      {!isNeutral ? (
-        <div
-          className={cn(
-            "pointer-events-none absolute right-5 top-4 h-16 w-16 rounded-full blur-2xl opacity-[0.12]",
-            tones.dot,
-          )}
-        />
-      ) : null}
       <div className="pointer-events-none absolute inset-[1px] rounded-[calc(1.75rem-1px)] border border-white/[0.03]" />
       <div className="relative z-10 h-full">{children}</div>
     </section>
@@ -126,7 +118,7 @@ export function DashboardStatCard({
   const tones = accentClasses[accent];
 
   return (
-    <DashboardSurface accent="neutral" className="min-h-[11rem]">
+    <DashboardSurface accent={accent} className="min-h-[11rem]">
       <div className="flex items-center justify-between gap-4">
         <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-zinc-500">{label}</p>
         {Icon ? (
@@ -141,7 +133,7 @@ export function DashboardStatCard({
         ) : null}
       </div>
       <div className={cn("mt-5 h-px w-14 bg-gradient-to-r", tones.beam)} />
-      <p className="mt-7 text-4xl font-black tracking-tight text-white">{value}</p>
+      <p className="mt-6 text-4xl font-black tracking-tight text-white">{value}</p>
       <p className="mt-3 text-sm leading-6 text-zinc-400">{note}</p>
     </DashboardSurface>
   );
@@ -161,7 +153,7 @@ export function DashboardMiniPill({
   return (
     <div
       className={cn(
-        "rounded-2xl border bg-white/[0.02] px-4 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]",
+        "rounded-2xl border bg-white/[0.018] px-4 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]",
         tones.ring,
       )}
     >
@@ -184,7 +176,7 @@ export function DashboardSectionHeading({
 }) {
   return (
     <div className={cn("max-w-3xl", className)}>
-      <p className="inline-flex items-center rounded-full border border-miransas-cyan/20 bg-miransas-cyan/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.28em] text-miransas-cyan">
+      <p className="inline-flex items-center rounded-full border border-miransas-cyan/16 bg-miransas-cyan/7 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.28em] text-miransas-cyan">
         {eyebrow}
       </p>
       <h1 className="mt-5 text-4xl font-black tracking-tight text-white lg:text-5xl">{title}</h1>
@@ -206,22 +198,22 @@ function timelineTone(status: DashboardTimelineItem["status"]) {
     case "complete":
       return {
         dot: accentClasses.emerald.dot,
-        ring: "border-emerald-300/16 bg-emerald-400/8 text-emerald-100",
+        ring: "border-emerald-300/14 bg-emerald-400/7 text-emerald-100",
       };
     case "error":
       return {
         dot: accentClasses.rose.dot,
-        ring: "border-rose-300/16 bg-rose-400/8 text-rose-100",
+        ring: "border-rose-300/14 bg-rose-400/7 text-rose-100",
       };
     case "active":
       return {
         dot: accentClasses.cyan.dot,
-        ring: "border-miransas-cyan/16 bg-miransas-cyan/8 text-[#8aefe7]",
+        ring: "border-miransas-cyan/14 bg-miransas-cyan/7 text-[#8aefe7]",
       };
     default:
       return {
         dot: "bg-zinc-500/80 shadow-[0_0_14px_rgba(113,113,122,0.22)]",
-        ring: "border-white/10 bg-white/[0.03] text-zinc-300",
+        ring: "border-white/10 bg-white/[0.018] text-zinc-300",
       };
   }
 }
@@ -244,13 +236,13 @@ export function DashboardTimeline({
           <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-zinc-500">{eyebrow}</p>
           <h3 className="mt-3 text-xl font-semibold text-white">{title}</h3>
         </div>
-        <span className="rounded-full border border-white/10 bg-white/[0.025] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
+        <span className="rounded-full border border-white/10 bg-white/[0.018] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
           Live flow
         </span>
       </div>
 
       <div className="relative mt-6 space-y-5">
-        <div className="pointer-events-none absolute bottom-4 left-[1.05rem] top-4 w-px bg-gradient-to-b from-miransas-cyan/28 via-white/8 to-transparent" />
+        <div className="pointer-events-none absolute bottom-4 left-[1.05rem] top-4 w-px bg-gradient-to-b from-miransas-cyan/18 via-white/8 to-transparent" />
         {items.map((item) => {
           const tones = timelineTone(item.status);
 
@@ -259,7 +251,7 @@ export function DashboardTimeline({
               <div className="relative z-10 flex w-8 shrink-0 justify-center">
                 <span className={cn("mt-1.5 h-3.5 w-3.5 rounded-full", tones.dot)} />
               </div>
-              <div className="min-w-0 flex-1 rounded-[1.5rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(7,11,18,0.34))] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]">
+              <div className="min-w-0 flex-1 rounded-[1.5rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.018),rgba(11,16,24,0.28))] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
                     {item.label}
