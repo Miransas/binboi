@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
+import { buildLoginHref } from "@/lib/auth-routing";
 import type { BillingPlan } from "@/lib/pricing";
 import { cn } from "@/lib/utils";
 
@@ -41,7 +42,7 @@ export function BillingCheckoutButton({
       };
 
       if (response.status === 401) {
-        router.push("/login?callbackUrl=%2Fdashboard%2Fbilling");
+        router.push(buildLoginHref("/dashboard/billing"));
         return;
       }
 

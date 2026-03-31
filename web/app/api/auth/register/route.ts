@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { signIn } from "@/auth";
-import { sanitizeRedirectTarget } from "@/lib/auth-session";
+import { buildPathWithQuery, sanitizeRedirectTarget } from "@/lib/auth-routing";
 import {
   AuthRouteError,
   authDatabaseEnabled,
@@ -73,12 +73,19 @@ export async function POST(request: Request) {
     }
 
     const previewUrl = new URL(
-      `/verify-email?token=${encodeURIComponent(result.verificationToken ?? "")}`,
+      buildPathWithQuery("/verify-email", {
+        token: result.verificationToken ?? "",
+        email: result.email,
+        callbackUrl,
+      }),
       request.url,
     ).toString();
-    const redirectTo = `/check-email?flow=verify-email&email=${encodeURIComponent(
-      result.email,
-    )}&previewUrl=${encodeURIComponent(previewUrl)}`;
+    const redirectTo = buildPathWithQuery("/check-email", {
+      flow: "verify-email",
+      email: result.email,
+      callbackUrl,
+      previewUrl,
+    });
 
     return NextResponse.json({
       ok: true,

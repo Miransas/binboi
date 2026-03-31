@@ -4,13 +4,19 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 export const authInputClass =
-  "w-full rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-miransas-cyan/35 focus:bg-white/[0.05]";
+  "w-full rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3.5 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-[#86a9ff]/35 focus:bg-white/[0.05] disabled:cursor-not-allowed disabled:opacity-70";
 
 export const authPrimaryButtonClass =
-  "inline-flex w-full items-center justify-center rounded-2xl bg-miransas-cyan px-4 py-3 text-sm font-semibold text-black transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-70";
+  "inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#d9e5ff] px-4 py-3.5 text-sm font-semibold text-[#07111f] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-70";
 
 export const authSecondaryButtonClass =
-  "inline-flex w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-medium text-white transition hover:border-white/20 hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-70";
+  "inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3.5 text-sm font-medium text-white transition hover:border-white/20 hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-70";
+
+export const authInlinePrimaryButtonClass =
+  "inline-flex items-center justify-center gap-2 rounded-full bg-[#d9e5ff] px-4 py-2.5 text-sm font-semibold text-[#07111f] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-70";
+
+export const authInlineSecondaryButtonClass =
+  "inline-flex items-center justify-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm font-medium text-white transition hover:border-white/20 hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-70";
 
 export const authMutedTextClass = "text-sm leading-7 text-[rgba(194,203,219,0.74)]";
 
@@ -24,11 +30,11 @@ export function AuthCard({
   return (
     <section
       className={cn(
-        "relative overflow-hidden rounded-[2rem] border border-white/[0.08] bg-[linear-gradient(180deg,rgba(8,13,23,0.94),rgba(5,9,18,0.985))] p-6 shadow-[0_40px_130px_rgba(0,0,0,0.38),inset_0_1px_0_rgba(255,255,255,0.03)] backdrop-blur-xl sm:p-8",
+        "relative overflow-hidden rounded-[2rem] border border-white/[0.08] bg-[linear-gradient(180deg,rgba(8,13,23,0.95),rgba(5,9,18,0.99))] p-6 shadow-[0_42px_140px_rgba(0,0,0,0.38),inset_0_1px_0_rgba(255,255,255,0.03)] backdrop-blur-xl sm:p-8",
         className,
       )}
     >
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_16%_0%,rgba(134,169,255,0.14),transparent_34%),linear-gradient(180deg,rgba(255,255,255,0.02),transparent_24%,transparent_100%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_16%_0%,rgba(134,169,255,0.16),transparent_32%),linear-gradient(180deg,rgba(255,255,255,0.02),transparent_24%,transparent_100%)]" />
       <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-white/12 to-transparent" />
       <div className="relative z-10">{children}</div>
     </section>
@@ -46,15 +52,43 @@ export function AuthHeader({
 }) {
   return (
     <div>
-      <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-[#dfe7ff]">
-        {eyebrow}
-      </p>
-      <h1 className="mt-4 text-3xl font-black tracking-[-0.04em] text-white sm:text-4xl">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="rounded-full border border-[#86a9ff]/16 bg-[#86a9ff]/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.24em] text-[#dfe7ff]">
+          {eyebrow}
+        </span>
+        <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.24em] text-zinc-500">
+          Binboi auth
+        </span>
+      </div>
+
+      <h1 className="mt-5 text-3xl font-black tracking-[-0.05em] text-white sm:text-[2.6rem] sm:leading-[1.02]">
         {title}
       </h1>
-      <p className="mt-4 max-w-xl text-sm leading-7 text-[rgba(194,203,219,0.78)] sm:text-base">
+      <p className="mt-4 max-w-xl text-sm leading-7 text-[rgba(194,203,219,0.8)] sm:text-base sm:leading-8">
         {description}
       </p>
+    </div>
+  );
+}
+
+export function AuthFeatureStrip({
+  items,
+}: {
+  items: Array<{ label: string; value: string }>;
+}) {
+  return (
+    <div className="mt-6 grid gap-3 sm:grid-cols-3">
+      {items.map((item) => (
+        <div
+          key={item.label}
+          className="rounded-[1.35rem] border border-white/10 bg-black/20 px-4 py-3"
+        >
+          <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
+            {item.label}
+          </p>
+          <p className="mt-2 text-sm font-medium text-white">{item.value}</p>
+        </div>
+      ))}
     </div>
   );
 }
@@ -97,7 +131,11 @@ export function AuthStatus({
           ? "border-rose-400/18 bg-rose-500/8 text-rose-100"
           : "border-white/10 bg-white/[0.03] text-zinc-300";
 
-  return <div className={`rounded-[1.5rem] border px-4 py-3 text-sm leading-7 ${classes}`}>{children}</div>;
+  return (
+    <div className={`rounded-[1.5rem] border px-4 py-3 text-sm leading-7 ${classes}`}>
+      {children}
+    </div>
+  );
 }
 
 export function AuthFooterLink({

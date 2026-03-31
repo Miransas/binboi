@@ -1,44 +1,45 @@
 "use client";
 
-import type { CSSProperties, ReactNode } from "react";
-import { Menu } from "lucide-react";
 import { useState } from "react";
-
 import { DocsSidebar } from "./_components/docs-sidebar";
+// adjust path if needed
 
-export default function DocsLayout({ children }: { children: ReactNode }) {
-  const [isCollapsed, setIsCollapsed] = useState(false);
-  const [isMobileOpen, setIsMobileOpen] = useState(false);
+const SIDEBAR_OPEN_W  = 260;
+const SIDEBAR_CLOSE_W = 56;
 
-  const layoutStyle = {
-    "--docs-sidebar-width": isCollapsed ? "5.5rem" : "18rem",
-  } as CSSProperties;
+export default function DocsLayout({ children }: { children: React.ReactNode }) {
+  const [open, setOpen] = useState(true);
 
   return (
-    <div className="min-h-screen bg-[#03060d]" style={layoutStyle}>
-      <DocsSidebar
-        isCollapsed={isCollapsed}
-        setIsCollapsed={setIsCollapsed}
-        isMobileOpen={isMobileOpen}
-        setIsMobileOpen={setIsMobileOpen}
-      />
+    <div className="min-h-screen bg-[#0a0a0b] text-white">
+      <DocsSidebar isOpen={open} onToggle={() => setOpen((v) => !v)} />
 
-      <button
-        type="button"
-        onClick={() => setIsMobileOpen(true)}
-        className="fixed left-4 top-[5.25rem] z-30 inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-[rgba(8,13,23,0.9)] text-zinc-300 shadow-[0_20px_50px_rgba(0,0,0,0.3)] backdrop-blur-xl transition hover:border-white/20 hover:text-white lg:hidden"
-        aria-label="Open docs navigation"
+      {/* Content shifts with sidebar */}
+      <div
+        style={{
+          marginLeft: open ? SIDEBAR_OPEN_W : SIDEBAR_CLOSE_W,
+          transition: "margin-left 220ms cubic-bezier(0.4,0,0.2,1)",
+        }}
       >
-        <Menu className="h-4.5 w-4.5" />
-      </button>
+        {/* Mobile top bar */}
+        <header className="sticky top-0 z-10 flex h-14 items-center gap-3 border-b border-white/[0.06] bg-[#0a0a0b]/90 px-5 backdrop-blur-md lg:hidden">
+          <button
+            onClick={() => setOpen((v) => !v)}
+            aria-label="Toggle navigation"
+            className="flex h-8 w-8 items-center justify-center rounded-md border border-white/[0.08] text-white/50 transition-colors hover:bg-white/[0.05] hover:text-white"
+          >
+            <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+              <path d="M2 4h12M2 8h12M2 12h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
+          </button>
+          <span className="text-[13px] font-semibold tracking-tight text-white/80">Binboi Docs</span>
+        </header>
 
-      <main className="transition-[padding-left] duration-300 ease-out lg:pl-[var(--docs-sidebar-width)]">
-        <div className="mx-auto max-w-5xl px-6 py-24 sm:px-8 lg:px-12">
-          <article className="prose prose-invert max-w-none">
-            {children}
-          </article>
-        </div>
-      </main>
+        {/* Page content */}
+        <main className="mx-auto max-w-full px-8 py-12">
+          {children}
+        </main>
+      </div>
     </div>
   );
 }

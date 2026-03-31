@@ -1,9 +1,17 @@
 import { ForgotPasswordForm } from "../_components/auth-forms";
 import { redirectAuthenticatedUser } from "@/lib/auth-session";
+import { sanitizeRedirectTarget } from "@/lib/auth-routing";
 import { authDatabaseEnabled } from "@/lib/auth-system";
 
-export default async function ForgotPasswordPage() {
-  await redirectAuthenticatedUser("/dashboard");
+export default async function ForgotPasswordPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ callbackUrl?: string }>;
+}) {
+  const resolvedSearchParams = await searchParams;
+  await redirectAuthenticatedUser(
+    sanitizeRedirectTarget(resolvedSearchParams.callbackUrl, "/dashboard"),
+  );
 
   return <ForgotPasswordForm authConfigured={authDatabaseEnabled} />;
 }

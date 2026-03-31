@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { buildPathWithQuery, sanitizeRedirectTarget } from "@/lib/auth-routing";
 import { AuthRouteError, resetPasswordWithToken } from "@/lib/auth-system";
 
 export const runtime = "nodejs";
@@ -10,6 +11,7 @@ export async function POST(request: Request) {
     token?: string;
     password?: string;
     confirmPassword?: string;
+    callbackUrl?: string;
   };
 
   try {
@@ -27,11 +29,15 @@ export async function POST(request: Request) {
       token: String(body.token ?? ""),
       password,
     });
+    const callbackUrl = sanitizeRedirectTarget(body.callbackUrl, "/dashboard");
 
     return NextResponse.json({
       ok: true,
       message: "Password updated successfully.",
-      redirectTo: "/login?reset=success",
+      redirectTo: buildPathWithQuery("/login", {
+        reset: "success",
+        callbackUrl,
+      }),
       email: result.email,
     });
   } catch (error) {

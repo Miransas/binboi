@@ -4,6 +4,8 @@ import { useState } from "react";
 import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
+import { buildLoginHref } from "@/lib/auth-routing";
+
 export function BillingCancelButton({
   onCanceled,
 }: {
@@ -31,7 +33,7 @@ export function BillingCancelButton({
       const body = (await response.json().catch(() => ({}))) as { error?: string };
 
       if (response.status === 401) {
-        router.push("/login?callbackUrl=%2Fdashboard%2Fbilling");
+        router.push(buildLoginHref("/dashboard/billing"));
         return;
       }
 

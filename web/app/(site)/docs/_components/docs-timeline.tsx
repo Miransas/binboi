@@ -1,8 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+
+import { getDocsNavContext } from "./docs-navigation";
 
 type TocItem = {
   id: string;
@@ -13,7 +18,20 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
 
-export function DocsTimeline({ toc }: { toc: TocItem[] }) {
+export function DocsTimeline({
+  eyebrow,
+  title,
+  toc,
+}: {
+  eyebrow: string;
+  title: string;
+  toc: TocItem[];
+}) {
+  const pathname = usePathname();
+  const { currentGroup, previousItem, nextItem } = useMemo(
+    () => getDocsNavContext(pathname),
+    [pathname],
+  );
   const [activeId, setActiveId] = useState(toc[0]?.id ?? "");
   const [progress, setProgress] = useState(0);
 
@@ -30,7 +48,7 @@ export function DocsTimeline({ toc }: { toc: TocItem[] }) {
       return;
     }
 
-    const updateTimeline = () => {
+    const updateRail = () => {
       const viewportAnchor = window.innerHeight * 0.28;
       const scrollPosition = window.scrollY + viewportAnchor;
 
@@ -47,38 +65,24 @@ export function DocsTimeline({ toc }: { toc: TocItem[] }) {
       const start = window.scrollY + firstRect.top;
       const end =
         window.scrollY + lastRect.top + lastRect.height - window.innerHeight * 0.42;
-      const ratio = clamp(
-        (scrollPosition - start) / Math.max(end - start, 1),
-        0,
-        1,
-      );
+      const ratio = clamp((scrollPosition - start) / Math.max(end - start, 1), 0, 1);
 
       setActiveId(nextActiveId);
       setProgress(ratio);
     };
 
-    updateTimeline();
-
-    const observer = new IntersectionObserver(updateTimeline, {
-      rootMargin: "-18% 0px -55% 0px",
-      threshold: [0, 0.2, 0.4, 0.7, 1],
-    });
-
-    for (const section of sections) {
-      observer.observe(section);
-    }
+    updateRail();
 
     let frameId = 0;
     const onScroll = () => {
       cancelAnimationFrame(frameId);
-      frameId = window.requestAnimationFrame(updateTimeline);
+      frameId = window.requestAnimationFrame(updateRail);
     };
 
     window.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("resize", onScroll);
 
     return () => {
-      observer.disconnect();
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onScroll);
       cancelAnimationFrame(frameId);
@@ -91,101 +95,175 @@ export function DocsTimeline({ toc }: { toc: TocItem[] }) {
   );
 
   return (
-    <div className="relative flex max-h-[calc(100dvh-7.5rem)] flex-col overflow-hidden rounded-[2rem] border border-white/[0.08] bg-[linear-gradient(180deg,rgba(8,13,23,0.94),rgba(5,9,18,0.98))] p-5 shadow-[0_34px_110px_rgba(0,0,0,0.32),inset_0_1px_0_rgba(255,255,255,0.03)] backdrop-blur-xl">
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-[radial-gradient(circle_at_top,_rgba(0,255,209,0.14),_transparent_62%)] opacity-80" />
-      <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+    <div className="sticky top-24 space-y-4">
+      <div className="relative overflow-hidden rounded-[1.75rem] border border-white/[0.08] bg-[linear-gradient(180deg,rgba(8,13,23,0.95),rgba(5,9,18,0.985))] p-5 shadow-[0_26px_90px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.03)]">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(134,169,255,0.15),transparent_40%)]" />
+        <div className="relative">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-zinc-500">
+            Page context
+          </p>
+          <h2 className="mt-3 text-lg font-semibold text-white">{title}</h2>
+          <p className="mt-2 text-sm leading-6 text-zinc-400">
+            {eyebrow} guide in {currentGroup?.title ?? "Documentation"}.
+          </p>
 
-      <div className="relative flex min-h-0 flex-1 flex-col">
-        <div className="flex items-start justify-between gap-3">
+          <div className="mt-5 grid gap-3">
+            <div className="rounded-[1.25rem] border border-white/10 bg-black/20 px-4 py-3">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
+                Sections
+              </p>
+              <p className="mt-2 text-3xl font-black tracking-[-0.04em] text-white">
+                {String(toc.length).padStart(2, "0")}
+              </p>
+            </div>
+
+            <div className="rounded-[1.25rem] border border-white/10 bg-black/20 px-4 py-3">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
+                  Reading progress
+                </p>
+                <span className="text-xs font-medium text-zinc-400">
+                  {Math.round(progress * 100)}%
+                </span>
+              </div>
+
+              <div className="mt-3 h-2 rounded-full bg-white/8">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-[#86a9ff] via-[#9fc2ff] to-[#d5e3ff] transition-[width] duration-300"
+                  style={{ width: `${Math.max(progress * 100, 6)}%` }}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-[1.75rem] border border-white/[0.08] bg-[linear-gradient(180deg,rgba(8,13,23,0.93),rgba(5,9,18,0.985))] p-4 shadow-[0_24px_80px_rgba(0,0,0,0.24),inset_0_1px_0_rgba(255,255,255,0.03)]">
+        <div className="flex items-center justify-between gap-3 px-1">
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-zinc-500">
-              Reading timeline
+              Section outline
             </p>
             <p className="mt-2 text-sm leading-6 text-zinc-400">
-              Scroll-aware section progress for the current guide.
+              Stay anchored while you read.
             </p>
           </div>
-          <div className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-300">
+          <div className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-300">
             {String(activeIndex + 1).padStart(2, "0")} / {String(toc.length).padStart(2, "0")}
           </div>
         </div>
 
-        <nav className="relative mt-6 min-h-0 flex-1 overflow-y-auto pr-1">
-          <div className="absolute left-[11px] top-3 bottom-3 w-px rounded-full bg-white/10" />
-          <div className="absolute left-[11px] top-3 bottom-3 w-px overflow-hidden rounded-full">
-            <div
-              className="h-full w-full origin-top rounded-full bg-gradient-to-b from-miransas-cyan via-cyan-300/90 to-miransas-cyan/15 shadow-[0_0_18px_rgba(0,255,209,0.35)] transition-transform duration-300 ease-out"
-              style={{ transform: `scaleY(${Math.max(progress, 0.06)})` }}
-            />
-          </div>
+        <nav className="mt-4 space-y-2">
+          {toc.map((item, index) => {
+            const isActive = item.id === activeId;
+            const isComplete = index < activeIndex;
 
-          <div className="space-y-4">
-            {toc.map((item, index) => {
-              const isActive = item.id === activeId;
-              const isComplete = index < activeIndex;
+            return (
+              <a
+                key={item.id}
+                href={`#${item.id}`}
+                aria-current={isActive ? "true" : undefined}
+                className={cn(
+                  "group grid grid-cols-[26px_minmax(0,1fr)] items-start gap-3 rounded-[1.25rem] border px-3 py-3 transition",
+                  isActive
+                    ? "border-[#86a9ff]/20 bg-[#86a9ff]/10"
+                    : "border-transparent hover:border-white/10 hover:bg-white/[0.03]",
+                )}
+              >
+                <span className="relative mt-1 flex h-6 items-center justify-center">
+                  <span
+                    className={cn(
+                      "absolute h-6 w-6 rounded-full transition",
+                      isActive
+                        ? "bg-[#86a9ff]/18 shadow-[0_0_22px_rgba(134,169,255,0.18)]"
+                        : isComplete
+                          ? "bg-[#86a9ff]/10"
+                          : "bg-transparent",
+                    )}
+                  />
+                  <span
+                    className={cn(
+                      "relative h-2.5 w-2.5 rounded-full border transition",
+                      isActive
+                        ? "border-[#86a9ff] bg-[#86a9ff]"
+                        : isComplete
+                          ? "border-[#86a9ff]/80 bg-[#86a9ff]/70"
+                          : "border-white/20 bg-[#07090f] group-hover:border-white/35",
+                    )}
+                  />
+                </span>
 
-              return (
-                <a
-                  key={item.id}
-                  href={`#${item.id}`}
-                  aria-current={isActive ? "true" : undefined}
-                  className="group grid grid-cols-[24px_minmax(0,1fr)] items-start gap-3"
-                >
-                  <span className="relative mt-1 flex h-6 items-center justify-center">
-                    <span
-                      className={cn(
-                        "absolute h-6 w-6 rounded-full transition duration-300",
-                        isActive
-                          ? "bg-miransas-cyan/16 shadow-[0_0_24px_rgba(0,255,209,0.18)]"
-                          : isComplete
-                            ? "bg-miransas-cyan/10"
-                            : "bg-transparent",
-                      )}
-                    />
-                    <span
-                      className={cn(
-                        "relative h-2.5 w-2.5 rounded-full border transition duration-300",
-                        isActive
-                          ? "border-miransas-cyan bg-miransas-cyan shadow-[0_0_0_4px_rgba(0,255,209,0.12)]"
-                          : isComplete
-                            ? "border-miransas-cyan/80 bg-miransas-cyan/70"
-                            : "border-white/20 bg-[#070707] group-hover:border-white/35",
-                      )}
-                    />
+                <span className="min-w-0">
+                  <span
+                    className={cn(
+                      "block text-[10px] font-semibold uppercase tracking-[0.22em]",
+                      isActive
+                        ? "text-[#d9e5ff]"
+                        : isComplete
+                          ? "text-zinc-400"
+                          : "text-zinc-600 group-hover:text-zinc-500",
+                    )}
+                  >
+                    {String(index + 1).padStart(2, "0")}
                   </span>
-
-                  <span className="block min-w-0 rounded-2xl border border-transparent px-3 py-2 transition duration-300 group-hover:border-white/10 group-hover:bg-white/[0.03]">
-                    <span
-                      className={cn(
-                        "block text-[10px] font-semibold uppercase tracking-[0.22em] transition duration-300",
-                        isActive
-                          ? "text-miransas-cyan"
-                          : isComplete
-                            ? "text-zinc-400"
-                            : "text-zinc-600 group-hover:text-zinc-500",
-                      )}
-                    >
-                      {String(index + 1).padStart(2, "0")}
-                    </span>
-                    <span
-                      className={cn(
-                        "mt-1 block text-sm leading-6 transition duration-300",
-                        isActive
-                          ? "text-white"
-                          : isComplete
-                            ? "text-zinc-300"
-                            : "text-zinc-400 group-hover:text-zinc-200",
-                      )}
-                    >
-                      {item.title}
-                    </span>
+                  <span
+                    className={cn(
+                      "mt-1 block text-sm leading-6",
+                      isActive
+                        ? "text-white"
+                        : isComplete
+                          ? "text-zinc-300"
+                          : "text-zinc-400 group-hover:text-zinc-200",
+                    )}
+                  >
+                    {item.title}
                   </span>
-                </a>
-              );
-            })}
-          </div>
+                </span>
+              </a>
+            );
+          })}
         </nav>
       </div>
+
+      {(previousItem || nextItem) && (
+        <div className="rounded-[1.75rem] border border-white/[0.08] bg-[linear-gradient(180deg,rgba(8,13,23,0.92),rgba(5,9,18,0.985))] p-4 shadow-[0_22px_70px_rgba(0,0,0,0.22),inset_0_1px_0_rgba(255,255,255,0.03)]">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-zinc-500">
+            Continue reading
+          </p>
+
+          <div className="mt-4 space-y-3">
+            {previousItem && (
+              <Link
+                href={previousItem.href}
+                className="group flex items-center gap-3 rounded-[1.25rem] border border-white/10 bg-white/[0.03] px-4 py-3 transition hover:border-white/20 hover:bg-white/[0.05]"
+              >
+                <ArrowLeft className="h-4 w-4 shrink-0 text-zinc-500 transition group-hover:text-white" />
+                <div className="min-w-0">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
+                    Previous guide
+                  </p>
+                  <p className="mt-1 truncate text-sm text-zinc-200">{previousItem.title}</p>
+                </div>
+              </Link>
+            )}
+
+            {nextItem && (
+              <Link
+                href={nextItem.href}
+                className="group flex items-center gap-3 rounded-[1.25rem] border border-white/10 bg-white/[0.03] px-4 py-3 transition hover:border-white/20 hover:bg-white/[0.05]"
+              >
+                <ArrowRight className="h-4 w-4 shrink-0 text-zinc-500 transition group-hover:text-white" />
+                <div className="min-w-0">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
+                    Next guide
+                  </p>
+                  <p className="mt-1 truncate text-sm text-zinc-200">{nextItem.title}</p>
+                </div>
+              </Link>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { buildPathWithQuery, sanitizeRedirectTarget } from "@/lib/auth-routing";
 import { AuthRouteError, requestEmailVerification } from "@/lib/auth-system";
 
 export const runtime = "nodejs";
@@ -8,19 +9,28 @@ export const dynamic = "force-dynamic";
 export async function POST(request: Request) {
   const body = (await request.json().catch(() => ({}))) as {
     email?: string;
+    callbackUrl?: string;
   };
 
   try {
     const result = await requestEmailVerification(String(body.email ?? ""));
+    const callbackUrl = sanitizeRedirectTarget(body.callbackUrl, "/dashboard");
     const previewUrl = result.verificationToken
       ? new URL(
-          `/verify-email?token=${encodeURIComponent(result.verificationToken)}`,
+          buildPathWithQuery("/verify-email", {
+            token: result.verificationToken,
+            email: result.email,
+            callbackUrl,
+          }),
           request.url,
         ).toString()
       : null;
-    const redirectTo = `/check-email?flow=verify-email&email=${encodeURIComponent(
-      result.email,
-    )}${previewUrl ? `&previewUrl=${encodeURIComponent(previewUrl)}` : ""}`;
+    const redirectTo = buildPathWithQuery("/check-email", {
+      flow: "verify-email",
+      email: result.email,
+      callbackUrl,
+      previewUrl,
+    });
 
     return NextResponse.json({
       ok: true,

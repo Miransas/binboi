@@ -93,3 +93,24 @@ export const docsNavGroups: DocsNavGroup[] = [
 ];
 
 export const docsNavItems = docsNavGroups.flatMap((group) => group.items);
+
+export function getDocsNavContext(pathname: string) {
+  const matchedIndex = docsNavItems.findIndex((item) => item.href === pathname);
+  const currentIndex = matchedIndex >= 0 ? matchedIndex : 0;
+  const currentItem = docsNavItems[currentIndex] ?? null;
+  const currentGroup =
+    docsNavGroups.find((group) =>
+      group.items.some((item) => item.href === currentItem?.href),
+    ) ?? null;
+
+  return {
+    currentGroup,
+    currentItem,
+    currentIndex,
+    previousItem: currentIndex > 0 ? docsNavItems[currentIndex - 1] : null,
+    nextItem:
+      currentIndex >= 0 && currentIndex < docsNavItems.length - 1
+        ? docsNavItems[currentIndex + 1]
+        : null,
+  };
+}

@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 
 import { signIn } from "@/auth";
-import { getCurrentSession, sanitizeRedirectTarget } from "@/lib/auth-session";
+import { sanitizeRedirectTarget } from "@/lib/auth-routing";
+import { getCurrentSession } from "@/lib/auth-session";
 import {
   AuthRouteError,
   authDatabaseEnabled,

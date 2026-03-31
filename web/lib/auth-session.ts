@@ -3,23 +3,11 @@ import "server-only";
 import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
+import { buildLoginHref, sanitizeRedirectTarget } from "@/lib/auth-routing";
 import { authDatabaseEnabled, ensureAuthDatabaseReady } from "@/lib/auth-system";
 
-export function sanitizeRedirectTarget(value: string | null | undefined, fallback = "/dashboard") {
-  if (!value) {
-    return fallback;
-  }
-
-  if (value.startsWith("/") && !value.startsWith("//")) {
-    return value;
-  }
-
-  return fallback;
-}
-
 export function buildLoginRedirect(callbackUrl?: string | null) {
-  const safeTarget = sanitizeRedirectTarget(callbackUrl);
-  return `/login?callbackUrl=${encodeURIComponent(safeTarget)}`;
+  return buildLoginHref(sanitizeRedirectTarget(callbackUrl));
 }
 
 export async function getCurrentSession() {
