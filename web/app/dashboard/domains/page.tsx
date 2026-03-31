@@ -2,9 +2,17 @@
 
 import { useEffect, useState } from "react";
 import { CheckCircle2, Clock3, Globe, Plus, RefreshCcw } from "lucide-react";
-import { DashboardPageShell } from "@/components/dashboard/shared/page-shell";
-import { DashboardSurface } from "@/components/dashboard/shared/dashboard-primitives";
 import { fetchControlPlane, type ControlPlaneDomain } from "@/lib/controlplane";
+import { PremiumDashboardShell } from "../_components/premium-dashboard-shell";
+import {
+  dashboardBadgeClass,
+  dashboardGhostButtonClass,
+  dashboardIconTileClass,
+  dashboardInputClass,
+  dashboardMutedTextClass,
+  dashboardPanelClass,
+  dashboardPrimaryButtonClass,
+} from "../_components/dashboard-ui";
 
 export default function DomainsPage() {
   const [domains, setDomains] = useState<ControlPlaneDomain[]>([]);
@@ -62,7 +70,7 @@ export default function DomainsPage() {
   const verifiedCount = domains.filter((domain) => domain.status === "VERIFIED").length;
 
   return (
-    <DashboardPageShell
+    <PremiumDashboardShell
       eyebrow="Domains"
       title="Managed and custom domains"
       description="The control plane now shows a real domain story for the MVP: one managed base domain plus optional custom domains that can be verified with a DNS TXT record."
@@ -95,12 +103,12 @@ export default function DomainsPage() {
       ]}
     >
       <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-        <DashboardSurface accent="cyan" className="p-6">
+        <section className={dashboardPanelClass("blue", "p-6")}>
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-white">Domain registry</h2>
+            <h2 className="text-xl font-semibold tracking-[-0.02em] text-white">Domain registry</h2>
             <button
               onClick={load}
-              className="rounded-xl border border-white/8 bg-white/5 p-2 text-zinc-400 transition hover:bg-white/10 hover:text-white"
+              className={dashboardGhostButtonClass}
             >
               <RefreshCcw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
             </button>
@@ -108,37 +116,33 @@ export default function DomainsPage() {
 
           <div className="mt-6 space-y-4">
             {loading ? (
-              <div className="rounded-2xl border border-white/8 bg-black/20 p-6 text-sm text-zinc-500">
+              <div className="rounded-[1.5rem] border border-white/[0.08] bg-white/[0.03] p-6 text-sm text-slate-500">
                 Loading domains...
               </div>
             ) : domains.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-white/10 bg-black/20 p-6 text-sm text-zinc-500">
+              <div className="rounded-[1.5rem] border border-dashed border-white/[0.08] bg-white/[0.03] p-6 text-sm text-slate-500">
                 No domains have been registered yet.
               </div>
             ) : (
               domains.map((domain) => (
                 <div
                   key={domain.name}
-                  className="rounded-[1.75rem] border border-white/10 bg-black/20 p-5"
+                  className="rounded-[1.55rem] border border-white/[0.08] bg-[rgba(255,255,255,0.03)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]"
                 >
                   <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                     <div className="flex items-start gap-3">
-                      <div className="rounded-2xl border border-white/8 bg-white/5 p-3 text-miransas-cyan">
+                      <div className={dashboardIconTileClass("blue", "h-12 w-12")}>
                         <Globe className="h-4 w-4" />
                       </div>
                       <div>
-                        <h3 className="text-lg font-semibold text-white">{domain.name}</h3>
-                        <p className="mt-1 text-sm text-zinc-500">{domain.type}</p>
+                        <h3 className="text-lg font-semibold tracking-[-0.02em] text-white">
+                          {domain.name}
+                        </h3>
+                        <p className="mt-1 text-sm text-slate-500">{domain.type}</p>
                       </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-3">
-                      <span
-                        className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold ${
-                          domain.status === "VERIFIED"
-                            ? "bg-emerald-500/10 text-emerald-300"
-                            : "bg-amber-500/10 text-amber-300"
-                        }`}
-                      >
+                      <span className={dashboardBadgeClass(domain.status === "VERIFIED" ? "green" : "orange")}>
                         {domain.status === "VERIFIED" ? (
                           <CheckCircle2 className="h-3.5 w-3.5" />
                         ) : (
@@ -149,7 +153,7 @@ export default function DomainsPage() {
                       {domain.status !== "VERIFIED" && (
                         <button
                           onClick={() => verifyDomain(domain.name)}
-                          className="rounded-xl border border-white/8 bg-white/5 px-4 py-2 text-sm text-zinc-300 transition hover:bg-white/10 hover:text-white"
+                          className={dashboardGhostButtonClass}
                         >
                           Verify DNS
                         </button>
@@ -158,7 +162,7 @@ export default function DomainsPage() {
                   </div>
 
                   {domain.expected_txt && (
-                    <div className="mt-4 rounded-2xl border border-white/8 bg-black/40 p-4 font-mono text-sm text-miransas-cyan">
+                    <div className="mt-4 rounded-[1.35rem] border border-white/[0.08] bg-[rgba(3,7,14,0.88)] p-4 font-mono text-sm text-[#dfe7ff]">
                       {domain.expected_txt}
                     </div>
                   )}
@@ -166,11 +170,13 @@ export default function DomainsPage() {
               ))
             )}
           </div>
-        </DashboardSurface>
+        </section>
 
-        <DashboardSurface accent="violet" className="p-6">
-          <h2 className="text-xl font-semibold text-white">Add a custom domain</h2>
-          <p className="mt-3 text-sm leading-7 text-zinc-400">
+        <section className={dashboardPanelClass("neutral", "p-6")}>
+          <h2 className="text-xl font-semibold tracking-[-0.02em] text-white">
+            Add a custom domain
+          </h2>
+          <p className={`mt-3 ${dashboardMutedTextClass}`}>
             Add a domain you control. The control plane will create a pending entry and generate the TXT value required for verification.
           </p>
           <div className="mt-5 flex gap-3">
@@ -178,20 +184,20 @@ export default function DomainsPage() {
               value={newDomain}
               onChange={(event) => setNewDomain(event.target.value)}
               placeholder="api.example.com"
-              className="flex-1 rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white outline-none transition focus:border-miransas-cyan"
+              className={`flex-1 ${dashboardInputClass}`}
             />
             <button
               onClick={addDomain}
               disabled={creating}
-              className="inline-flex items-center gap-2 rounded-2xl bg-miransas-cyan px-4 py-3 text-sm font-semibold text-black transition hover:brightness-110 disabled:opacity-50"
+              className={dashboardPrimaryButtonClass}
             >
               <Plus className="h-4 w-4" />
               Add
             </button>
           </div>
           {error && <p className="mt-4 text-sm text-red-400">{error}</p>}
-        </DashboardSurface>
+        </section>
       </section>
-    </DashboardPageShell>
+    </PremiumDashboardShell>
   );
 }

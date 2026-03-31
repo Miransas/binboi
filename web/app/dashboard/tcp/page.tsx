@@ -1,7 +1,7 @@
-import { DashboardPageShell } from "@/components/dashboard/shared/page-shell";
 import { dashboardPageContent } from "@/lib/dashboard-content";
+import { PremiumDashboardShell } from "../_components/premium-dashboard-shell";
 
 export default function TcpPage() {
   const content = dashboardPageContent.tcp;
-  return <DashboardPageShell {...content} />;
+  return <PremiumDashboardShell {...content} />;
 }

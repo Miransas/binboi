@@ -7,10 +7,19 @@ import { BillingChangePlanButton } from "@/components/pricing/billing-change-pla
 import { BillingCancelButton } from "@/components/pricing/billing-cancel-button";
 import { BillingCheckoutButton } from "@/components/pricing/billing-checkout-button";
 import { usePricingPlan } from "@/components/provider/pricing-plan-provider";
-import { DashboardPageShell } from "@/components/dashboard/shared/page-shell";
-import { DashboardSurface } from "@/components/dashboard/shared/dashboard-primitives";
 import { useRegisterAssistantContext } from "@/components/shared/assistant-context";
 import { getNextPlan, getPricingPlan, type BillingPlan } from "@/lib/pricing";
+import { PremiumDashboardShell } from "../_components/premium-dashboard-shell";
+import {
+  dashboardGhostButtonClass,
+  dashboardIconTileClass,
+  dashboardInsetPanelClass,
+  dashboardMiniStatClass,
+  dashboardMutedTextClass,
+  dashboardPanelClass,
+  dashboardPrimaryButtonClass,
+  dashboardSecondaryButtonClass,
+} from "../_components/dashboard-ui";
 
 type BillingState = {
   mode: "account" | "preview";
@@ -120,7 +129,7 @@ export default function BillingPage() {
   );
 
   return (
-    <DashboardPageShell
+    <PremiumDashboardShell
       eyebrow="Billing"
       title="Manage your Binboi subscription"
       description="Binboi uses Paddle as Merchant of Record. Upgrade with hosted checkout, see the current plan and renewal state, and cancel at the end of the billing period without exposing any payment secrets to the browser."
@@ -137,15 +146,17 @@ export default function BillingPage() {
       ]}
     >
       <section className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-        <DashboardSurface accent="neutral" className="p-6">
+        <section className={dashboardPanelClass("neutral", "p-6")}>
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-miransas-cyan/18 bg-miransas-cyan/10 text-miransas-cyan">
+              <div className={dashboardIconTileClass("blue")}>
                 <CreditCard className="h-4.5 w-4.5" />
               </div>
               <div>
-                <h2 className="text-xl font-semibold text-white">Current billing state</h2>
-                <p className="mt-1 text-sm text-zinc-400">
+                <h2 className="text-xl font-semibold tracking-[-0.02em] text-white">
+                  Current billing state
+                </h2>
+                <p className="mt-1 text-sm text-[rgba(194,203,219,0.7)]">
                   {state?.user.email || "Loading signed-in workspace..."}
                 </p>
               </div>
@@ -155,30 +166,30 @@ export default function BillingPage() {
               type="button"
               onClick={() => void load(true)}
               disabled={loading || refreshing}
-              className="rounded-xl border border-white/10 bg-white/[0.03] p-2 text-zinc-300 transition hover:border-white/20 hover:text-white"
+              className={dashboardGhostButtonClass}
             >
               <RefreshCcw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
             </button>
           </div>
 
           <div className="mt-6 grid gap-3 sm:grid-cols-2">
-            <div className="rounded-[1.5rem] border border-white/10 bg-black/25 px-4 py-4">
+            <div className={dashboardMiniStatClass}>
               <p className="text-[10px] uppercase tracking-[0.22em] text-zinc-500">Plan</p>
               <p className="mt-2 text-lg font-semibold text-white">{activePlan.name}</p>
             </div>
-            <div className="rounded-[1.5rem] border border-white/10 bg-black/25 px-4 py-4">
+            <div className={dashboardMiniStatClass}>
               <p className="text-[10px] uppercase tracking-[0.22em] text-zinc-500">Status</p>
               <p className="mt-2 text-lg font-semibold text-white">
                 {loading && !state ? "Loading..." : state?.subscription.status || "FREE"}
               </p>
             </div>
-            <div className="rounded-[1.5rem] border border-white/10 bg-black/25 px-4 py-4">
+            <div className={dashboardMiniStatClass}>
               <p className="text-[10px] uppercase tracking-[0.22em] text-zinc-500">Renewal</p>
               <p className="mt-2 text-lg font-semibold text-white">
                 {formatDate(state?.subscription.renewalDate || null)}
               </p>
             </div>
-            <div className="rounded-[1.5rem] border border-white/10 bg-black/25 px-4 py-4">
+            <div className={dashboardMiniStatClass}>
               <p className="text-[10px] uppercase tracking-[0.22em] text-zinc-500">Cancel behavior</p>
               <p className="mt-2 text-lg font-semibold text-white">
                 {state?.subscription.cancelAtPeriodEnd ? "Ends this cycle" : "Auto renew"}
@@ -189,7 +200,7 @@ export default function BillingPage() {
           {error ? <p className="mt-4 text-sm text-red-300">{error}</p> : null}
 
           {!state?.configured ? (
-            <div className="mt-6 rounded-[1.5rem] border border-amber-300/18 bg-amber-400/10 px-4 py-4 text-sm leading-7 text-amber-100">
+            <div className={dashboardInsetPanelClass("orange", "mt-6 text-sm leading-7 text-[#f8ddc3]")}>
               Paddle is not configured for this deployment yet. Set `PADDLE_API_KEY`,
               `PADDLE_CLIENT_TOKEN`, `PADDLE_WEBHOOK_SECRET`, `PADDLE_PRO_PRICE_ID`, and
               `PADDLE_SCALE_PRICE_ID` before using hosted checkout.
@@ -197,38 +208,48 @@ export default function BillingPage() {
           ) : null}
 
           {state?.mode === "preview" ? (
-            <div className="mt-6 rounded-[1.5rem] border border-white/10 bg-white/[0.03] px-4 py-4 text-sm leading-7 text-zinc-300">
+            <div className={dashboardInsetPanelClass("neutral", "mt-6 text-sm leading-7 text-[rgba(214,219,228,0.8)]")}>
               Billing requires database-backed auth mode. Local preview keeps the UI coherent, but
               real Paddle subscriptions need a signed-in account and Postgres.
             </div>
           ) : null}
-        </DashboardSurface>
+        </section>
 
-        <DashboardSurface accent="violet" className="p-6">
+        <section className={dashboardPanelClass("blue", "p-6")}>
           <div className="flex items-center gap-3">
-            <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-violet-300/18 bg-violet-400/10 text-violet-200">
+            <div className={dashboardIconTileClass("orange")}>
               <Sparkles className="h-4.5 w-4.5" />
             </div>
             <div>
-              <h2 className="text-xl font-semibold text-white">Upgrade or change plan</h2>
-              <p className="mt-1 text-sm text-zinc-400">
+              <h2 className="text-xl font-semibold tracking-[-0.02em] text-white">
+                Upgrade or change plan
+              </h2>
+              <p className="mt-1 text-sm text-[rgba(194,203,219,0.7)]">
                 Move up when you need more history, unlimited AI explain, and stronger infrastructure priority.
               </p>
             </div>
           </div>
 
-          <div className="mt-6 space-y-4">
+          <div className="dashboard-action-stack mt-6 space-y-4">
             {nextPlan === "PRO" ? (
-              <BillingCheckoutButton plan="PRO" label="Upgrade to Pro" className="w-full" />
+              <BillingCheckoutButton
+                plan="PRO"
+                label="Upgrade to Pro"
+                className={`w-full ${dashboardPrimaryButtonClass}`}
+              />
             ) : null}
             {nextPlan === "SCALE" ? (
-              <BillingCheckoutButton plan="SCALE" label="Go Scale" className="w-full" />
+              <BillingCheckoutButton
+                plan="SCALE"
+                label="Go Scale"
+                className={`w-full ${dashboardPrimaryButtonClass}`}
+              />
             ) : null}
             {state?.subscription.plan === "FREE" ? (
               <BillingCheckoutButton
                 plan="PRO"
                 label="Upgrade to Pro"
-                className="w-full"
+                className={`w-full ${dashboardSecondaryButtonClass}`}
                 variant="secondary"
               />
             ) : null}
@@ -236,33 +257,37 @@ export default function BillingPage() {
               <BillingCheckoutButton
                 plan="SCALE"
                 label="Go Scale"
-                className="w-full"
+                className={`w-full ${dashboardSecondaryButtonClass}`}
                 variant="secondary"
               />
             ) : null}
             {state?.subscription.plan === "SCALE" &&
             state?.subscription.status !== "CANCELED" ? (
-              <BillingChangePlanButton plan="PRO" label="Downgrade to Pro" onChanged={() => void load(true)} />
+              <div className="dashboard-secondary-action">
+                <BillingChangePlanButton plan="PRO" label="Downgrade to Pro" onChanged={() => void load(true)} />
+              </div>
             ) : null}
             {state?.subscription.plan !== "FREE" &&
             state?.subscription.status !== "CANCELED" ? (
-              <BillingCancelButton onCanceled={() => void load(true)} />
+              <div className="dashboard-danger-action">
+                <BillingCancelButton onCanceled={() => void load(true)} />
+              </div>
             ) : null}
           </div>
 
-          <div className="mt-6 rounded-[1.75rem] border border-white/10 bg-black/25 p-5">
+          <div className={dashboardInsetPanelClass("neutral", "mt-6 p-5")}>
             <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
               <ShieldCheck className="h-3.5 w-3.5 text-miransas-cyan" />
               What unlocks
             </div>
-            <div className="mt-4 space-y-3 text-sm leading-7 text-zinc-300">
+            <div className={`mt-4 space-y-3 ${dashboardMutedTextClass}`}>
               <p>Free: one active tunnel, capped AI explain, short logs retention, and limited history.</p>
               <p>Pro: unlimited tunnels, custom domains, full request history, full webhook debugging, and unlimited AI explain.</p>
               <p>Scale: everything in Pro, plus advanced logs, priority infrastructure, and future-ready team and API surfaces.</p>
             </div>
           </div>
-        </DashboardSurface>
+        </section>
       </section>
-    </DashboardPageShell>
+    </PremiumDashboardShell>
   );
 }

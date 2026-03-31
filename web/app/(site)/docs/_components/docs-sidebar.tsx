@@ -12,8 +12,8 @@ export function DocsSidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="hidden lg:block lg:w-80 lg:shrink-0">
-      <div className="sticky top-24 overflow-hidden rounded-[2rem] border border-white/10 bg-[#070707]/95 p-5 shadow-[0_30px_80px_rgba(0,0,0,0.35)] backdrop-blur">
+    <aside className="hidden lg:block lg:w-64 lg:shrink-0">
+      <div className="fixed w-64 overflow-hidden rounded-[2rem] border border-white/10 bg-[#070707]/95 p-5 shadow-[0_30px_80px_rgba(0,0,0,0.35)] backdrop-blur overflow-y-auto">
         <Link href="/docs" className="block border-b border-white/10 pb-5">
           <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-zinc-400">
             <BookOpen className="h-3.5 w-3.5 text-miransas-cyan" />

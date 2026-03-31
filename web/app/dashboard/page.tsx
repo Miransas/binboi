@@ -1,10 +1,11 @@
 "use client"
 import DashboardPage from '../../components/dashboard/shared/dashboard'
+import { DashboardRouteFrame } from "./_components/dashboard-route-frame";
 
 export default function Page() {
   return (
-    <div>
+    <DashboardRouteFrame variant="overview">
       <DashboardPage />
-    </div>
+    </DashboardRouteFrame>
   )
 }

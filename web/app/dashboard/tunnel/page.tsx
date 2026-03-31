@@ -5,9 +5,17 @@ import { ExternalLink, Globe, Plus, RefreshCcw, Trash2 } from "lucide-react";
 import { usePricingPlan } from "@/components/provider/pricing-plan-provider";
 import { useRegisterAssistantContext } from "@/components/shared/assistant-context";
 import { UpgradePrompt } from "@/components/shared/upgrade-prompt";
-import { DashboardPageShell } from "@/components/dashboard/shared/page-shell";
-import { DashboardSurface } from "@/components/dashboard/shared/dashboard-primitives";
 import { fetchControlPlane, type ControlPlaneTunnel } from "@/lib/controlplane";
+import { PremiumDashboardShell } from "../_components/premium-dashboard-shell";
+import {
+  dashboardBadgeClass,
+  dashboardDangerButtonClass,
+  dashboardGhostButtonClass,
+  dashboardIconTileClass,
+  dashboardInputClass,
+  dashboardPanelClass,
+  dashboardPrimaryButtonClass,
+} from "../_components/dashboard-ui";
 
 export default function TunnelPage() {
   const { plan } = usePricingPlan();
@@ -105,7 +113,7 @@ export default function TunnelPage() {
   });
 
   return (
-    <DashboardPageShell
+    <PremiumDashboardShell
       eyebrow="Tunnels"
       title="Reserve, connect, and monitor tunnels"
       description="This page reflects the real MVP lifecycle. A tunnel can exist in an inactive reserved state, then become active when a CLI agent connects with a valid access token."
@@ -142,7 +150,7 @@ export default function TunnelPage() {
     >
       {plan === "FREE" ? (
         <UpgradePrompt
-          className="mb-8"
+          className="dashboard-premium-upgrade mb-8"
           compact
           title={
             freeTunnelLimitReached
@@ -158,9 +166,11 @@ export default function TunnelPage() {
       ) : null}
 
       <section className="grid gap-6 xl:grid-cols-[1fr_1.2fr]">
-        <DashboardSurface accent="neutral" className="p-6">
-          <h2 className="text-xl font-semibold text-white">Create a tunnel reservation</h2>
-          <p className="mt-3 text-sm leading-7 text-zinc-400">
+        <section className={dashboardPanelClass("neutral", "p-6")}>
+          <h2 className="text-xl font-semibold tracking-[-0.02em] text-white">
+            Create a tunnel reservation
+          </h2>
+          <p className="mt-3 text-sm leading-7 text-[rgba(194,203,219,0.74)]">
             {plan === "FREE"
               ? "Free tunnels get a random public URL automatically. Paid plans can reserve specific subdomains and custom domains."
               : "Reserve a subdomain and target port first. Then connect the agent with the same subdomain."}
@@ -171,32 +181,32 @@ export default function TunnelPage() {
               onChange={(event) => setSubdomain(event.target.value)}
               placeholder={plan === "FREE" ? "Random URL assigned automatically on Free" : "my-app"}
               disabled={plan === "FREE"}
-              className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white outline-none transition focus:border-miransas-cyan disabled:cursor-not-allowed disabled:text-zinc-500"
+              className={dashboardInputClass}
             />
             <input
               value={target}
               onChange={(event) => setTarget(event.target.value)}
               placeholder="localhost:3000"
-              className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white outline-none transition focus:border-miransas-cyan"
+              className={dashboardInputClass}
             />
             <button
               onClick={createTunnel}
               disabled={creating || freeTunnelLimitReached}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-miransas-cyan px-4 py-3 text-sm font-semibold text-black transition hover:brightness-110 disabled:opacity-50"
+              className={`w-full ${dashboardPrimaryButtonClass}`}
             >
               <Plus className="h-4 w-4" />
               {freeTunnelLimitReached ? "Upgrade for more tunnels" : "Reserve tunnel"}
             </button>
           </div>
           {error && <p className="mt-4 text-sm text-red-400">{error}</p>}
-        </DashboardSurface>
+        </section>
 
-        <DashboardSurface accent="cyan" className="p-6">
+        <section className={dashboardPanelClass("blue", "p-6")}>
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-white">Tunnel inventory</h2>
+            <h2 className="text-xl font-semibold tracking-[-0.02em] text-white">Tunnel inventory</h2>
             <button
               onClick={load}
-              className="rounded-xl border border-white/8 bg-white/5 p-2 text-zinc-400 transition hover:bg-white/10 hover:text-white"
+              className={dashboardGhostButtonClass}
             >
               <RefreshCcw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
             </button>
@@ -204,75 +214,71 @@ export default function TunnelPage() {
 
           <div className="mt-6 space-y-4">
             {loading ? (
-              <div className="rounded-2xl border border-white/8 bg-black/20 p-6 text-sm text-zinc-500">
+              <div className="rounded-[1.5rem] border border-white/[0.08] bg-white/[0.03] p-6 text-sm text-slate-500">
                 Loading tunnels...
               </div>
             ) : tunnels.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-white/10 bg-black/20 p-6 text-sm text-zinc-500">
+              <div className="rounded-[1.5rem] border border-dashed border-white/[0.08] bg-white/[0.03] p-6 text-sm text-slate-500">
                 No tunnel reservations exist yet.
               </div>
             ) : (
               tunnels.map((tunnel) => (
               <div
                   key={tunnel.id}
-                  className="rounded-[1.75rem] border border-white/10 bg-black/20 p-5"
+                  className="rounded-[1.55rem] border border-white/[0.08] bg-[rgba(255,255,255,0.03)] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]"
                 >
                   <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                     <div className="flex items-start gap-3">
-                      <div className="rounded-2xl border border-white/8 bg-white/5 p-3 text-miransas-cyan">
+                      <div className={dashboardIconTileClass("blue", "h-12 w-12")}>
                         <Globe className="h-4 w-4" />
                       </div>
                       <div>
-                        <h3 className="text-lg font-semibold text-white">{tunnel.subdomain}</h3>
-                        <p className="mt-1 text-sm text-zinc-500">{tunnel.target}</p>
-                        <p className="mt-2 text-xs uppercase tracking-[0.24em] text-zinc-600">
+                        <h3 className="text-lg font-semibold tracking-[-0.02em] text-white">
+                          {tunnel.subdomain}
+                        </h3>
+                        <p className="mt-1 text-sm text-slate-500">{tunnel.target}</p>
+                        <p className="mt-2 text-xs uppercase tracking-[0.24em] text-slate-600">
                           {tunnel.public_url}
                         </p>
                       </div>
                     </div>
 
                     <div className="flex flex-wrap items-center gap-3">
-                      <span
-                        className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                          tunnel.status === "ACTIVE"
-                            ? "bg-emerald-500/10 text-emerald-300"
-                            : "bg-zinc-500/10 text-zinc-300"
-                        }`}
-                      >
+                      <span className={dashboardBadgeClass(tunnel.status === "ACTIVE" ? "green" : "neutral")}>
                         {tunnel.status}
                       </span>
                       <a
                         href={tunnel.public_url}
                         target="_blank"
                         rel="noreferrer"
-                        className="rounded-xl border border-white/8 bg-white/5 p-2 text-zinc-400 transition hover:bg-white/10 hover:text-white"
+                        className={dashboardGhostButtonClass}
                       >
                         <ExternalLink className="h-4 w-4" />
                       </a>
                       <button
                         onClick={() => deleteTunnel(tunnel.id)}
-                        className="rounded-xl border border-red-500/20 bg-red-500/10 p-2 text-red-300 transition hover:bg-red-500/20"
+                        className={dashboardDangerButtonClass}
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
                     </div>
                   </div>
 
-                  <div className="mt-4 grid gap-3 text-sm text-zinc-400 sm:grid-cols-3">
-                    <div className="rounded-2xl border border-white/8 bg-black/30 px-4 py-3">
-                      <span className="block text-[10px] uppercase tracking-[0.24em] text-zinc-600">
+                  <div className="mt-4 grid gap-3 text-sm text-[rgba(194,203,219,0.74)] sm:grid-cols-3">
+                    <div className="rounded-[1.25rem] border border-white/[0.08] bg-[rgba(255,255,255,0.025)] px-4 py-3">
+                      <span className="block text-[10px] uppercase tracking-[0.24em] text-slate-600">
                         Region
                       </span>
                       {tunnel.region}
                     </div>
-                    <div className="rounded-2xl border border-white/8 bg-black/30 px-4 py-3">
-                      <span className="block text-[10px] uppercase tracking-[0.24em] text-zinc-600">
+                    <div className="rounded-[1.25rem] border border-white/[0.08] bg-[rgba(255,255,255,0.025)] px-4 py-3">
+                      <span className="block text-[10px] uppercase tracking-[0.24em] text-slate-600">
                         Requests
                       </span>
                       {tunnel.request_count}
                     </div>
-                    <div className="rounded-2xl border border-white/8 bg-black/30 px-4 py-3">
-                      <span className="block text-[10px] uppercase tracking-[0.24em] text-zinc-600">
+                    <div className="rounded-[1.25rem] border border-white/[0.08] bg-[rgba(255,255,255,0.025)] px-4 py-3">
+                      <span className="block text-[10px] uppercase tracking-[0.24em] text-slate-600">
                         Bandwidth
                       </span>
                       {Math.round(tunnel.bytes_out / 1024)} KB
@@ -282,8 +288,8 @@ export default function TunnelPage() {
               ))
             )}
           </div>
-        </DashboardSurface>
+        </section>
       </section>
-    </DashboardPageShell>
+    </PremiumDashboardShell>
   );
 }

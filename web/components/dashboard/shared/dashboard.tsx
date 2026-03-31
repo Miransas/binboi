@@ -102,7 +102,7 @@ export default function DashboardPage() {
   return (
     <div className="relative px-4 pb-12 pt-6 text-white sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl">
-        <DashboardSurface accent="cyan" className="px-6 py-7 sm:px-8 lg:px-10">
+        <DashboardSurface accent="amber" className="px-6 py-7 sm:px-8 lg:px-10">
           <div className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(24rem,0.85fr)] xl:items-end">
             <DashboardSectionHeading
               eyebrow="Binboi control plane"

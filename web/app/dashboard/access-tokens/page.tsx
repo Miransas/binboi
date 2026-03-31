@@ -3,8 +3,24 @@
 import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, Check, Copy, KeyRound, Plus, RefreshCcw, Trash2 } from "lucide-react";
 
-import { DashboardPageShell } from "@/components/dashboard/shared/page-shell";
-import { DashboardSurface } from "@/components/dashboard/shared/dashboard-primitives";
+import { PremiumDashboardShell } from "../_components/premium-dashboard-shell";
+import {
+  dashboardBadgeClass,
+  dashboardDangerButtonClass,
+  dashboardFieldLabelClass,
+  dashboardGhostButtonClass,
+  dashboardIconTileClass,
+  dashboardInputClass,
+  dashboardInsetPanelClass,
+  dashboardMutedTextClass,
+  dashboardPanelClass,
+  dashboardPrimaryButtonClass,
+  dashboardTableCellClass,
+  dashboardTableHeaderClass,
+  dashboardTableMutedCellClass,
+  dashboardTableRowClass,
+  dashboardTableShellClass,
+} from "../_components/dashboard-ui";
 
 type AccessTokenRecord = {
   id: string;
@@ -164,7 +180,7 @@ export default function AccessTokensPage() {
   };
 
   return (
-    <DashboardPageShell
+    <PremiumDashboardShell
       eyebrow="Authentication"
       title="Access tokens for the Binboi CLI"
       description="Create personal access tokens for `binboi login`, review when they were created or last used, and revoke them without ever storing the raw token in the database."
@@ -182,30 +198,40 @@ export default function AccessTokensPage() {
         },
       ]}
     >
-      <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
-        <DashboardSurface accent="neutral" className="p-6">
+      <section className="grid gap-6 xl:grid-cols-[0.92fr_1.08fr]">
+        <section className={dashboardPanelClass("neutral", "p-6")}>
           <div className="flex items-center gap-3">
-            <KeyRound className="h-5 w-5 text-miransas-cyan" />
-            <h2 className="text-xl font-semibold text-white">Create a new token</h2>
+            <div className={dashboardIconTileClass("blue")}>
+              <KeyRound className="h-5 w-5" />
+            </div>
+            <div>
+              <h2 className="text-xl font-semibold tracking-[-0.02em] text-white">
+                Create a new token
+              </h2>
+              <p className="mt-1 text-sm text-[rgba(194,203,219,0.7)]">
+                Name each machine so rotation stays effortless later.
+              </p>
+            </div>
           </div>
-          <p className="mt-3 text-sm leading-7 text-zinc-400">
+
+          <p className={`mt-5 ${dashboardMutedTextClass}`}>
             Give each machine or workflow its own name so revoking old access stays simple.
           </p>
 
-          <label className="mt-6 block text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
+          <label className={`mt-6 ${dashboardFieldLabelClass}`}>
             Token name
           </label>
           <input
             value={tokenName}
             onChange={(event) => setTokenName(event.target.value)}
-            className="mt-3 w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white outline-none transition focus:border-miransas-cyan/40"
+            className={`mt-3 ${dashboardInputClass}`}
             placeholder="Production MacBook"
           />
 
           <button
             onClick={createToken}
             disabled={creating}
-            className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-miransas-cyan px-4 py-3 text-sm font-semibold text-black transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-70"
+            className={`mt-5 w-full ${dashboardPrimaryButtonClass}`}
           >
             {creating ? <RefreshCcw className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
             {creating
@@ -215,53 +241,60 @@ export default function AccessTokensPage() {
                 : "Create access token"}
           </button>
 
-          <div className="mt-6 rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4 text-sm leading-7 text-amber-100">
+          <div
+            className={dashboardInsetPanelClass(
+              "orange",
+              "mt-6 text-sm leading-7 text-[#f8ddc3]",
+            )}
+          >
             <div className="flex items-start gap-3">
-              <AlertTriangle className="mt-1 h-4 w-4 shrink-0" />
+              <AlertTriangle className="mt-1 h-4 w-4 shrink-0 text-[#f7a15d]" />
               <p>The full token is visible only once. Copy it now and save it into `binboi login --token &lt;token&gt;`.</p>
             </div>
           </div>
 
           {newToken && (
-            <div className="mt-6 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4">
+            <div className={dashboardInsetPanelClass("green", "mt-6")}>
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-200">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-emerald-100">
                     New token
                   </p>
                   <p className="mt-2 break-all font-mono text-sm text-white">{newToken.token}</p>
                 </div>
                 <button
                   onClick={() => copyText(newToken.token, "new-token")}
-                  className="rounded-xl border border-white/10 bg-white/5 p-2 text-zinc-300 transition hover:bg-white/10 hover:text-white"
+                  className={dashboardGhostButtonClass}
                 >
                   {copyState === "new-token" ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
                 </button>
               </div>
-              <p className="mt-3 text-sm text-emerald-100">
+              <p className="mt-3 text-sm text-emerald-100/95">
                 Token prefix: <span className="font-mono">{newToken.record.prefix}</span>
               </p>
             </div>
           )}
 
           {data?.auth_mode === "preview" && (
-            <p className="mt-6 text-sm leading-7 text-zinc-500">
+            <p className={`mt-6 ${dashboardMutedTextClass}`}>
               Local preview mode is active because dashboard auth or Postgres is not configured. This page is backed by the relay&apos;s single preview token so `binboi login` and `binboi whoami` still work against the real backend.
             </p>
           )}
-        </DashboardSurface>
+        </section>
 
-        <DashboardSurface accent="cyan" className="p-6">
+        <section className={dashboardPanelClass("blue", "p-6")}>
           <div className="flex items-start justify-between gap-4">
             <div>
-              <h2 className="text-xl font-semibold text-white">Existing access tokens</h2>
-              <p className="mt-3 text-sm leading-7 text-zinc-400">
+              <h2 className="text-xl font-semibold tracking-[-0.02em] text-white">
+                Existing access tokens
+              </h2>
+              <p className={`mt-3 ${dashboardMutedTextClass}`}>
                 Signed in as {data?.user.email || "loading..."} on the {data?.limits.plan || "FREE"} plan.
               </p>
             </div>
             <button
               onClick={() => load(true)}
-              className="rounded-xl border border-white/10 bg-white/5 p-2 text-zinc-300 transition hover:bg-white/10 hover:text-white"
+              className={dashboardGhostButtonClass}
             >
               <RefreshCcw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
             </button>
@@ -269,9 +302,9 @@ export default function AccessTokensPage() {
 
           {error && <p className="mt-4 text-sm text-red-400">{error}</p>}
 
-          <div className="mt-6 overflow-hidden rounded-2xl border border-white/10">
+          <div className={`mt-6 ${dashboardTableShellClass}`}>
             <table className="w-full border-collapse text-left text-sm">
-              <thead className="bg-white/[0.03] text-[10px] uppercase tracking-[0.2em] text-zinc-500">
+              <thead className={dashboardTableHeaderClass}>
                 <tr>
                   <th className="px-4 py-3">Name</th>
                   <th className="px-4 py-3">Prefix</th>
@@ -281,54 +314,48 @@ export default function AccessTokensPage() {
                   <th className="px-4 py-3 text-right">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/8">
+              <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={6} className="px-4 py-12 text-center text-zinc-500">
+                    <td colSpan={6} className="px-4 py-12 text-center text-slate-500">
                       Loading access tokens...
                     </td>
                   </tr>
                 ) : !data || data.tokens.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-4 py-12 text-center text-zinc-500">
+                    <td colSpan={6} className="px-4 py-12 text-center text-slate-500">
                       No access tokens yet. Create one to connect the CLI.
                     </td>
                   </tr>
                 ) : (
                   data.tokens.map((token) => (
-                    <tr key={token.id} className="bg-black/20">
-                      <td className="px-4 py-4 text-white">
+                    <tr key={token.id} className={dashboardTableRowClass}>
+                      <td className={dashboardTableCellClass}>
                         <p className="font-medium">{token.name}</p>
                       </td>
-                      <td className="px-4 py-4 font-mono text-xs text-miransas-cyan">
+                      <td className={`${dashboardTableCellClass} font-mono text-xs text-[#dfe7ff]`}>
                         <div className="flex items-center gap-2">
                           <span>{token.prefix}</span>
                           <button
                             onClick={() => copyText(token.prefix, token.id)}
-                            className="rounded-lg border border-white/10 bg-white/5 p-1 text-zinc-400 transition hover:bg-white/10 hover:text-white"
+                            className={dashboardGhostButtonClass}
                           >
                             {copyState === token.id ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
                           </button>
                         </div>
                       </td>
-                      <td className="px-4 py-4 text-zinc-300">{formatDate(token.createdAt)}</td>
-                      <td className="px-4 py-4 text-zinc-400">{formatDate(token.lastUsedAt)}</td>
-                      <td className="px-4 py-4">
-                        <span
-                          className={`rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] ${
-                            token.status === "ACTIVE"
-                              ? "bg-emerald-500/10 text-emerald-300"
-                              : "bg-zinc-700/50 text-zinc-300"
-                          }`}
-                        >
+                      <td className={dashboardTableMutedCellClass}>{formatDate(token.createdAt)}</td>
+                      <td className={dashboardTableMutedCellClass}>{formatDate(token.lastUsedAt)}</td>
+                      <td className={dashboardTableCellClass}>
+                        <span className={dashboardBadgeClass(token.status === "ACTIVE" ? "green" : "neutral")}>
                           {token.status}
                         </span>
                       </td>
-                      <td className="px-4 py-4 text-right">
+                      <td className={`${dashboardTableCellClass} text-right`}>
                         <button
                           onClick={() => revokeToken(token.id)}
                           disabled={token.status !== "ACTIVE"}
-                          className="inline-flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-200 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+                          className={dashboardDangerButtonClass}
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                           {data?.auth_mode === "preview" ? "Rotate" : "Revoke"}
@@ -340,8 +367,8 @@ export default function AccessTokensPage() {
               </tbody>
             </table>
           </div>
-        </DashboardSurface>
+        </section>
       </section>
-    </DashboardPageShell>
+    </PremiumDashboardShell>
   );
 }

@@ -1,7 +1,7 @@
-import { DashboardPageShell } from "@/components/dashboard/shared/page-shell";
 import { dashboardPageContent } from "@/lib/dashboard-content";
+import { PremiumDashboardShell } from "../_components/premium-dashboard-shell";
 
 export default function IpPoliciesPage() {
   const content = dashboardPageContent.ip;
-  return <DashboardPageShell {...content} />;
+  return <PremiumDashboardShell {...content} />;
 }

@@ -3,12 +3,19 @@
 import { useEffect, useMemo, useState } from "react";
 import { Check, Copy, Download, TerminalSquare, Waypoints } from "lucide-react";
 import { fetchControlPlane, type ControlPlaneInstance } from "@/lib/controlplane";
-import { DashboardPageShell } from "@/components/dashboard/shared/page-shell";
 import {
-  DashboardSurface,
-  DashboardTimeline,
-  type DashboardTimelineItem,
-} from "@/components/dashboard/shared/dashboard-primitives";
+  PremiumDashboardTimeline,
+  type PremiumTimelineItem,
+} from "../_components/premium-dashboard-timeline";
+import { PremiumDashboardShell } from "../_components/premium-dashboard-shell";
+import {
+  dashboardBadgeClass,
+  dashboardCodeBlockClass,
+  dashboardGhostButtonClass,
+  dashboardIconTileClass,
+  dashboardMutedTextClass,
+  dashboardPanelClass,
+} from "../_components/dashboard-ui";
 
 type SetupState = {
   instance: ControlPlaneInstance | null;
@@ -101,7 +108,7 @@ export default function SetupPage() {
     ];
   }, [state.instance]);
 
-  const timelineItems: DashboardTimelineItem[] = steps.map((step, index) => ({
+  const timelineItems: PremiumTimelineItem[] = steps.map((step, index) => ({
     label: `Step ${index + 1}`,
     title: step.title,
     description: step.description,
@@ -116,7 +123,7 @@ export default function SetupPage() {
   };
 
   return (
-    <DashboardPageShell
+    <PremiumDashboardShell
       eyebrow="Onboarding"
       title="Set up the relay and your first agent"
       description="This page reflects the working Binboi auth flow: build the CLI, create a dashboard access token, log in once per machine, and then start an HTTP tunnel."
@@ -149,7 +156,7 @@ export default function SetupPage() {
       ]}
     >
       <section className="grid gap-6 xl:grid-cols-[0.82fr_1.18fr]">
-        <DashboardTimeline
+        <PremiumDashboardTimeline
           eyebrow="Setup progression"
           title="Move from install to first public request"
           items={timelineItems}
@@ -160,40 +167,41 @@ export default function SetupPage() {
           {steps.map((step, index) => {
             const Icon = step.icon;
             return (
-              <DashboardSurface
+              <section
                 key={step.title}
-                accent={index % 2 === 0 ? "cyan" : "violet"}
-                className="p-6"
+                className={dashboardPanelClass(index % 2 === 0 ? "blue" : "neutral", "p-6")}
               >
                 <div className="flex items-start gap-4">
-                  <div className="rounded-2xl border border-miransas-cyan/20 bg-miransas-cyan/10 p-3 text-miransas-cyan">
+                  <div className={dashboardIconTileClass(index === 0 ? "orange" : "blue")}>
                     <Icon className="h-5 w-5" />
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center gap-3">
-                      <span className="rounded-full bg-white/5 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.24em] text-zinc-400">
+                      <span className={dashboardBadgeClass(index === 0 ? "orange" : "blue")}>
                         Step {index + 1}
                       </span>
-                      <h2 className="text-xl font-semibold text-white">{step.title}</h2>
+                      <h2 className="text-xl font-semibold tracking-[-0.02em] text-white">
+                        {step.title}
+                      </h2>
                     </div>
-                    <p className="mt-3 text-sm leading-7 text-zinc-400">{step.description}</p>
-                    <div className="mt-5 flex items-center gap-3 rounded-2xl border border-white/10 bg-black/30 p-4 font-mono text-sm text-miransas-cyan">
-                      <span className="text-zinc-600">$</span>
+                    <p className={`mt-3 ${dashboardMutedTextClass}`}>{step.description}</p>
+                    <div className={`mt-5 ${dashboardCodeBlockClass}`}>
+                      <span className="text-slate-600">$</span>
                       <code className="flex-1 overflow-x-auto whitespace-nowrap">{step.command}</code>
                       <button
                         onClick={() => copyCommand(step.command, index)}
-                        className="rounded-xl border border-white/10 bg-white/5 p-2 text-zinc-400 transition hover:bg-white/10 hover:text-white"
+                        className={dashboardGhostButtonClass}
                       >
                         {copiedIndex === index ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
                       </button>
                     </div>
                   </div>
                 </div>
-              </DashboardSurface>
+              </section>
             );
           })}
         </div>
       </section>
-    </DashboardPageShell>
+    </PremiumDashboardShell>
   );
 }
