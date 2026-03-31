@@ -12,7 +12,7 @@ export function DocsSidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="hidden xl:block xl:w-[18.5rem] xl:shrink-0">
+    <aside className="hidden lg:block lg:w-[17.5rem] lg:shrink-0 xl:w-[18.5rem]">
       <div className="relative sticky top-28 flex max-h-[calc(100dvh-7.5rem)] flex-col overflow-hidden rounded-[2rem] border border-white/[0.08] bg-[linear-gradient(180deg,rgba(8,13,23,0.94),rgba(5,9,18,0.98))] p-5 shadow-[0_34px_110px_rgba(0,0,0,0.32),inset_0_1px_0_rgba(255,255,255,0.03)] backdrop-blur-xl">
         <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.02),transparent_26%,transparent_100%)]" />
         <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-white/12 to-transparent" />

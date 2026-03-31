@@ -13,7 +13,7 @@ export default function DocsLayout({ children }: { children: ReactNode }) {
 
       <main className="relative">
         <div className="relative mx-auto max-w-[1680px] px-4 pb-20 pt-24 sm:px-6 lg:px-8">
-          <div className="grid gap-8 xl:grid-cols-[18.5rem_minmax(0,1fr)] xl:items-start 2xl:gap-10">
+          <div className="grid gap-8 lg:grid-cols-[17.5rem_minmax(0,1fr)] lg:items-start xl:grid-cols-[18.5rem_minmax(0,1fr)] 2xl:gap-10">
             <DocsSidebar />
             <div className="min-w-0 pt-4 xl:pt-0">{children}</div>
           </div>
