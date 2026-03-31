@@ -162,28 +162,26 @@ export function WebhookDebugWorkbench() {
   });
 
   return (
-    <div className="px-4 pb-12 pt-6 text-white sm:px-6 lg:px-8">
+    <div className="px-4 pb-8 pt-4 text-white sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl">
-        <DashboardSurface accent="cyan" className="px-6 py-7 sm:px-8 lg:px-10">
-          <div className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(20rem,0.85fr)] xl:items-end">
-            <DashboardSectionHeading
-              eyebrow="Webhooks"
-              title="Turn webhook failures into an investigation surface instead of a log guessing game."
-              description="This page is built around realistic provider deliveries and the debugging questions that matter in Binboi: which provider fired, which event arrived, what the destination did, whether retries are happening, and how to explain the failure without inventing data."
-            />
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(20rem,0.85fr)] xl:items-end">
+          <DashboardSectionHeading
+            eyebrow="Webhooks"
+            title="Investigate webhook failures without stacked dashboard chrome."
+            description="Provider deliveries, retries, classifications, and response previews stay in one focused debugging surface."
+          />
 
-            <DashboardSurface accent="violet" className="p-5">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-zinc-500">
-                Feed model
-              </p>
-              <p className="mt-3 text-sm leading-7 text-zinc-300">
-                This debugger uses a realistic provider replay model so Stripe, Clerk, Supabase,
-                GitHub, Linear, and Neon delivery failures stay explorable even before Binboi
-                stores dedicated webhook delivery rows separately from the core request stream.
-              </p>
-            </DashboardSurface>
-          </div>
-        </DashboardSurface>
+          <DashboardSurface accent="neutral" className="p-5">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-zinc-500">
+              Feed model
+            </p>
+            <p className="mt-3 text-sm leading-7 text-zinc-300">
+              This debugger uses a realistic provider replay model so Stripe, Clerk, Supabase,
+              GitHub, Linear, and Neon delivery failures stay explorable even before Binboi
+              stores dedicated webhook delivery rows separately from the core request stream.
+            </p>
+          </DashboardSurface>
+        </div>
 
         <div className="mt-10 grid gap-6 md:grid-cols-3">
           <DashboardStatCard

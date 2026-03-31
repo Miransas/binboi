@@ -167,30 +167,28 @@ export function RequestDebugWorkbench() {
       : ([] as const);
 
   return (
-    <div className="px-4 pb-12 pt-6 text-white sm:px-6 lg:px-8">
+    <div className="px-4 pb-8 pt-4 text-white sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl">
-        <DashboardSurface accent="cyan" className="px-6 py-7 sm:px-8 lg:px-10">
-          <div className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(20rem,0.85fr)] xl:items-end">
-            <DashboardSectionHeading
-              eyebrow="Requests"
-              title="Inspect every inbound request like a debugging surface, not a blind tunnel counter."
-              description="Binboi now treats request inspection as a first-class product surface: method, path, status, duration, target, previews, and AI-assisted error explanation are visible from one workflow."
-            />
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(20rem,0.85fr)] xl:items-end">
+          <DashboardSectionHeading
+            eyebrow="Requests"
+            title="Inspect inbound traffic without a second page shell competing for attention."
+            description="Method, path, status, duration, previews, and AI-assisted error explanation stay in one focused workflow."
+          />
 
-            <DashboardSurface accent={dataMode === "live" ? "violet" : "neutral"} className="p-5">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-zinc-500">
-                Feed mode
-              </p>
-              <p className="mt-3 text-sm leading-7 text-zinc-300">
-                {dataMode === "live"
-                  ? "Live relay inspection is active. These records were captured from the control plane while traffic moved through public tunnel URLs."
-                  : dataMode === "fallback"
-                    ? "The control plane is unreachable right now, so Binboi is showing preview replay traffic to keep the debugging workflow explorable."
-                    : "No live requests have been captured yet, so Binboi is showing preview replay traffic until the first tunnel request arrives."}
-              </p>
-            </DashboardSurface>
-          </div>
-        </DashboardSurface>
+          <DashboardSurface accent={dataMode === "live" ? "neutral" : "violet"} className="p-5">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-zinc-500">
+              Feed mode
+            </p>
+            <p className="mt-3 text-sm leading-7 text-zinc-300">
+              {dataMode === "live"
+                ? "Live relay inspection is active. These records were captured from the control plane while traffic moved through public tunnel URLs."
+                : dataMode === "fallback"
+                  ? "The control plane is unreachable right now, so Binboi is showing preview replay traffic to keep the debugging workflow explorable."
+                  : "No live requests have been captured yet, so Binboi is showing preview replay traffic until the first tunnel request arrives."}
+            </p>
+          </DashboardSurface>
+        </div>
 
         <div className="mt-10 grid gap-6 md:grid-cols-3">
           <DashboardStatCard

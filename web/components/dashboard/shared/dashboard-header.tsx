@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Search, Sparkles } from "lucide-react";
+import { LayoutDashboard } from "lucide-react";
 
 import { useAssistantContext } from "@/components/shared/assistant-context";
 import { usePricingPlan } from "@/components/provider/pricing-plan-provider";
@@ -30,7 +30,7 @@ export default function DashboardHeader() {
   return (
     <div
       className={`sticky top-0 z-30 px-4 transition-[padding] duration-300 sm:px-6 lg:px-8 ${
-        isCompact ? "pb-1 pt-2" : "pb-2 pt-3"
+        isCompact ? "pb-1 pt-2" : "pb-1.5 pt-3"
       }`}
     >
       <DashboardSurface accent="neutral" className="p-0">
@@ -95,23 +95,6 @@ export default function DashboardHeader() {
                 ) : null}
               </div>
             </div>
-
-            {!isCompact ? (
-              <div className="flex items-center justify-between gap-3 border-t border-white/8 pt-3 text-xs text-zinc-500">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="h-3.5 w-3.5 text-miransas-cyan" />
-                  Search docs, requests, webhooks, and logs without leaving the current surface.
-                </div>
-                <div className="rounded-full border border-white/10 bg-white/[0.02] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-400">
-                  {activePlan.name} plan
-                </div>
-              </div>
-            ) : headerConfig.mode !== "home" ? (
-              <div className="flex items-center gap-2 border-t border-white/8 pt-2 text-[11px] text-zinc-500">
-                <Search className="h-3.5 w-3.5 text-miransas-cyan" />
-                Focused page mode keeps the header compact.
-              </div>
-            ) : null}
           </div>
         </div>
       </DashboardSurface>

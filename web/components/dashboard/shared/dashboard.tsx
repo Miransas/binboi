@@ -15,7 +15,6 @@ import { useRegisterAssistantContext } from "@/components/shared/assistant-conte
 import { useRequests } from "@/hooks/useRequests";
 import { useTunnels } from "@/hooks/useTunnels";
 
-import TerminalLog from "./terminal-log";
 import TokenManager from "./token-manager";
 
 export default function DashboardPage() {
@@ -100,40 +99,38 @@ export default function DashboardPage() {
   const recentRequests = requests.slice(0, 5);
 
   return (
-    <div className="relative px-4 pb-12 pt-6 text-white sm:px-6 lg:px-8">
+    <div className="relative px-4 pb-8 pt-4 text-white sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl">
-        <DashboardSurface accent="amber" className="px-6 py-7 sm:px-8 lg:px-10">
-          <div className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(24rem,0.85fr)] xl:items-end">
-            <DashboardSectionHeading
-              eyebrow="Binboi control plane"
-              title="Operate tunnels, tokens, traffic, and webhook failures from one premium surface."
-              description="The dashboard now reflects live relay state, token posture, request visibility, and webhook investigation tools with honest fallback behavior when the control plane is unavailable."
-            />
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(24rem,0.85fr)] xl:items-end">
+          <DashboardSectionHeading
+            eyebrow="Binboi control plane"
+            title="Operate tunnels, tokens, traffic, and webhook failures from one surface."
+            description="Live relay state, request visibility, webhook investigation, and token posture stay inside the dashboard without extra route chrome."
+          />
 
-            <DashboardSurface accent="violet" className="p-5">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-zinc-500">
-                Relay posture
+          <DashboardSurface accent="neutral" className="p-5">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-zinc-500">
+              Relay posture
+            </p>
+            <div className="mt-4 flex items-center gap-3">
+              <span
+                className={`h-2.5 w-2.5 rounded-full ${
+                  activeCount > 0
+                    ? "bg-miransas-cyan shadow-[0_0_16px_rgba(0,255,209,0.65)]"
+                    : "bg-amber-300 shadow-[0_0_14px_rgba(251,191,36,0.36)]"
+                }`}
+              />
+              <p className="text-sm font-medium text-white">
+                {activeCount > 0 ? "Relay is carrying live tunnel traffic." : "Relay is waiting for the first active tunnel."}
               </p>
-              <div className="mt-4 flex items-center gap-3">
-                <span
-                  className={`h-2.5 w-2.5 rounded-full ${
-                    activeCount > 0
-                      ? "bg-miransas-cyan shadow-[0_0_16px_rgba(0,255,209,0.65)]"
-                      : "bg-amber-300 shadow-[0_0_14px_rgba(251,191,36,0.36)]"
-                  }`}
-                />
-                <p className="text-sm font-medium text-white">
-                  {activeCount > 0 ? "Relay is carrying live tunnel traffic." : "Relay is waiting for the first active tunnel."}
-                </p>
-              </div>
-              <p className="mt-4 text-sm leading-7 text-zinc-400">
-                {session?.user
-                  ? `Signed in as ${session.user.email}.`
-                  : "Guest preview mode is enabled, so the product still behaves coherently without a full auth deployment."}
-              </p>
-            </DashboardSurface>
-          </div>
-        </DashboardSurface>
+            </div>
+            <p className="mt-4 text-sm leading-7 text-zinc-400">
+              {session?.user
+                ? `Signed in as ${session.user.email}.`
+                : "Guest preview mode is enabled, so the product still behaves coherently without a full auth deployment."}
+            </p>
+          </DashboardSurface>
+        </div>
 
         <div className="mt-8 grid gap-6 md:grid-cols-3">
           {statusCards.map(({ label, value, note, icon, accent }) => (
