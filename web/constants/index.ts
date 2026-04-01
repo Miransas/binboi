@@ -78,7 +78,7 @@ export const FOOTER_LINKS = {
   ],
   company: [
     { label: "Miransas", href: "https://miransas.com" },
-    { label: "GitHub", href: "https://github.com/sardorazimov/binboi" },
+    { label: "GitHub", href: "https://github.com/Miransas/binboi" },
   ],
   legal: [
     { label: "Privacy", href: "/privacy" },

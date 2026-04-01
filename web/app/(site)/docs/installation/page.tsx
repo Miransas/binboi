@@ -131,7 +131,7 @@ binboi version`}
         <DocsCodeBlock
           title="Contributor install flow"
           language="bash"
-          code={`git clone https://github.com/sardorazimov/binboi.git
+          code={`git clone https://github.com/Miransas/binboi.git
 cd binboi
 go build -o binboi-server ./cmd/binboi-server
 go build -o binboi ./cmd/binboi-client

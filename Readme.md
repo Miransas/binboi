@@ -1,48 +1,70 @@
 # Binboi
 
-Binboi is a self-hosted HTTP tunneling MVP with three parts:
+Binboi is a self-hosted tunneling platform with three connected products in one repository:
 
-- A Go relay and control plane
-- A CLI agent that opens tunnels from your local machine
-- A Next.js dashboard for setup, reservation, domains, and visibility
+- a Go control plane and public relay
+- a CLI agent that opens tunnels from local machines
+- a Next.js web app for auth, billing, onboarding, and dashboard workflows
 
-The project is intentionally scoped to a coherent first release:
+The canonical repository URL is [https://github.com/Miransas/binboi](https://github.com/Miransas/binboi).
 
-- HTTP tunnels over a single yamux connection
-- Account-backed access tokens for CLI authentication
-- SQLite-backed relay state by default
-- Managed base domain plus optional custom domains with DNS TXT verification
+## What Binboi currently does
 
-It is not pretending to be a finished hosted ngrok replacement yet. Raw TCP, private CA management, deep traffic policy, and AI inspection remain future work.
+- Creates and manages HTTP tunnels over a single yamux-backed control connection
+- Issues user-scoped access tokens for the CLI
+- Supports custom auth pages, NextAuth sessions, and GitHub OAuth when configured
+- Stores relay state in SQLite by default
+- Stores product users, sessions, billing state, invites, and auth tokens in Postgres
+- Exposes a premium marketing site, docs area, auth flow, and dashboard in the Next.js app
+- Syncs paid plans through Paddle checkout and webhook events
 
-## MVP data story
+## Product boundaries
 
-The repository now uses two clear storage layers:
+Stable enough to iterate on:
 
-- SQLite at `binboi.db` for relay state, tunnel lifecycle, domains, and events
-- Postgres via `DATABASE_URL` for website users and hashed access tokens
+- Tunnel reservation and lifecycle
+- CLI login and relay handshake
+- Dashboard onboarding and access token management
+- Email verification, password reset, invite acceptance, and session-backed auth
+- Billing plan upgrades, cancelation, and webhook reconciliation
+- Domain registration and verification flows
 
-If `DATABASE_URL` is missing, the dashboard falls back to a local preview mode and the relay can still use a single preview token from SQLite. That keeps local development unblocked without pretending the preview flow is the full SaaS auth model.
+Still intentionally incomplete:
 
-## Default ports
+- raw TCP as a finished product surface
+- fully managed TLS/CA lifecycle
+- production email delivery wiring
+- advanced AI inspection policies
+- richer org/team account management
 
-- API: `:8080`
-- Tunnel listener: `:8081`
-- Public HTTP proxy: `:8000`
+## Repository map
 
-The default managed domain is `binboi.localhost`, which makes local subdomains easy to test:
+- [`cmd/`](./cmd/README.md): CLI and server entrypoints
+- [`internal/`](./internal/README.md): Go application internals for auth, relay, proxy, and storage
+- [`web/`](./web/README.md): Next.js App Router frontend, auth APIs, database schema, and billing UI
+- [`configs/`](./configs/README.md): local YAML configuration examples
+- [`packaging/`](./packaging/README.md): release packaging assets including Homebrew
+- [`docs/`](./docs/README.md): extra project documentation, architecture notes, and release docs
+- [`scripts/`](./scripts/README.md): helper automation space
 
-- `http://my-app.binboi.localhost:8000`
+## Architecture at a glance
+
+1. The Go server in [`cmd/binboi-server`](./cmd/binboi-server/README.md) starts the control plane API, the tunnel listener, and the public proxy.
+2. The CLI in [`cmd/binboi-client`](./cmd/binboi-client/README.md) authenticates with an access token and opens a relay session.
+3. The Next.js app in [`web/`](./web/README.md) handles auth UI, auth APIs, protected dashboard pages, pricing, billing, and docs.
+4. SQLite stores relay runtime state by default, while Postgres stores user-facing SaaS data such as users, sessions, invites, verification tokens, access tokens, and subscriptions.
+
+For a longer subsystem breakdown, see [`docs/architecture-overview.md`](./docs/architecture-overview.md).
 
 ## Quick start
 
-1. Start the relay:
+### 1. Start the relay
 
 ```bash
 go run ./cmd/binboi-server
 ```
 
-2. Open the dashboard:
+### 2. Start the web app
 
 ```bash
 cd web
@@ -50,28 +72,46 @@ npm install
 npm run dev
 ```
 
-3. Build the CLI:
+### 3. Build the CLI
 
 ```bash
 go build -o binboi ./cmd/binboi-client
 ```
 
-4. Create an access token in the dashboard and save it locally:
+### 4. Authenticate and open a tunnel
 
 ```bash
 ./binboi login --token <access-token>
-```
-
-5. Verify the account and start a tunnel to your local app:
-
-```bash
 ./binboi whoami
 ./binboi start 3000 my-app
 ```
 
+The default managed development domain is `binboi.localhost`, so a local tunnel will look like:
+
+```text
+http://my-app.binboi.localhost:8000
+```
+
+## Runtime dependencies
+
+### Core services
+
+- Go 1.25+ for the relay and CLI
+- Node.js 20+ for the web app
+- SQLite for relay state via `BINBOI_DATABASE_PATH`
+- Postgres for product auth and billing via `DATABASE_URL` and `BINBOI_AUTH_DATABASE_URL`
+
+### Optional external integrations
+
+- GitHub OAuth via `AUTH_GITHUB_ID` and `AUTH_GITHUB_SECRET`
+- Paddle via `PADDLE_API_KEY`, `PADDLE_CLIENT_TOKEN`, `PADDLE_WEBHOOK_SECRET`, `PADDLE_PRO_PRICE_ID`, and `PADDLE_SCALE_PRICE_ID`
+- Email delivery provider for production verification, reset, and invite links
+
+See [`docs/api-requirements.md`](./docs/api-requirements.md) for a more explicit dependency list and endpoint map.
+
 ## Important environment variables
 
-Relay:
+### Relay
 
 - `BINBOI_API_ADDR`
 - `BINBOI_TUNNEL_ADDR`
@@ -82,56 +122,46 @@ Relay:
 - `BINBOI_DATABASE_PATH`
 - `BINBOI_AUTH_DATABASE_URL`
 
-CLI:
+### CLI
 
 - `BINBOI_API_URL`
 - `BINBOI_SERVER_ADDR`
 - `BINBOI_AUTH_TOKEN`
 - `BINBOI_DASHBOARD_URL`
 
-Dashboard:
+### Web
 
 - `NEXT_PUBLIC_BINBOI_API_BASE`
 - `NEXT_PUBLIC_BINBOI_WS_BASE`
 - `DATABASE_URL`
 - `AUTH_SECRET`
+- `AUTH_GITHUB_ID`
+- `AUTH_GITHUB_SECRET`
 - `PADDLE_API_KEY`
 - `PADDLE_CLIENT_TOKEN`
 - `PADDLE_WEBHOOK_SECRET`
 - `PADDLE_PRO_PRICE_ID`
 - `PADDLE_SCALE_PRICE_ID`
 
-## Docker
+## Local development notes
 
-The included `Dockerfile` and `docker-compose.yml` reflect the SQLite-backed relay MVP. Add Postgres separately when you want real website accounts and hashed access tokens instead of local preview auth.
+- Without `DATABASE_URL`, the web app can still run in preview mode, but database-backed auth is intentionally disabled.
+- Without Paddle credentials, pricing UI can render, but paid plan checkout and subscription sync will stay unavailable.
+- Without a production email provider, auth flows can still expose preview links for verification and password reset during development.
 
-## CLI releases
+## Release workflow
 
-Use `make build-cli` for a local binary and `make release-cli VERSION=0.4.0` for release archives.
+- Build a local CLI binary: `make build-cli`
+- Build release archives: `make release-cli VERSION=0.4.0`
+- Homebrew formula template: [`packaging/homebrew/binboi.rb`](./packaging/homebrew/binboi.rb)
+- Release guide: [`docs/releasing-cli.md`](./docs/releasing-cli.md)
 
-- Release naming: `binboi_<version>_<os>_<arch>.tar.gz`
-- Homebrew formula template: `packaging/homebrew/binboi.rb`
-- Release notes and artifact expectations: `docs/releasing-cli.md`
+## Documentation index
 
-## Current product boundaries
+- [`CONTRIBUTING.md`](./CONTRIBUTING.md)
+- [`SECURITY.md`](./SECURITY.md)
+- [`LICENSE`](./LICENSE)
+- [`docs/architecture-overview.md`](./docs/architecture-overview.md)
+- [`docs/api-requirements.md`](./docs/api-requirements.md)
 
-Working:
-
-- Tunnel reservation
-- Access token validation for the CLI and relay
-- Agent handshake and tunnel activation
-- Public URL generation from the managed domain
-- Access token creation, listing, and revocation
-- Paddle hosted checkout for Pro and Scale subscriptions
-- Billing page with upgrade and cancel flows
-- Paddle webhook-driven plan synchronization
-- Domain registration and DNS verification
-- Event log streaming to the dashboard
-
-Not finished:
-
-- Raw TCP product surface
-- In-core TLS certificate management
-- Per-user machine identities
-- Kubernetes operator
-- AI inspection
+_Documentation maintained by Sardor Azimov._

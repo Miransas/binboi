@@ -1,36 +1,50 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Binboi Web App
 
-## Getting Started
+This package contains the Next.js App Router application for Binboi.
 
-First, run the development server:
+## What lives here
+
+- public product pages
+- docs pages
+- premium auth pages and auth APIs
+- protected dashboard routes
+- billing flows and Paddle webhook handling
+- Drizzle schema and migrations for user-facing product data
+
+## Key areas
+
+- [`app/README.md`](./app/README.md): route groups and API surfaces
+- [`components/README.md`](./components/README.md): shared UI and feature components
+- [`db/README.md`](./db/README.md): schema bootstrap and Drizzle entrypoints
+- [`drizzle/README.md`](./drizzle/README.md): migration files
+- [`lib/README.md`](./lib/README.md): shared business logic for auth, billing, control plane integration, and pricing
+
+## Local commands
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm run lint
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Core environment variables
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- `DATABASE_URL`
+- `AUTH_SECRET`
+- `AUTH_GITHUB_ID`
+- `AUTH_GITHUB_SECRET`
+- `NEXT_PUBLIC_BINBOI_API_BASE`
+- `NEXT_PUBLIC_BINBOI_WS_BASE`
+- `PADDLE_API_KEY`
+- `PADDLE_CLIENT_TOKEN`
+- `PADDLE_WEBHOOK_SECRET`
+- `PADDLE_PRO_PRICE_ID`
+- `PADDLE_SCALE_PRICE_ID`
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Auth notes
 
-## Learn More
+- NextAuth remains the session layer.
+- Credentials auth, email verification, password reset, and invite acceptance are implemented through `app/api/auth/*` plus helpers in `lib/auth-system.ts`.
+- Preview mode is still supported when `DATABASE_URL` is absent.
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+_Documentation maintained by Sardor Azimov._
