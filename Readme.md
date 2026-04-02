@@ -104,6 +104,7 @@ http://my-app.binboi.localhost:8000
 ### Optional external integrations
 
 - GitHub OAuth via `AUTH_GITHUB_ID` and `AUTH_GITHUB_SECRET`
+- OpenAI via `OPENAI_API_KEY`, `OPENAI_MODEL`, and `OPENAI_BASE_URL` for assistant responses
 - Paddle via `PADDLE_API_KEY`, `PADDLE_CLIENT_TOKEN`, `PADDLE_WEBHOOK_SECRET`, `PADDLE_PRO_PRICE_ID`, and `PADDLE_SCALE_PRICE_ID`
 - Email delivery provider for production verification, reset, and invite links
 
@@ -137,15 +138,22 @@ See [`docs/api-requirements.md`](./docs/api-requirements.md) for a more explicit
 - `AUTH_SECRET`
 - `AUTH_GITHUB_ID`
 - `AUTH_GITHUB_SECRET`
+- `OPENAI_API_KEY`
+- `OPENAI_MODEL`
+- `OPENAI_BASE_URL`
 - `PADDLE_API_KEY`
+- `PADDLE_API_BASE_URL`
 - `PADDLE_CLIENT_TOKEN`
 - `PADDLE_WEBHOOK_SECRET`
 - `PADDLE_PRO_PRICE_ID`
+- `PADDLE_PRO_PRODUCT_ID`
 - `PADDLE_SCALE_PRICE_ID`
+- `PADDLE_SCALE_PRODUCT_ID`
 
 ## Local development notes
 
 - Without `DATABASE_URL`, the web app can still run in preview mode, but database-backed auth is intentionally disabled.
+- Without `OPENAI_API_KEY`, assistant endpoints stay available but fall back to non-LLM guidance.
 - Without Paddle credentials, pricing UI can render, but paid plan checkout and subscription sync will stay unavailable.
 - Without a production email provider, auth flows can still expose preview links for verification and password reset during development.
 

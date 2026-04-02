@@ -1,0 +1,15 @@
+server:
+  # Public control plane listener behind your reverse proxy or load balancer.
+  addr: "0.0.0.0:8080"
+  # Replace with a long random value and rotate it like an access secret.
+  token: "replace-with-production-shared-secret"
+
+client:
+  # Public relay/control-plane host that remote clients should dial.
+  remote_addr: "relay.example.com:8080"
+  # Your local application port on the machine opening the tunnel.
+  local_port: 3000
+  # The public subdomain to reserve for this client.
+  subdomain: "customer-api"
+  # Keep this aligned with the server token above.
+  token: "replace-with-production-shared-secret"

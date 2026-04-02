@@ -1,9 +1,13 @@
 server:
+  # Local control plane listener used during development.
   addr: "0.0.0.0:8080"
-  token: "miransas-secret-2026"
+  # Shared token for manual local testing only. Replace before sharing.
+  token: "replace-with-local-dev-token"
 
 client:
-  remote_addr: "localhost:8080" # VPS'e geçtiğinde burayı server IP'si yaparsın
+  # Point the client at the relay/control-plane address.
+  remote_addr: "127.0.0.1:8080"
   local_port: 3000
-  subdomain: "sazlab"
-  token: "miransas-secret-2026"
+  subdomain: "my-local-app"
+  # Use the same shared token as the server sample above.
+  token: "replace-with-local-dev-token"

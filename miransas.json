@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "organization": "Miransas",
+  "project": "Binboi",
+  "status": "active-development",
+  "maintainer": "Sardor Azimov",
+  "repository": "https://github.com/Miransas/binboi",
+  "currentRelease": {
+    "version": "0.4.0",
+    "webVersion": "0.1.0",
+    "goVersion": "1.25.6",
+    "nodeRequirement": "20+"
+  },
+  "stack": {
+    "backend": ["Go", "Gin", "Yamux"],
+    "frontend": ["Next.js", "React", "TypeScript"],
+    "storage": ["SQLite", "Postgres"],
+    "integrations": ["GitHub OAuth", "OpenAI", "Paddle"]
+  },
+  "links": {
+    "readme": "./README.md",
+    "web": "./web/README.md",
+    "docs": "./docs/README.md"
+  },
+  "lastReviewed": "2026-04-02"
+}

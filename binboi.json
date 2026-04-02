@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "name": "binboi",
+  "displayName": "Binboi",
+  "version": "0.4.0",
+  "webVersion": "0.1.0",
+  "repository": "https://github.com/Miransas/binboi",
+  "license": "MIT",
+  "owner": "Miransas",
+  "maintainer": "Sardor Azimov",
+  "description": "Self-hosted tunneling platform with a Go control plane, CLI agent, and Next.js web dashboard.",
+  "components": {
+    "server": {
+      "language": "Go",
+      "entrypoint": "./cmd/binboi-server",
+      "defaultPort": 8080
+    },
+    "cli": {
+      "language": "Go",
+      "entrypoint": "./cmd/binboi-client"
+    },
+    "web": {
+      "language": "TypeScript",
+      "framework": "Next.js",
+      "path": "./web",
+      "defaultPort": 3000
+    }
+  },
+  "defaultPorts": {
+    "api": 8080,
+    "tunnel": 8081,
+    "proxy": 8000,
+    "web": 3000
+  },
+  "storage": ["SQLite", "Postgres"],
+  "optionalIntegrations": ["GitHub OAuth", "OpenAI", "Paddle"],
+  "docs": {
+    "readme": "./README.md",
+    "architecture": "./docs/architecture-overview.md",
+    "apiRequirements": "./docs/api-requirements.md",
+    "releaseGuide": "./docs/releasing-cli.md"
+  }
+}

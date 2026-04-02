@@ -35,18 +35,27 @@ Current route groups include:
 - `app/api/stats`
 - `app/api/v1/tokens`
 
-## Required services
+## Which APIs and services do you actually need?
 
-### Required for full product behavior
+### No third-party API required for basic local tunneling
 
-- Postgres for website auth and billing state
-- SQLite for relay state unless you replace that storage layer
+- Binboi can run locally with the Go relay, the CLI, and SQLite only.
+- For this mode, the `BINBOI_*` relay variables plus `BINBOI_DATABASE_PATH` are enough.
 
-### Required for specific features
+### Required for the hosted web experience
 
-- GitHub OAuth for social sign-in
-- Paddle for paid plans and webhook sync
-- Email provider for production verification, password reset, and invite delivery
+- Postgres is required for database-backed auth, invites, access tokens, billing state, and domain ownership records.
+- Relevant envs: `DATABASE_URL`, `BINBOI_AUTH_DATABASE_URL`
+
+### Optional integrations by feature
+
+- GitHub OAuth: only needed for GitHub social sign-in.
+- Relevant envs: `AUTH_GITHUB_ID`, `AUTH_GITHUB_SECRET`
+- OpenAI: only needed for the assistant and AI help routes in the web app.
+- Relevant envs: `OPENAI_API_KEY`, `OPENAI_MODEL`, `OPENAI_BASE_URL`
+- Paddle: only needed for paid plans, checkout, subscription changes, and webhook reconciliation.
+- Relevant envs: `PADDLE_API_KEY`, `PADDLE_CLIENT_TOKEN`, `PADDLE_WEBHOOK_SECRET`, `PADDLE_PRO_PRICE_ID`, `PADDLE_PRO_PRODUCT_ID`, `PADDLE_SCALE_PRICE_ID`, `PADDLE_SCALE_PRODUCT_ID`, `PADDLE_API_BASE_URL`
+- Email provider: recommended in production for verification, password reset, and invite delivery. Development preview links can still work without it.
 
 ## Environment variables by integration
 
@@ -80,14 +89,24 @@ Current route groups include:
 ### Billing
 
 - `PADDLE_API_KEY`
+- `PADDLE_API_BASE_URL`
 - `PADDLE_CLIENT_TOKEN`
 - `PADDLE_WEBHOOK_SECRET`
 - `PADDLE_PRO_PRICE_ID`
+- `PADDLE_PRO_PRODUCT_ID`
 - `PADDLE_SCALE_PRICE_ID`
+- `PADDLE_SCALE_PRODUCT_ID`
+
+### AI assistant
+
+- `OPENAI_API_KEY`
+- `OPENAI_MODEL`
+- `OPENAI_BASE_URL`
 
 ## Production readiness notes
 
 - Without `DATABASE_URL`, database-backed auth stays disabled and the web app falls back to preview behavior.
+- Without `OPENAI_API_KEY`, assistant routes can still answer with fallback guidance, but no live model response is attempted.
 - Without email delivery, auth flows rely on preview links and are not production-complete.
 - Without Paddle configuration, pricing remains informational and billing actions should be treated as incomplete.
 

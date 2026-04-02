@@ -2,9 +2,10 @@
 
 This folder contains local configuration examples used for development and manual testing.
 
-Current file:
+Current files:
 
-- `config.yaml`: sample server and client settings
+- `config.yaml`: safe local development sample for quick manual testing
+- `config.production.example.yaml`: production-oriented sample with public host placeholders
 
 Do not treat sample secrets here as production-safe values.
 

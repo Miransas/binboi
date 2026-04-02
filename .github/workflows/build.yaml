@@ -1,43 +1,58 @@
-name: Binboi Build & Release
+name: Build Artifacts
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   build:
-    name: Build Binaries
+    name: Build Go Artifacts
     runs-on: ubuntu-latest
-    
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - artifact_name: binboi-server-linux-amd64
+            output_path: dist/binboi-server-linux-amd64
+            package: ./cmd/binboi-server
+            goos: linux
+            goarch: amd64
+          - artifact_name: binboi-client-darwin-arm64
+            output_path: dist/binboi-client-darwin-arm64
+            package: ./cmd/binboi-client
+            goos: darwin
+            goarch: arm64
+          - artifact_name: binboi-client-linux-amd64
+            output_path: dist/binboi-client-linux-amd64
+            package: ./cmd/binboi-client
+            goos: linux
+            goarch: amd64
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Set up Go
-      uses: actions/setup-go@v5
-      with:
-        go-version: '1.21' # Go versiyonun
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
 
-    - name: Install dependencies
-      run: go mod tidy
+      - name: Download modules
+        run: go mod download
 
-    # 1. Build Server for Linux (VPS)
-    - name: Build Server (Linux amd64)
-      run: |
-        GOOS=linux GOARCH=amd64 go build -o binboi-server-linux cmd/binboi-server/main.go
+      - name: Build ${{ matrix.artifact_name }}
+        run: |
+          mkdir -p dist
+          GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -trimpath -o "${{ matrix.output_path }}" "${{ matrix.package }}"
 
-    # 2. Build Client for macOS M1 (Darwin arm64)
-    - name: Build Client (macOS M1)
-      run: |
-        GOOS=darwin GOARCH=arm64 go build -o binboi-client-macos cmd/binboi-client/main.go
-
-    # 3. Upload Artifacts (Derlenen dosyaları GitHub üzerinden indirebilirsin)
-    - name: Upload Artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: binboi-binaries
-        path: |
-          binboi-server-linux
-          binboi-client-macos
+      - name: Upload ${{ matrix.artifact_name }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: ${{ matrix.output_path }}
