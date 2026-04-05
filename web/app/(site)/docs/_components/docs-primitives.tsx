@@ -43,7 +43,7 @@ export function DocsPageShell({
   children: ReactNode;
 }) {
   return (
-    <div className="space-y-10">
+    <div className="space-y-10 sticky top-24">
       <header className={shellSurface}>
         <div className="px-6 py-7 sm:px-8 lg:px-10 lg:py-10">
           <div className={cn("grid gap-6", toc?.length ? "xl:grid-cols-[minmax(0,1fr)_16rem] xl:items-end" : "")}>

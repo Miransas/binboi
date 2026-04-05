@@ -11,7 +11,7 @@ import {
 import { MdOutlineSettingsInputComposite } from "react-icons/md";
 
 
-import { Sparkles } from "lucide-react" 
+import { ArrowUpRight, BookOpen, Bot, LifeBuoy, Sparkles } from "lucide-react" 
 
 export const NAV_LINKS = [
   { label: "Docs", href: "/docs" },
@@ -74,3 +74,38 @@ export const FOOTER_LINKS = {
     { label: "Terms", href: "/terms" },
   ],
 };
+
+export const footerLinks = {
+  Product: [
+    { name: "Docs", href: "/docs" },
+    { name: "Pricing", href: "/pricing" },
+    { name: "Changelog", href: "/changelog" },
+    { name: "Support", href: "/support" },
+  ],
+  Platform: [
+    { name: "Quick Start", href: "/docs/quick_start" },
+    { name: "HTTP Tunnels", href: "/docs/http_tunnels" },
+    { name: "Requests", href: "/docs/requests" },
+    { name: "API", href: "/docs/api" },
+  ],
+  Workflows: [
+    { name: "Webhooks", href: "/docs/webhooks" },
+    { name: "Logs", href: "/docs/logs" },
+    { name: "Regions", href: "/docs/regions" },
+    { name: "Troubleshooting", href: "/docs/troubleshooting" },
+  ],
+  Company: [
+    { name: "Register", href: "/register" },
+    { name: "Login", href: "/login" },
+    { name: "Terms", href: "/terms" },
+    { name: "Status", href: "/docs/bugs" },
+  ],
+};
+
+export const footerSocialLinks = [
+  { name: "Docs", icon: BookOpen, href: "/docs" },
+  { name: "API", icon: Bot, href: "/docs/api" },
+  { name: "Support", icon: LifeBuoy, href: "/support" },
+  { name: "Pricing", icon: ArrowUpRight, href: "/pricing" },
+];
+

@@ -99,7 +99,7 @@ export default function DashboardPage() {
   const recentRequests = requests.slice(0, 5);
 
   return (
-    <div className="relative flex min-h-full flex-col px-4 pb-8 pt-4 text-white sm:px-6 lg:px-8">
+    <div className="relative flex min-h-full flex-col px-4 pb-8 pt-4 text-zinc-300 sm:px-6 lg:px-8 bg-black">
       <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col">
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(24rem,0.85fr)] xl:items-end">
           <DashboardSectionHeading
@@ -116,8 +116,8 @@ export default function DashboardPage() {
               <span
                 className={`h-2.5 w-2.5 rounded-full ${
                   activeCount > 0
-                    ? "bg-miransas-cyan shadow-[0_0_16px_rgba(0,255,209,0.65)]"
-                    : "bg-amber-300 shadow-[0_0_14px_rgba(251,191,36,0.36)]"
+                    ? "bg-[#c8d7cc]"
+                    : "bg-zinc-500"
                 }`}
               />
               <p className="text-sm font-medium text-white">
@@ -206,7 +206,7 @@ export default function DashboardPage() {
                           <span
                             className={`inline-flex rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] ${
                               tunnel.status === "ACTIVE"
-                                ? "border-miransas-cyan/20 bg-miransas-cyan/10 text-miransas-cyan"
+                                ? "border-white/10 bg-white/[0.03] text-zinc-100"
                                 : "border-white/10 bg-white/[0.03] text-zinc-300"
                             }`}
                           >
@@ -277,10 +277,10 @@ export default function DashboardPage() {
                           <span
                             className={`inline-flex rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] ${
                               request.status >= 500
-                                ? "border-rose-300/18 bg-rose-400/10 text-rose-100"
+                                ? "border-[#5e3b42]/30 bg-[#1a1416] text-[#e5c7cb]"
                                 : request.status >= 400
-                                  ? "border-amber-300/18 bg-amber-400/10 text-amber-100"
-                                  : "border-emerald-300/18 bg-emerald-400/10 text-emerald-100"
+                                  ? "border-white/10 bg-white/[0.03] text-[#dbcbb8]"
+                                  : "border-white/10 bg-white/[0.03] text-[#c8d7cc]"
                             }`}
                           >
                             {request.status}

@@ -1,7 +1,5 @@
 import type { ReactNode } from "react";
 
-import { cn } from "@/lib/utils";
-
 import { DashboardRouteFrame } from "./dashboard-route-frame";
 import {
   dashboardBadgeClass,
@@ -24,16 +22,8 @@ type Panel = {
   tone?: DashboardTone;
 };
 
-const highlightTones: DashboardTone[] = ["blue", "neutral", "blue"];
-const panelTones: DashboardTone[] = ["blue", "neutral"];
-
-const highlightBeamClass: Record<DashboardTone, string> = {
-  neutral: "from-transparent via-white/16 to-transparent",
-  blue: "from-transparent via-[#8aacff]/44 to-transparent",
-  orange: "from-transparent via-[#f7a15d]/40 to-transparent",
-  green: "from-transparent via-[#54ca92]/40 to-transparent",
-  danger: "from-transparent via-[#f07878]/36 to-transparent",
-};
+const highlightTones: DashboardTone[] = ["neutral", "neutral", "neutral"];
+const panelTones: DashboardTone[] = ["neutral", "neutral"];
 
 export function PremiumDashboardShell({
   eyebrow,
@@ -54,15 +44,12 @@ export function PremiumDashboardShell({
 }) {
   return (
     <DashboardRouteFrame variant="shell" className={className}>
-      <div className="relative flex min-h-full flex-col px-4 pb-6 pt-4 text-white sm:px-6 lg:px-8">
-        <div className="pointer-events-none absolute left-6 top-0 h-56 w-56 rounded-full bg-[radial-gradient(circle,rgba(126,162,255,0.16),transparent_70%)] blur-3xl" />
-        <div className="pointer-events-none absolute right-8 top-14 h-64 w-64 rounded-full bg-[radial-gradient(circle,rgba(43,86,201,0.18),transparent_72%)] blur-3xl" />
-
-        <div className="relative mx-auto flex min-h-full w-full max-w-7xl flex-1 flex-col gap-6">
-          <div className="grid gap-6 xl:grid-cols-[minmax(0,1.08fr)_minmax(18rem,0.92fr)] xl:items-end">
+      <div className="flex min-h-full flex-col px-4 pb-8 pt-5 text-white sm:px-6 lg:px-8">
+        <div className="mx-auto flex min-h-full w-full max-w-7xl flex-1 flex-col gap-8">
+          <div className="grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(17rem,0.9fr)] xl:items-start">
             <div className="max-w-4xl">
-              <span className={dashboardBadgeClass("blue")}>{eyebrow}</span>
-              <h1 className="mt-5 text-3xl font-black tracking-[-0.04em] text-white sm:text-4xl lg:text-[2.85rem]">
+              <span className={dashboardBadgeClass("neutral")}>{eyebrow}</span>
+              <h1 className="mt-4 text-3xl font-semibold tracking-tight text-white sm:text-4xl lg:text-[2.75rem]">
                 {title}
               </h1>
               <p className="mt-3 max-w-3xl text-sm leading-7 text-[rgba(194,203,219,0.76)] sm:text-[15px]">
@@ -75,35 +62,33 @@ export function PremiumDashboardShell({
                 {panels.map((panel, index) => (
                   <section
                     key={panel.title}
-                    className={dashboardPanelClass(panel.tone ?? panelTones[index % panelTones.length], "p-4 sm:p-5")}
+                    className={dashboardPanelClass(panel.tone ?? panelTones[index % panelTones.length], "p-5")}
                   >
-                    <div className="relative z-10">
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-500">
-                        {index === 0 ? "Operator note" : "Expected behavior"}
-                      </p>
-                      <h2 className="mt-2.5 text-base font-semibold tracking-[-0.02em] text-white">
-                        {panel.title}
-                      </h2>
-                      <p className="mt-2 text-sm leading-6 text-[rgba(194,203,219,0.74)]">
-                        {panel.description}
-                      </p>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-500">
+                      {index === 0 ? "Operator note" : "Expected behavior"}
+                    </p>
+                    <h2 className="mt-2.5 text-base font-semibold tracking-[-0.02em] text-white">
+                      {panel.title}
+                    </h2>
+                    <p className="mt-2 text-sm leading-6 text-[rgba(194,203,219,0.74)]">
+                      {panel.description}
+                    </p>
 
-                      {panel.bullets && panel.bullets.length > 0 ? (
-                        <ul className="mt-3 space-y-2.5">
-                          {panel.bullets.slice(0, 3).map((bullet) => (
-                            <li
-                              key={bullet}
-                              className={dashboardInsetPanelClass(
-                                "neutral",
-                                "px-4 py-3 text-sm leading-6 text-[rgba(214,219,228,0.82)]",
-                              )}
-                            >
-                              {bullet}
-                            </li>
-                          ))}
-                        </ul>
-                      ) : null}
-                    </div>
+                    {panel.bullets && panel.bullets.length > 0 ? (
+                      <ul className="mt-3 space-y-2.5">
+                        {panel.bullets.slice(0, 3).map((bullet) => (
+                          <li
+                            key={bullet}
+                            className={dashboardInsetPanelClass(
+                              "neutral",
+                              "px-4 py-3 text-sm leading-6 text-[rgba(214,219,228,0.82)]",
+                            )}
+                          >
+                            {bullet}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
                   </section>
                 ))}
               </div>
@@ -118,25 +103,17 @@ export function PremiumDashboardShell({
                 return (
                   <section
                     key={item.label}
-                    className={dashboardPanelClass(tone, "min-h-[10.75rem] p-5")}
+                    className={dashboardPanelClass(tone, "min-h-[10rem] p-5")}
                   >
-                    <div className="relative z-10">
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-500">
-                        {item.label}
-                      </p>
-                      <div
-                        className={cn(
-                          "mt-3 h-px w-14 bg-gradient-to-r",
-                          highlightBeamClass[tone],
-                        )}
-                      />
-                      <p className="mt-4 text-3xl font-black tracking-[-0.05em] text-white lg:text-[2.35rem]">
-                        {item.value}
-                      </p>
-                      <p className="mt-2.5 text-sm leading-6 text-[rgba(194,203,219,0.74)]">
-                        {item.note}
-                      </p>
-                    </div>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-500">
+                      {item.label}
+                    </p>
+                    <p className="mt-4 text-3xl font-semibold tracking-tight text-white lg:text-[2.2rem]">
+                      {item.value}
+                    </p>
+                    <p className="mt-2.5 text-sm leading-6 text-[rgba(194,203,219,0.74)]">
+                      {item.note}
+                    </p>
                   </section>
                 );
               })}

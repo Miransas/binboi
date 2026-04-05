@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -346,9 +347,9 @@ func TestListRequestsFiltersByOwner(t *testing.T) {
 		t.Fatalf("insert requestB: %v", err)
 	}
 
-	requests, err := service.listRequests(20, requestAccess{
+	requests, err := service.listRequests(requestAccess{
 		Identity: &AuthIdentity{UserID: "user_a"},
-	}, "")
+	}, requestListOptions{Limit: 20})
 	if err != nil {
 		t.Fatalf("listRequests returned error: %v", err)
 	}
@@ -402,7 +403,10 @@ func TestListRequestsHonorsKindFilter(t *testing.T) {
 		t.Fatalf("insert webhook request: %v", err)
 	}
 
-	requests, err := service.listRequests(20, requestAccess{TrustedLocal: true}, "WEBHOOK")
+	requests, err := service.listRequests(requestAccess{TrustedLocal: true}, requestListOptions{
+		Limit: 20,
+		Kind:  "WEBHOOK",
+	})
 	if err != nil {
 		t.Fatalf("listRequests with kind filter returned error: %v", err)
 	}
@@ -411,5 +415,150 @@ func TestListRequestsHonorsKindFilter(t *testing.T) {
 	}
 	if requests[0].Kind != "WEBHOOK" {
 		t.Fatalf("listRequests(kind=WEBHOOK)[0].Kind = %q, want %q", requests[0].Kind, "WEBHOOK")
+	}
+}
+
+func TestListRequestsSupportsProviderStatusAndQueryFilters(t *testing.T) {
+	service := newTestService(t)
+
+	now := time.Now().UTC()
+	tunnel := TunnelRecord{
+		ID:         "tunnel_filter",
+		Subdomain:  "filtered-app",
+		Target:     "http://localhost:3000",
+		TargetPort: 3000,
+		Status:     "ACTIVE",
+		Region:     "local",
+		CreatedAt:  now,
+	}
+	if err := service.db.Create(&tunnel).Error; err != nil {
+		t.Fatalf("insert tunnel: %v", err)
+	}
+
+	records := []RequestRecord{
+		{
+			ID:              "req_stripe_fail",
+			TunnelID:        tunnel.ID,
+			TunnelSubdomain: tunnel.Subdomain,
+			Kind:            "WEBHOOK",
+			Provider:        "Stripe",
+			Method:          http.MethodPost,
+			Path:            "/webhooks/stripe",
+			Status:          http.StatusBadRequest,
+			ErrorType:       "SIGNATURE_VERIFICATION_FAILED",
+			RequestPreview:  "stripe webhook payload",
+			CreatedAt:       now,
+		},
+		{
+			ID:              "req_github_ok",
+			TunnelID:        tunnel.ID,
+			TunnelSubdomain: tunnel.Subdomain,
+			Kind:            "WEBHOOK",
+			Provider:        "GitHub",
+			Method:          http.MethodPost,
+			Path:            "/webhooks/github",
+			Status:          http.StatusOK,
+			RequestPreview:  "github webhook payload",
+			CreatedAt:       now.Add(time.Second),
+		},
+	}
+	for _, record := range records {
+		if err := service.db.Create(&record).Error; err != nil {
+			t.Fatalf("insert request %s: %v", record.ID, err)
+		}
+	}
+
+	filtered, err := service.listRequests(requestAccess{TrustedLocal: true}, requestListOptions{
+		Limit:       20,
+		Provider:    "stripe",
+		StatusClass: "error",
+		Query:       "signature",
+	})
+	if err != nil {
+		t.Fatalf("listRequests with compound filters returned error: %v", err)
+	}
+	if len(filtered) != 1 {
+		t.Fatalf("filtered request count = %d, want 1", len(filtered))
+	}
+	if filtered[0].Provider != "Stripe" {
+		t.Fatalf("filtered provider = %q, want %q", filtered[0].Provider, "Stripe")
+	}
+}
+
+func TestListEventsSupportsLevelTunnelAndQueryFilters(t *testing.T) {
+	service := newTestService(t)
+
+	now := time.Now().UTC()
+	events := []EventRecord{
+		{Level: "info", Message: "Tunnel alpha connected", TunnelSubdomain: "alpha", CreatedAt: now},
+		{Level: "error", Message: "Proxy error for beta", TunnelSubdomain: "beta", CreatedAt: now.Add(time.Second)},
+	}
+	for _, record := range events {
+		if err := service.db.Create(&record).Error; err != nil {
+			t.Fatalf("insert event: %v", err)
+		}
+	}
+
+	filtered, err := service.listEvents(requestAccess{TrustedLocal: true}, eventListOptions{
+		Limit:  20,
+		Level:  "error",
+		Tunnel: "beta",
+		Query:  "proxy",
+	})
+	if err != nil {
+		t.Fatalf("listEvents with filters returned error: %v", err)
+	}
+	if len(filtered) != 1 {
+		t.Fatalf("filtered event count = %d, want 1", len(filtered))
+	}
+	if filtered[0].TunnelSubdomain != "beta" {
+		t.Fatalf("filtered tunnel = %q, want %q", filtered[0].TunnelSubdomain, "beta")
+	}
+}
+
+func TestDeleteDomainProtectsManagedBaseDomain(t *testing.T) {
+	service := newTestService(t)
+
+	if _, err := service.createDomain(service.cfg.BaseDomain, requestAccess{TrustedLocal: true}); err == nil {
+		t.Fatal("createDomain with managed base domain returned nil error")
+	}
+
+	if err := service.deleteDomain(service.cfg.BaseDomain, requestAccess{TrustedLocal: true}); err == nil {
+		t.Fatal("deleteDomain on managed base domain returned nil error")
+	}
+}
+
+func TestRecordObservedRequestPrunesOldRows(t *testing.T) {
+	service := newTestService(t)
+
+	tunnel := TunnelRecord{
+		ID:         "tunnel_prune",
+		Subdomain:  "alpha",
+		Target:     "http://localhost:3000",
+		TargetPort: 3000,
+		Status:     "ACTIVE",
+		Region:     "local",
+	}
+	if err := service.db.Create(&tunnel).Error; err != nil {
+		t.Fatalf("insert tunnel: %v", err)
+	}
+
+	for i := 0; i < maxStoredRequestRows+5; i++ {
+		if err := service.recordObservedRequest(tunnel, requestObservation{
+			Method:         http.MethodGet,
+			Path:           fmt.Sprintf("/events/%d", i),
+			Status:         http.StatusOK,
+			RequestPreview: fmt.Sprintf("preview-%d", i),
+		}); err != nil {
+			t.Fatalf("recordObservedRequest #%d: %v", i, err)
+		}
+	}
+
+	var count int64
+	if err := service.db.Model(&RequestRecord{}).Count(&count).Error; err != nil {
+		t.Fatalf("count request records: %v", err)
+	}
+	if count != maxStoredRequestRows {
+		t.Fatalf("stored request count = %d, want %d", count, maxStoredRequestRows)
 	}
 }

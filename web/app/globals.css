@@ -173,3 +173,104 @@
     background: var(--color-miransas-cyan);
   }
 }
+
+
+
+
+/* ─── Scroll reveal ─── */
+@keyframes reveal-up {
+  from { opacity: 0; transform: translateY(28px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes reveal-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.reveal-up {
+  animation: reveal-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.reveal-fade {
+  animation: reveal-fade 0.5s ease both;
+}
+
+/* ─── Sidebar collapse transition ─── */
+.sidebar-transition {
+  transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.25s ease;
+}
+
+/* ─── Glow pulse ─── */
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 8px 2px oklch(0.72 0.18 200 / 0.4); }
+  50%       { box-shadow: 0 0 18px 6px oklch(0.72 0.18 200 / 0.7); }
+}
+.glow-active {
+  animation: glow-pulse 2.5s ease-in-out infinite;
+}
+
+/* ─── Custom cursor ─── */
+#cursor-main,
+#cursor-trail {
+  pointer-events: none;
+  position: fixed;
+  top: 0; left: 0;
+  z-index: 9999;
+  transform: translate(-50%, -50%);
+  will-change: transform, left, top;
+}
+#cursor-main {
+  width: 8px; height: 8px;
+  background: oklch(0.72 0.18 200);
+  border-radius: 2px;
+  transition: transform 0.15s cubic-bezier(0.23, 1, 0.32, 1),
+              width 0.2s ease, height 0.2s ease,
+              background 0.2s ease, border-radius 0.2s ease;
+}
+#cursor-main.hovered {
+  width: 16px; height: 16px;
+  border-radius: 4px;
+  background: oklch(0.72 0.18 200 / 0.8);
+}
+#cursor-trail {
+  width: 28px; height: 28px;
+  border: 1px solid oklch(0.72 0.18 200 / 0.3);
+  border-radius: 6px;
+  background: oklch(0.72 0.18 200 / 0.03);
+  transition: transform 0.2s cubic-bezier(0.23, 1, 0.32, 1),
+              width 0.25s ease, height 0.25s ease,
+              border-color 0.2s ease, background 0.2s ease;
+}
+#cursor-trail.hovered {
+  width: 40px; height: 40px;
+  border-color: oklch(0.72 0.18 200 / 0.5);
+  background: oklch(0.72 0.18 200 / 0.06);
+}
+
+/* ─── Page transitions ─── */
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes page-exit {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+}
+.page-enter {
+  animation: page-enter 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.page-exit {
+  animation: page-exit 0.25s ease both;
+}

@@ -28,11 +28,11 @@ function toneForStatus(status: PremiumTimelineItem["status"]): DashboardTone {
 }
 
 const dotClassName: Record<DashboardTone, string> = {
-  neutral: "bg-slate-500/80 shadow-[0_0_14px_rgba(100,116,139,0.25)]",
-  blue: "bg-[#8aacff] shadow-[0_0_18px_rgba(134,169,255,0.34)]",
-  orange: "bg-[#f7a15d] shadow-[0_0_18px_rgba(247,161,93,0.28)]",
-  green: "bg-[#54ca92] shadow-[0_0_18px_rgba(84,202,146,0.28)]",
-  danger: "bg-[#f07878] shadow-[0_0_18px_rgba(240,120,120,0.28)]",
+  neutral: "bg-zinc-500",
+  blue: "bg-[#b7c4d9]",
+  orange: "bg-[#ccb79d]",
+  green: "bg-[#b7cdbf]",
+  danger: "bg-[#d2b6bb]",
 };
 
 export function PremiumDashboardTimeline({
@@ -62,7 +62,7 @@ export function PremiumDashboardTimeline({
         </div>
 
         <div className="relative mt-6 space-y-5">
-          <div className="pointer-events-none absolute bottom-4 left-[1.05rem] top-4 w-px bg-gradient-to-b from-[#8aacff]/26 via-white/10 to-transparent" />
+          <div className="pointer-events-none absolute bottom-4 left-[1.05rem] top-4 w-px bg-white/10" />
 
           {items.map((item) => {
             const tone = toneForStatus(item.status);
@@ -73,7 +73,7 @@ export function PremiumDashboardTimeline({
                   <span className={cn("mt-1.5 h-3.5 w-3.5 rounded-full", dotClassName[tone])} />
                 </div>
 
-                <div className="min-w-0 flex-1 rounded-[1.45rem] border border-white/[0.08] bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.018))] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]">
+                <div className="min-w-0 flex-1 rounded-xl border border-white/[0.08] bg-[#0d0f12] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">
                       {item.label}

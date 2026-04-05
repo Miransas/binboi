@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/purity */
 'use client';
 
 import * as React from 'react';
@@ -12,24 +13,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from '@/components/animate-ui/components/radix/sheet';
-import {
-  TooltipProvider,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/animate-ui/components/animate/tooltip';
-import {
-  Highlight,
-  HighlightItem,
-} from '@/components/animate-ui/primitives/effects/highlight';
+
+
+
 import { getStrictContext } from '@/lib/get-strict-context';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../../ui/tooltip';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '../../../ui/sheet';
 
 const SIDEBAR_COOKIE_NAME = 'sidebar_state';
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
@@ -128,7 +117,7 @@ function SidebarProvider({
 
   return (
     <LocalSidebarProvider value={contextValue}>
-      <TooltipProvider openDelay={0}>
+      <TooltipProvider >
         <div
           data-slot="sidebar-wrapper"
           style={
@@ -175,13 +164,7 @@ function Sidebar({
 
   if (collapsible === 'none') {
     return (
-      <Highlight
-        enabled={animateOnHover}
-        hover
-        controlledItems
-        mode="parent"
-        containerClassName={containerClassName}
-        transition={transition}
+      <div
       >
         <div
           data-slot="sidebar"
@@ -193,7 +176,7 @@ function Sidebar({
         >
           {children}
         </div>
-      </Highlight>
+      </div>
     );
   }
 
@@ -216,16 +199,10 @@ function Sidebar({
             <SheetTitle>Sidebar</SheetTitle>
             <SheetDescription>Displays the mobile sidebar.</SheetDescription>
           </SheetHeader>
-          <Highlight
-            enabled={animateOnHover}
-            hover
-            controlledItems
-            mode="parent"
-            containerClassName={cn('h-full', containerClassName)}
-            transition={transition}
+          <div
           >
             <div className="flex h-full w-full flex-col">{children}</div>
-          </Highlight>
+          </div>
         </SheetContent>
       </Sheet>
     );
@@ -267,14 +244,7 @@ function Sidebar({
         )}
         {...props}
       >
-        <Highlight
-          containerClassName={cn('size-full', containerClassName)}
-          enabled={animateOnHover}
-          hover
-          controlledItems
-          mode="parent"
-          forceUpdateBounds
-          transition={transition}
+        <div
         >
           <div
             data-sidebar="sidebar"
@@ -283,7 +253,7 @@ function Sidebar({
           >
             {children}
           </div>
-        </Highlight>
+        </div>
       </div>
     </div>
   );
@@ -589,8 +559,8 @@ function SidebarMenuButton({
   const { isMobile, state } = useSidebar();
 
   const button = (
-    <HighlightItem
-      activeClassName={sidebarMenuButtonActiveVariants({ variant })}
+    <div
+      
     >
       <Comp
         data-slot="sidebar-menu-button"
@@ -600,7 +570,7 @@ function SidebarMenuButton({
         className={cn(sidebarMenuButtonVariants({ variant, size }), className)}
         {...props}
       />
-    </HighlightItem>
+    </div>
   );
 
   if (!tooltip) {
@@ -614,7 +584,7 @@ function SidebarMenuButton({
   }
 
   return (
-    <Tooltip side="right" align="center">
+    <Tooltip >
       <TooltipTrigger asChild>{button}</TooltipTrigger>
       <TooltipContent hidden={state !== 'collapsed' || isMobile} {...tooltip} />
     </Tooltip>
@@ -762,7 +732,7 @@ function SidebarMenuSubButton({
   const Comp = asChild ? Slot.Root : 'a';
 
   return (
-    <HighlightItem activeClassName="bg-sidebar-accent text-sidebar-accent-foreground rounded-md">
+    <div className="bg-sidebar-accent text-sidebar-accent-foreground rounded-md">
       <Comp
         data-slot="sidebar-menu-sub-button"
         data-sidebar="menu-sub-button"
@@ -778,7 +748,7 @@ function SidebarMenuSubButton({
         )}
         {...props}
       />
-    </HighlightItem>
+    </div>
   );
 }
 

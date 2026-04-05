@@ -1,259 +1,255 @@
-/* eslint-disable @next/next/no-img-element */
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { AnimatePresence, motion } from "framer-motion";
-import { ChevronLeft, ChevronRight, LogOut, Sparkles } from "lucide-react";
-import { signOut } from "next-auth/react";
-import { useState } from "react";
-
-import { usePricingPlan } from "@/components/provider/pricing-plan-provider";
-import { DASHBOARD_LINKS } from "@/constants";
-import { getPricingPlan } from "@/lib/pricing";
 import { cn } from "@/lib/utils";
+import {
+  Home,
+  Settings,
+  Key,
+  CreditCard,
+  SlidersHorizontal,
+  Activity,
+  Globe,
+  Sparkles,
+  Link2,
+  ChevronLeft,
+  ChevronDown,
+  Zap,
+  Search,
+  HelpCircle,
+  LogOut,
+  ExternalLink,
+} from "lucide-react";
+import { div } from "three/src/nodes/math/OperatorNode.js";
 
-function SidebarSectionLabel({
-  isCollapsed,
-  label,
-}: {
-  isCollapsed: boolean;
-  label: string;
-}) {
-  if (isCollapsed) {
-    return <div className="px-2 py-1" />;
-  }
+const navSections = [
+  {
+    title: "Getting Started",
+    items: [
+      { label: "Welcome", href: "/dashboard", icon: Home },
+      { label: "Setup & Installation", href: "/dashboard/setup", icon: Settings },
+      { label: "Access Tokens", href: "/dashboard/access-tokens", icon: Key },
+      { label: "Billing", href: "/dashboard/billing", icon: CreditCard },
+      { label: "Tunnel", href: "/dashboard/tunnel", icon: SlidersHorizontal },
+    ],
+  },
+  {
+    title: "Universal Gateway",
+    items: [
+      { label: "Requests", href: "/dashboard/requests", icon: Activity },
+      { label: "Webhooks", href: "/dashboard/webhooks", icon: Globe },
+      { label: "AI Assistant", href: "/dashboard/ai", icon: Sparkles, badge: "New" },
+      { label: "Domains", href: "/dashboard/domains", icon: Link2 },
+    ],
+  },
+];
 
-  return (
-    <div className="mb-2 flex items-center gap-2 px-3">
-      <span className="h-1.5 w-1.5 rounded-full bg-miransas-cyan/70 shadow-[0_0_10px_rgba(0,255,209,0.55)]" />
-      <span className="text-[10px] font-semibold uppercase tracking-[0.24em] text-zinc-500">
-        {label}
-      </span>
-    </div>
-  );
+interface SidebarProps {
+  collapsed: boolean;
+  onToggle: () => void;
+  onNavigate?: (href: string) => void;
 }
 
-export default function DashboardSidebar({ user }: { user: any }) {
-  const [isCollapsed, setIsCollapsed] = useState(false);
+export function SidebarDocs({ collapsed, onToggle, onNavigate }: SidebarProps) {
   const pathname = usePathname();
-  const isGuest = user?.email === "preview@binboi.local";
-  const { plan, nextPlan } = usePricingPlan();
-  const activePlan = getPricingPlan(plan);
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+    "Getting Started": true,
+    "Universal Gateway": true,
+  });
+  const [hoveredItem, setHoveredItem] = useState<string | null>(null);
+
+  const toggleSection = (title: string) => {
+    setExpandedSections((prev) => ({
+      ...prev,
+      [title]: !prev[title],
+    }));
+  };
+
+  const handleNavClick = (href: string, e: React.MouseEvent) => {
+    if (onNavigate) {
+      e.preventDefault();
+      onNavigate(href);
+    }
+  };
 
   return (
-    <motion.aside
-      initial={false}
-      animate={{ width: isCollapsed ? 88 : 280 }}
-      transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-      className="relative z-40 flex h-screen shrink-0 flex-col border-r border-white/8 bg-[linear-gradient(180deg,rgba(12,18,28,0.99),rgba(10,15,24,0.995))] shadow-[16px_0_40px_rgba(2,6,23,0.12)]"
+    <aside
+      className={cn(
+        "relative flex flex-col h-full bg-[#000000] border-r border-sidebar-border sidebar-transition overflow-hidden",
+        collapsed ? "w-[64px]" : "w-[260px]"
+      )}
     >
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(86,220,208,0.045),transparent_22%)]" />
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.016),transparent_16%,transparent_84%,rgba(255,255,255,0.008))]" />
-        <div className="absolute right-0 top-0 h-full w-px bg-gradient-to-b from-transparent via-white/10 to-transparent" />
-        <div className="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-white/12 to-transparent" />
-      </div>
-
-      <button
-        type="button"
-        onClick={() => setIsCollapsed((value) => !value)}
-        className="absolute -right-3 top-6 z-50 inline-flex h-7 w-7 items-center justify-center rounded-full border border-white/10 bg-[#101722] text-zinc-400 shadow-[0_8px_20px_rgba(0,0,0,0.18)] transition hover:border-miransas-cyan/18 hover:text-white"
-      >
-        {isCollapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronLeft className="h-3.5 w-3.5" />}
-      </button>
-
-      <div className="relative z-10 flex h-[4.5rem] items-center border-b border-white/8 px-5">
-        <Link href="/" className="flex min-w-0 items-center gap-3">
-          <div className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-white/[0.025]">
-            <img src="/logo.png" alt="Binboi logo" className="h-9 w-9 object-contain" />
-          </div>
-
-          <AnimatePresence initial={false}>
-            {!isCollapsed && (
-              <motion.div
-                initial={{ opacity: 0, x: -8 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -8 }}
-                className="min-w-0"
-              >
-                <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-zinc-500">
-                  Binboi
-                </p>
-                <p className="mt-1 truncate text-[15px] font-black tracking-tight text-white">
-                  Control plane
-                </p>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </Link>
-      </div>
-
-      <div className="relative z-10 flex-1 overflow-y-auto px-3 py-4">
-        <div className="mb-4 rounded-[1.5rem] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01))] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]">
-          <div className={cn("flex items-start gap-3", isCollapsed && "justify-center")}>
-            <div className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-miransas-cyan/14 bg-miransas-cyan/7 text-miransas-cyan">
-              <Sparkles className="h-4 w-4" />
-            </div>
-            <AnimatePresence initial={false}>
-              {!isCollapsed && (
-                <motion.div
-                  initial={{ opacity: 0, x: -8 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -8 }}
-                  className="min-w-0"
-                >
-                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-zinc-500">
-                    Operator surface
-                  </p>
-                  <p className="mt-2 text-sm leading-6 text-zinc-300">
-                    Tunnels, webhooks, logs, and AI guidance from one place.
-                  </p>
-                  <div className="mt-3 flex items-center gap-2">
-                    <span className="rounded-full border border-white/10 bg-white/[0.02] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-400">
-                      {activePlan.name}
-                    </span>
-                    {nextPlan ? (
-                      <Link
-                        href="/dashboard/billing"
-                        className="rounded-full border border-white/10 bg-white/[0.02] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-300 transition hover:border-miransas-cyan/16 hover:text-white"
-                      >
-                        {nextPlan === "PRO" ? "Upgrade" : "Scale"}
-                      </Link>
-                    ) : null}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
+      {/* Logo */}
+      <div className="flex items-center h-14 px-4 border-b border-sidebar-border shrink-0">
+        <div className="flex items-center gap-3 min-w-0">
+          
+          <span
+           
+          >
+            <img src={"/logo.png"} alt="" className="w-14"/>
+          </span>
         </div>
+      </div>
 
-        <nav className="space-y-5">
-          {DASHBOARD_LINKS.map((section) => (
-            <div key={section.title}>
-              <SidebarSectionLabel isCollapsed={isCollapsed} label={section.title} />
+      {/* Search */}
+      <div className={cn("px-3 py-3", collapsed && "px-2")}>
+        {collapsed ? (
+          <button
+            data-hover
+            className="w-10 h-10 flex items-center justify-center rounded-lg bg-secondary/50 text-muted-foreground hover:text-foreground hover:bg-secondary transition-all duration-200 group"
+          >
+            <Search className="w-4 h-4 group-hover:scale-110 transition-transform duration-200" />
+          </button>
+        ) : (
+          <div></div>
+        )}
+      </div>
 
-              <div className="space-y-1">
-                {section.items.map((link) => {
-                  const isActive = pathname === link.href;
-                  const Icon = link.icon;
+      {/* Nav Sections */}
+      <nav className="flex-1 overflow-y-auto py-2 px-2 space-y-1 scrollbar-thin">
+        {navSections.map((section) => {
+          const isExpanded = expandedSections[section.title];
+          return (
+            <div key={section.title} className="mb-1">
+              {/* Section Header */}
+              {!collapsed && (
+                <button
+                  onClick={() => toggleSection(section.title)}
+                  className="w-full flex items-center justify-between px-2 py-1.5 text-[11px] font-semibold tracking-wider text-muted-foreground/70 uppercase hover:text-muted-foreground transition-colors duration-200 group"
+                  data-hover
+                >
+                  <span>{section.title}</span>
+                  <ChevronDown
+                    className={cn(
+                      "w-3.5 h-3.5 transition-transform duration-300",
+                      !isExpanded && "-rotate-90"
+                    )}
+                  />
+                </button>
+              )}
 
+              {/* Section Items */}
+              <div
+                className={cn(
+                  "space-y-0.5 overflow-hidden transition-all duration-300",
+                  !collapsed && !isExpanded && "max-h-0 opacity-0",
+                  (!collapsed && isExpanded) && "max-h-[500px] opacity-100"
+                )}
+              >
+                {section.items.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = pathname === item.href;
+                  const isHovered = hoveredItem === item.href;
                   return (
                     <Link
-                      key={`${section.title}-${link.href}`}
-                      href={link.href}
-                      title={isCollapsed ? link.label : undefined}
+                      key={item.href}
+                      href={item.href}
+                      onClick={(e) => handleNavClick(item.href, e)}
+                      onMouseEnter={() => setHoveredItem(item.href)}
+                      onMouseLeave={() => setHoveredItem(null)}
                       className={cn(
-                        "group relative flex items-center gap-3 overflow-hidden rounded-2xl px-3 py-2.5 transition-all duration-200",
-                        isCollapsed ? "justify-center" : "justify-start",
-                        isActive ? "text-white" : "text-zinc-400 hover:text-white",
+                        "w-full flex items-center gap-3 rounded-lg px-2.5 py-2 text-md font-bold transition-all duration-200 group relative overflow-hidden",
+                        isActive
+                          ? "inset-0 bg-[#9eff00] text-black"
+                          : "text-white hover:bg-secondary hover:text-sidebar-foreground"
                       )}
+                      data-hover
                     >
-                      {isActive ? (
-                        <motion.span
-                          layoutId="dashboard-sidebar-active"
-                          className="absolute inset-0 rounded-2xl border border-miransas-cyan/12 bg-[linear-gradient(180deg,rgba(18,26,36,0.985),rgba(12,18,27,0.985))] shadow-[inset_0_1px_0_rgba(255,255,255,0.03),0_10px_22px_rgba(2,6,23,0.12)]"
-                        />
-                      ) : null}
+                      {/* Active indicator */}
                       <span
                         className={cn(
-                          "absolute inset-x-4 top-0 h-px bg-gradient-to-r from-transparent to-transparent opacity-0 transition-opacity duration-200 group-hover:opacity-100",
-                          isActive ? "via-miransas-cyan/24 opacity-100" : "via-white/12",
+                          "absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-primary rounded-r-full transition-all duration-300",
+                          isActive ? "opacity-100 " : "opacity-0"
                         )}
                       />
-                      <div className="relative z-10 flex min-w-0 items-center gap-3">
-                        <span
-                          className={cn(
-                            "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border transition-colors",
-                            isActive
-                              ? "border-miransas-cyan/16 bg-miransas-cyan/7 text-miransas-cyan"
-                              : "border-white/10 bg-white/[0.02] text-zinc-500 group-hover:text-zinc-200",
+                      <Icon
+                        className={cn(
+                          "w-[18px] h-[18px] shrink-0 transition-all duration-200",
+                          isActive ? "text-black" : "",
+                          isHovered && !isActive ? "scale-110" : ""
+                        )}
+                      />
+                      {!collapsed && (
+                        <>
+                          <span className="truncate">{item.label}</span>
+                          {item.badge && (
+                            <span className="ml-auto text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-primary/20 text-primary shrink-0">
+                              {item.badge}
+                            </span>
                           )}
-                        >
-                          {Icon ? <Icon size={18} /> : null}
-                        </span>
-
-                        <AnimatePresence initial={false}>
-                          {!isCollapsed && (
-                            <motion.div
-                              initial={{ opacity: 0, x: -8 }}
-                              animate={{ opacity: 1, x: 0 }}
-                              exit={{ opacity: 0, x: -8 }}
-                              className="flex min-w-0 flex-1 items-center justify-between gap-3"
-                            >
-                              <span className="truncate text-sm font-medium">{link.label}</span>
-                              {link.badge ? (
-                                <span className="rounded-full border border-miransas-cyan/14 bg-miransas-cyan/7 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-[#8aefe7]">
-                                  {link.badge}
-                                </span>
-                              ) : null}
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-                      </div>
+                        </>
+                      )}
                     </Link>
                   );
                 })}
               </div>
             </div>
-          ))}
-        </nav>
-      </div>
+          );
+        })}
+      </nav>
 
-      <div className="relative z-10 border-t border-white/8 p-4">
-        <div
-          className={cn(
-            "rounded-[1.5rem] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01))] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]",
-            isCollapsed && "px-2",
-          )}
+      {/* Footer */}
+      <div className="mt-auto border-t border-sidebar-border px-2 py-3 space-y-0.5">
+       <Link href={"/docs"}>
+        <button  
+          data-hover
+          className="w-full flex items-center gap-3 rounded-lg px-2.5 py-2 text-sm font-medium text-sidebar-foreground/60 hover:bg-secondary hover:text-sidebar-foreground transition-all duration-200 group"
         >
-          <div className={cn("flex items-center gap-3", isCollapsed && "justify-center")}>
-            <img
-              src={user?.image || "https://github.com/ghost.png"}
-              alt="User Avatar"
-              className="h-9 w-9 shrink-0 rounded-full border border-white/10 object-cover"
-            />
+          <HelpCircle className="w-[18px] h-[18px] shrink-0 group-hover:scale-110 transition-transform duration-200" />
+          {!collapsed && <span className="truncate">Help & Docs</span>}
+          {!collapsed && <ExternalLink className="w-3.5 h-3.5 ml-auto opacity-50" />}
+        </button>
+       </Link>
+        <button
+          data-hover
+          className="w-full flex items-center gap-3 rounded-lg px-2.5 py-2 text-sm font-medium text-sidebar-foreground/60 hover:bg-secondary hover:text-sidebar-foreground transition-all duration-200 group"
+        >
+          <LogOut className="w-[18px] h-[18px] shrink-0 group-hover:scale-110 transition-transform duration-200" />
+          {!collapsed && <span className="truncate">Sign out</span>}
+        </button>
 
-            <AnimatePresence initial={false}>
-              {!isCollapsed && (
-                <motion.div
-                  initial={{ opacity: 0, x: -8 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -8 }}
-                  className="min-w-0 flex-1"
-                >
-                  <p className="truncate text-sm font-semibold text-white">{user?.name}</p>
-                  <p className="mt-1 truncate text-xs text-zinc-500">{user?.email}</p>
-                </motion.div>
-              )}
-            </AnimatePresence>
+        {/* User */}
+        {!collapsed && (
+          <div className="flex items-center gap-3 mt-3 px-2 py-2 rounded-lg bg-secondary/30 hover:bg-secondary/50 transition-colors duration-200 cursor-pointer" data-hover>
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/60 to-primary flex items-center justify-center text-primary-foreground text-xs font-semibold">
+              JD
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-foreground truncate">John Doe</p>
+              <p className="text-xs text-muted-foreground truncate">john@nexus.io</p>
+            </div>
           </div>
-
-          <button
-            type="button"
-            onClick={() => {
-              if (!isGuest) {
-                signOut({ callbackUrl: "/" });
-              }
-            }}
-            className={cn(
-              "mt-3 inline-flex w-full items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.02] px-3 py-2.5 text-sm text-zinc-400 transition hover:border-red-400/14 hover:bg-red-500/7 hover:text-red-200",
-              isCollapsed && "justify-center px-0",
-            )}
-            title={isCollapsed ? (isGuest ? "Local Preview" : "Sign Out") : undefined}
-          >
-            <LogOut className="h-4 w-4 shrink-0" />
-            <AnimatePresence initial={false}>
-              {!isCollapsed && (
-                <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                  {isGuest ? "Local preview" : "Sign out"}
-                </motion.span>
-              )}
-            </AnimatePresence>
-          </button>
-        </div>
+        )}
       </div>
-    </motion.aside>
+
+    </aside>
+  );
+}
+
+export function SidebarToggle({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {
+  return (
+    <button
+      onClick={onToggle}
+      data-hover
+      className={cn(
+        "fixed z-50",
+        collapsed ? "left-[52px]" : "left-[248px]",
+        "top-[64px]",
+        "w-7 h-7 rounded-full bg-card border border-border",
+        "flex items-center justify-center",
+        "text-muted-foreground hover:text-foreground hover:border-primary/50 hover:bg-primary/10",
+        "transition-all duration-300 shadow-lg hover:shadow-primary/20"
+      )}
+      aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+    >
+      <ChevronLeft
+        className={cn(
+          "w-4 h-4 transition-transform duration-300",
+          collapsed && "rotate-180"
+        )}
+      />
+    </button>
   );
 }

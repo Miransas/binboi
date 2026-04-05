@@ -1,10 +1,12 @@
-import {
-  DocsCallout,
-  DocsCodeBlock,
-  DocsPageShell,
-  DocsSection,
-  type TocItem,
-} from "../_components/docs-primitives";
+"use client"
+import React, { useEffect, useState } from "react";
+import { motion } from "framer-motion";
+
+// --- Types ---
+interface TocItem {
+  id: string;
+  title: string;
+}
 
 const toc: TocItem[] = [
   { id: "before-you-start", title: "Before you start" },
@@ -15,121 +17,252 @@ const toc: TocItem[] = [
 ];
 
 export default function QuickStartPage() {
+  const [activeId, setActiveId] = useState("");
+
+  // ScrollSpy: Tracks which section is currently in view
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setActiveId(entry.target.id);
+          }
+        });
+      },
+      { rootMargin: "-20% 0% -35% 0%", threshold: 0.5 }
+    );
+
+    toc.forEach((item) => {
+      const el = document.getElementById(item.id);
+      if (el) observer.observe(el);
+    });
+
+    return () => observer.disconnect();
+  }, []);
+
+  const scrollTo = (id: string) => {
+    const element = document.getElementById(id);
+    element?.scrollIntoView({ behavior: "smooth" });
+  };
+
   return (
-    <DocsPageShell
-      eyebrow="Quick Start"
-      title="Install Binboi, log in, and expose your first local service."
-      description="This guide is the shortest trustworthy path from a fresh machine to a working public URL. It assumes you already have a local web service listening on a port such as 3000."
-      toc={toc}
-    >
-      <DocsSection
-        id="before-you-start"
-        eyebrow="Preparation"
-        title="Before you start"
-        description="You need three ingredients: a running local service, a Binboi dashboard token, and access to the relay you want the CLI to talk to."
-      >
-        <div className="rounded-3xl border border-white/10 bg-black/25 p-5 text-sm leading-7 text-zinc-300">
-          <p>
-            Make sure your local app is already reachable on
-            {" "}
-            <code className="rounded bg-white/10 px-1.5 py-0.5 text-[13px] text-zinc-100">
-              localhost:&lt;port&gt;
-            </code>
-            {" "}
-            before you introduce Binboi into the loop.
-          </p>
-          <p className="mt-3">If the app itself is not healthy, a tunnel will only make that failure public faster.</p>
-        </div>
+    <div className="min-h-screen bg-zinc-950 text-zinc-300 selection:bg-cyan-500/30 selection:text-cyan-200">
+      <div className="mx-auto max-w-7xl px-6 py-16 lg:flex lg:gap-x-12">
+        
+        {/* --- MAIN CONTENT --- */}
+        <main className="flex-1 lg:max-w-3xl">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-16"
+          >
+            <span className="text-sm font-medium tracking-widest text-cyan-500 uppercase font-mono">Guide</span>
+            <h1 className="mt-4 text-4xl font-bold tracking-tight text-white sm:text-5xl">
+              Quick Start
+            </h1>
+            <p className="mt-6 text-lg leading-8 text-zinc-400">
+              Install Binboi, log in, and expose your first local service. This is the shortest path 
+              from a fresh machine to a working public URL.
+            </p>
+          </motion.div>
 
-        <DocsCallout title="Typical starting point" tone="cyan">
-          A Next.js app on port 3000, an Express API on 8080, or a webhook receiver route inside a local development server are the most common first-use cases.
-        </DocsCallout>
-      </DocsSection>
+          {/* Section: Before you start */}
+          <section id="before-you-start" className="mb-24 scroll-mt-20">
+            <div className="border-l-2 border-zinc-800 pl-6 mb-8">
+              <h2 className="text-2xl font-semibold text-white">Before you start</h2>
+              <p className="mt-2 text-zinc-400">Preparation is key for a smooth tunnel setup.</p>
+            </div>
+            
+            <InfoBox>
+              <p>
+                Make sure your local app is already reachable on{" "}
+                <code className="text-cyan-400 bg-cyan-400/10 px-1 rounded">localhost:{"<port>"}</code>
+                {" "}before you introduce Binboi into the loop.
+              </p>
+              <p className="mt-3 opacity-70 italic">If the app itself is not healthy, a tunnel will only make that failure public faster.</p>
+            </InfoBox>
 
-      <DocsSection
-        id="install-and-login"
-        eyebrow="Step 1"
-        title="Install the CLI and authenticate once"
-        description="The first successful Binboi session usually takes less than five minutes when the token flow is already available in the dashboard."
-      >
-        <DocsCodeBlock
-          title="Install and authenticate"
-          language="bash"
-          code={`brew install binboi/tap/binboi
-binboi login --token <dashboard-token>
-binboi whoami`}
-        />
+            <Callout 
+              title="Typical starting point" 
+              text="A Next.js app on port 3000 or an Express API on 8080 are the most common first-use cases."
+              tone="cyan"
+            />
+          </section>
 
-        <div className="space-y-3 rounded-3xl border border-white/10 bg-black/25 p-5 text-sm leading-7 text-zinc-300">
-          <p>1. Install Binboi using the package path that fits your environment.</p>
-          <p>2. Open the dashboard Access Tokens page and create a token for your machine.</p>
-          <p>3. Copy the token immediately. The full token is shown only once.</p>
-          <p>4. Run `binboi login --token &lt;token&gt;` so the CLI can validate the credential and write it to `~/.binboi/config.json`.</p>
-          <p>5. Run `binboi whoami` to confirm the API URL, token, and local config all agree.</p>
-        </div>
-      </DocsSection>
+          {/* Section: Step 1 */}
+          <section id="install-and-login" className="mb-24 scroll-mt-20">
+            <header className="mb-6">
+              <span className="text-xs font-bold text-cyan-500 uppercase tracking-widest">Step 01</span>
+              <h2 className="text-2xl font-bold text-white mt-1">Install and authenticate</h2>
+            </header>
 
-      <DocsSection
-        id="first-http-tunnel"
-        eyebrow="Step 2"
-        title="Start your first HTTP tunnel"
-        description="Once you are authenticated, the practical move is to expose one local service with a named subdomain."
-      >
-        <DocsCodeBlock
-          title="Open a public URL for localhost"
-          language="bash"
-          code={`binboi start 3000 my-app
+            <CodeBlock 
+              command={`brew install binboi/tap/binboi\nbinboi login --token <dashboard-token>\nbinboi whoami`} 
+              title="Installation Flow"
+            />
 
-# Product-facing alias planned
-binboi http 3000`}
-          note="The working command in the current repository is `binboi start`. The docs mention `binboi http` because it is the likely long-term ergonomic command shape."
-        />
+            <ul className="mt-8 space-y-4">
+              <StepItem number="1" text="Install Binboi using your preferred package manager." />
+              <StepItem number="2" text="Create an Access Token in your Binboi Dashboard." />
+              <StepItem number="3" text="Run login command to write credentials to ~/.binboi/config.json." />
+            </ul>
+          </section>
 
-        <div className="rounded-3xl border border-white/10 bg-black/25 p-5 text-sm leading-7 text-zinc-300">
-          <p>When the agent connects successfully, Binboi prints a public URL and keeps the tunnel session online.</p>
-          <p className="mt-3">That URL now behaves like a public front door for your local process. Browsers, webhook providers, CI jobs, or teammates can hit it while your app continues to run on your machine.</p>
-        </div>
-      </DocsSection>
+          {/* Section: Step 2 */}
+          <section id="first-http-tunnel" className="mb-24 scroll-mt-20">
+            <header className="mb-6">
+              <span className="text-xs font-bold text-emerald-500 uppercase tracking-widest">Step 02</span>
+              <h2 className="text-2xl font-bold text-white mt-1">Start your first HTTP tunnel</h2>
+            </header>
 
-      <DocsSection
-        id="first-request-flow"
-        eyebrow="Step 3"
-        title="Understand the first successful request flow"
-        description="A healthy first request confirms more than just network reachability. It proves the token, relay, agent, and local service are all aligned."
-      >
-        <DocsCodeBlock
-          title="Verify the end-to-end path"
-          language="bash"
-          code={`curl https://my-app.binboi.link/health
-curl http://127.0.0.1:3000/health`}
-        />
+            <CodeBlock 
+              command="binboi start 3000 my-app" 
+              note="Tip: binboi http 3000 is planned"
+            />
 
-        <div className="space-y-3 rounded-3xl border border-white/10 bg-black/25 p-5 text-sm leading-7 text-zinc-300">
-          <p>1. A client hits the Binboi public URL.</p>
-          <p>2. The relay matches the incoming host to the reserved tunnel record.</p>
-          <p>3. The relay opens a stream over the connected agent session.</p>
-          <p>4. The CLI forwards the request to your local service on port 3000.</p>
-          <p>5. Your app responds, and the response travels back through the same path to the client.</p>
-        </div>
+            <InfoBox className="mt-6">
+              <p>When the agent connects, Binboi prints a public URL. That URL now behaves like a public front door for your local process.</p>
+            </InfoBox>
+          </section>
 
-        <DocsCallout title="If the public URL fails but localhost works" tone="amber">
-          The problem is usually auth, relay connectivity, or target-port mismatch. It is much
-          less often the provider or browser itself.
-        </DocsCallout>
-      </DocsSection>
+          {/* Section: Step 3 */}
+          <section id="first-request-flow" className="mb-24 scroll-mt-20">
+            <header className="mb-6">
+              <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Step 03</span>
+              <h2 className="text-2xl font-bold text-white mt-1">Verify the request flow</h2>
+            </header>
 
-      <DocsSection
-        id="what-to-check-next"
-        eyebrow="Step 4"
-        title="What to check next"
-        description="Once the first tunnel is healthy, the best next step depends on what you are building."
-      >
-        <div className="space-y-3 rounded-3xl border border-white/10 bg-black/25 p-5 text-sm leading-7 text-zinc-300">
-          <p>If you are receiving callbacks from third parties, move next to the Webhooks guide.</p>
-          <p>If you need to explain failures or latency, open the Requests and Logs guides.</p>
-          <p>If the token flow felt confusing, read the Authentication and API Keys guides before scaling to more machines.</p>
-        </div>
-      </DocsSection>
-    </DocsPageShell>
+            <CodeBlock 
+              command={`curl https://my-app.binboi.link/health\ncurl http://127.0.0.1:3000/health`} 
+              title="End-to-end verification"
+            />
+
+            <div className="mt-8 bg-zinc-900/30 rounded-2xl border border-zinc-800 p-6">
+              <h4 className="text-sm font-bold text-white mb-4 uppercase tracking-tighter">What&lsquo;s happening?</h4>
+              <div className="space-y-3 text-sm text-zinc-400">
+                <p>• Client hits the <span className="text-cyan-400">public URL</span>.</p>
+                <p>• Relay matches the host to your <span className="text-zinc-200">reserved tunnel</span>.</p>
+                <p>• CLI forwards the request to your <span className="text-emerald-400">localhost:3000</span>.</p>
+              </div>
+            </div>
+
+            <Callout 
+              title="Troubleshooting" 
+              text="If the public URL fails but localhost works, check your auth or relay connectivity."
+              tone="amber"
+            />
+          </section>
+
+          {/* Section: Step 4 */}
+          <section id="what-to-check-next" className="mb-24 scroll-mt-20">
+            <h2 className="text-2xl font-bold text-white mb-6">What to check next</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <NextCard title="Webhooks" desc="Set up callbacks from 3rd parties." />
+              <NextCard title="Logs" desc="Explain failures or latency issues." />
+              <NextCard title="Auth" desc="Scale to more machines safely." />
+            </div>
+          </section>
+        </main>
+
+        {/* --- RIGHT SIDEBAR: NAV --- */}
+        <aside className="hidden lg:block lg:w-64">
+          <div className="sticky top-16">
+            <h4 className="text-xs font-bold text-white mb-6 uppercase tracking-widest opacity-40 font-mono">On this guide</h4>
+            <nav className="relative">
+              <div className="absolute left-0 top-0 h-full w-px bg-zinc-800" />
+              <ul className="space-y-4">
+                {toc.map((item) => (
+                  <li key={item.id} className="relative pl-6">
+                    {activeId === item.id && (
+                      <motion.div 
+                        layoutId="active-indicator-qs"
+                        className="absolute left-0 top-0 h-full w-0.5 bg-cyan-500 shadow-[0_0_10px_rgba(6,182,212,0.6)]"
+                      />
+                    )}
+                    <button
+                      onClick={() => scrollTo(item.id)}
+                      className={`text-sm text-left transition-colors duration-200 ${
+                        activeId === item.id ? "text-cyan-400 font-medium" : "text-zinc-500 hover:text-zinc-300"
+                      }`}
+                    >
+                      {item.title}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          </div>
+        </aside>
+
+      </div>
+    </div>
+  );
+}
+
+// --- Internal Helper Components ---
+
+function InfoBox({ children, className = "" }: { children: React.ReactNode, className?: string }) {
+  return (
+    <div className={`rounded-2xl border border-white/5 bg-white/[0.02] p-6 text-sm leading-7 text-zinc-400 ${className}`}>
+      {children}
+    </div>
+  );
+}
+
+function StepItem({ number, text }: { number: string, text: string }) {
+  return (
+    <li className="flex gap-4 items-start group">
+      <span className="flex-none w-6 h-6 rounded-full bg-zinc-800 text-zinc-500 text-[10px] flex items-center justify-center font-bold group-hover:bg-cyan-500 group-hover:text-white transition-colors">
+        {number}
+      </span>
+      <span className="text-zinc-400 group-hover:text-zinc-200 transition-colors">{text}</span>
+    </li>
+  );
+}
+
+function NextCard({ title, desc }: { title: string, desc: string }) {
+  return (
+    <div className="p-5 rounded-xl border border-zinc-800 bg-zinc-900/20 hover:border-zinc-700 transition-all cursor-pointer">
+      <h4 className="text-white font-semibold text-sm mb-1">{title}</h4>
+      <p className="text-xs text-zinc-500">{desc}</p>
+    </div>
+  );
+}
+
+function CodeBlock({ command, title, note }: { command: string, title?: string, note?: string }) {
+  return (
+    <div className="bg-black border border-zinc-800 rounded-xl overflow-hidden shadow-xl">
+      <div className="px-4 py-2 bg-zinc-900/50 border-b border-zinc-800 flex justify-between items-center">
+        <span className="text-[10px] text-zinc-500 font-mono uppercase">{title || "Terminal"}</span>
+        <span className="text-[10px] text-zinc-600 font-mono italic">{note}</span>
+      </div>
+      <pre className="p-5 overflow-x-auto text-sm font-mono leading-relaxed">
+        <code className="text-cyan-400 block whitespace-pre-wrap">
+          {command.split('\n').map((line, i) => (
+            <div key={i} className="flex">
+              <span className="text-zinc-700 mr-4 select-none">$</span>
+              <span>{line}</span>
+            </div>
+          ))}
+        </code>
+      </pre>
+    </div>
+  );
+}
+
+function Callout({ title, text, tone = "cyan" }: { title: string, text: string, tone?: "cyan" | "amber" }) {
+  const isAmber = tone === "amber";
+  return (
+    <div className={`my-8 flex gap-4 p-5 rounded-xl border ${isAmber ? 'bg-amber-500/5 border-amber-500/20' : 'bg-cyan-500/5 border-cyan-500/20'}`}>
+      <div className={`mt-1 ${isAmber ? 'text-amber-500' : 'text-cyan-500'}`}>
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      </div>
+      <div className="text-sm">
+        <strong className={`block font-semibold mb-1 ${isAmber ? 'text-amber-500' : 'text-cyan-500'}`}>{title}</strong>
+        <p className="text-zinc-400 leading-6">{text}</p>
+      </div>
+    </div>
   );
 }

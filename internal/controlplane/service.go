@@ -394,6 +394,7 @@ func (s *Service) RegisterRoutes(r *gin.Engine) {
 	operator.DELETE("/tunnels/:id", s.handleDeleteTunnel)
 	operator.GET("/domains", s.handleListDomains)
 	operator.POST("/domains", s.handleCreateDomain)
+	operator.DELETE("/domains/:name", s.handleDeleteDomain)
 	operator.POST("/domains/verify", s.handleVerifyDomain)
 
 	admin := api.Group("/")
@@ -415,6 +416,7 @@ func (s *Service) RegisterRoutes(r *gin.Engine) {
 	apiV1Operator.DELETE("/tunnels/:id", s.handleV1DeleteTunnel)
 	apiV1Operator.GET("/domains", s.handleV1ListDomains)
 	apiV1Operator.POST("/domains", s.handleV1CreateDomain)
+	apiV1Operator.DELETE("/domains/:name", s.handleV1DeleteDomain)
 	apiV1Operator.POST("/domains/verify", s.handleV1VerifyDomain)
 	apiV1.GET("/auth/me", s.handleAuthMe)
 }
@@ -821,7 +823,12 @@ func (s *Service) handleListTunnels(c *gin.Context) {
 }
 
 func (s *Service) handleListEvents(c *gin.Context) {
-	events, err := s.listEvents(maxRecentEventRows, currentRequestAccess(c))
+	events, err := s.listEvents(currentRequestAccess(c), eventListOptions{
+		Limit:  parsePositiveLimit(c.Query("limit"), maxRecentEventRows, 500),
+		Level:  c.Query("level"),
+		Tunnel: c.Query("tunnel"),
+		Query:  c.Query("q"),
+	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load events"})
 		return
@@ -830,7 +837,15 @@ func (s *Service) handleListEvents(c *gin.Context) {
 }
 
 func (s *Service) handleListRequests(c *gin.Context) {
-	requests, err := s.listRequests(maxRecentRequestRows, currentRequestAccess(c), c.Query("kind"))
+	requests, err := s.listRequests(currentRequestAccess(c), requestListOptions{
+		Limit:       parsePositiveLimit(c.Query("limit"), maxRecentRequestRows, 500),
+		Kind:        c.Query("kind"),
+		Tunnel:      c.Query("tunnel"),
+		Provider:    c.Query("provider"),
+		Query:       c.Query("q"),
+		StatusClass: c.Query("status"),
+		ErrorOnly:   parseBoolQuery(c.Query("error_only")),
+	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list requests"})
 		return
@@ -968,6 +983,31 @@ func (s *Service) handleCreateDomain(c *gin.Context) {
 	})
 }
 
+func (s *Service) handleDeleteDomain(c *gin.Context) {
+	name := c.Param("name")
+	if name == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "missing domain name"})
+		return
+	}
+
+	if err := s.deleteDomain(name, currentRequestAccess(c)); err != nil {
+		status := http.StatusInternalServerError
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			status = http.StatusNotFound
+		} else if strings.Contains(strings.ToLower(err.Error()), "another account") {
+			status = http.StatusForbidden
+		} else if strings.Contains(strings.ToLower(err.Error()), "managed base domain") {
+			status = http.StatusConflict
+		} else {
+			status = http.StatusBadRequest
+		}
+		c.JSON(status, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"status": "deleted", "name": name})
+}
+
 func (s *Service) handleVerifyDomain(c *gin.Context) {
 	var req struct {
 		DomainName string `json:"domain_name"`
@@ -1083,8 +1123,12 @@ func (s *Service) handleV1ListTunnels(c *gin.Context) {
 func (s *Service) handleV1ListEvents(c *gin.Context) {
 	access := currentRequestAccess(c)
 	meta := s.apiMeta(access)
-	limit := parsePositiveLimit(c.Query("limit"), maxRecentEventRows, 500)
-	events, err := s.listEvents(limit, access)
+	events, err := s.listEvents(access, eventListOptions{
+		Limit:  parsePositiveLimit(c.Query("limit"), maxRecentEventRows, 500),
+		Level:  c.Query("level"),
+		Tunnel: c.Query("tunnel"),
+		Query:  c.Query("q"),
+	})
 	if err != nil {
 		writeV1Error(c, http.StatusInternalServerError, meta, "EVENTS_LIST_FAILED", "failed to load events")
 		return
@@ -1095,8 +1139,15 @@ func (s *Service) handleV1ListEvents(c *gin.Context) {
 func (s *Service) handleV1ListRequests(c *gin.Context) {
 	access := currentRequestAccess(c)
 	meta := s.apiMeta(access)
-	limit := parsePositiveLimit(c.Query("limit"), maxRecentRequestRows, 500)
-	requests, err := s.listRequests(limit, access, c.Query("kind"))
+	requests, err := s.listRequests(access, requestListOptions{
+		Limit:       parsePositiveLimit(c.Query("limit"), maxRecentRequestRows, 500),
+		Kind:        c.Query("kind"),
+		Tunnel:      c.Query("tunnel"),
+		Provider:    c.Query("provider"),
+		Query:       c.Query("q"),
+		StatusClass: c.Query("status"),
+		ErrorOnly:   parseBoolQuery(c.Query("error_only")),
+	})
 	if err != nil {
 		writeV1Error(c, http.StatusInternalServerError, meta, "REQUESTS_LIST_FAILED", "failed to list requests")
 		return
@@ -1191,6 +1242,33 @@ func (s *Service) handleV1CreateDomain(c *gin.Context) {
 		ExpectedTXT: record.ExpectedTXT,
 		VerifiedAt:  record.VerifiedAt,
 	})
+}
+
+func (s *Service) handleV1DeleteDomain(c *gin.Context) {
+	access := currentRequestAccess(c)
+	meta := s.apiMeta(access)
+	name := c.Param("name")
+	if name == "" {
+		writeV1Error(c, http.StatusBadRequest, meta, "MISSING_DOMAIN_NAME", "missing domain name")
+		return
+	}
+
+	if err := s.deleteDomain(name, access); err != nil {
+		status := http.StatusInternalServerError
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			status = http.StatusNotFound
+		} else if strings.Contains(strings.ToLower(err.Error()), "another account") {
+			status = http.StatusForbidden
+		} else if strings.Contains(strings.ToLower(err.Error()), "managed base domain") {
+			status = http.StatusConflict
+		} else {
+			status = http.StatusBadRequest
+		}
+		writeV1Error(c, status, meta, "DOMAIN_DELETE_FAILED", err.Error())
+		return
+	}
+
+	writeV1Success(c, http.StatusOK, meta, gin.H{"status": "deleted", "name": name})
 }
 
 func (s *Service) handleV1VerifyDomain(c *gin.Context) {
@@ -1475,9 +1553,9 @@ func (s *Service) listDomains(access requestAccess) ([]DomainResponse, error) {
 }
 
 func (s *Service) createDomain(name string, access requestAccess) (DomainRecord, error) {
-	domain := strings.ToLower(strings.TrimSpace(name))
-	if domain == "" {
-		return DomainRecord{}, errors.New("domain name is required")
+	domain, err := normalizeDomainName(name, s.cfg.BaseDomain)
+	if err != nil {
+		return DomainRecord{}, err
 	}
 
 	record := DomainRecord{
@@ -1504,9 +1582,9 @@ func (s *Service) createDomain(name string, access requestAccess) (DomainRecord,
 }
 
 func (s *Service) verifyDomain(name string, access requestAccess) (DomainResponse, error) {
-	domain := strings.ToLower(strings.TrimSpace(name))
-	if domain == "" {
-		return DomainResponse{}, errors.New("domain name is required")
+	domain, err := normalizeDomainName(name, "")
+	if err != nil {
+		return DomainResponse{}, err
 	}
 
 	var record DomainRecord
@@ -1562,6 +1640,35 @@ func (s *Service) verifyDomain(name string, access requestAccess) (DomainRespons
 	}, nil
 }
 
+func (s *Service) deleteDomain(name string, access requestAccess) error {
+	domain, err := normalizeDomainName(name, "")
+	if err != nil {
+		return err
+	}
+
+	var record DomainRecord
+	query := s.db.Where("name = ?", domain)
+	if access.Identity != nil && s.authProvider != nil && s.authProvider.Enabled() {
+		query = query.Where("(owner_user_id = ? OR type = ?)", access.Identity.UserID, "MANAGED")
+	}
+	if err := query.First(&record).Error; err != nil {
+		return err
+	}
+	if record.Type == "MANAGED" {
+		return errors.New("managed base domain cannot be deleted")
+	}
+	if access.Identity != nil && s.authProvider != nil && s.authProvider.Enabled() && record.OwnerUserID != "" && record.OwnerUserID != access.Identity.UserID {
+		return errors.New("domain belongs to another account")
+	}
+
+	if err := s.db.Delete(&record).Error; err != nil {
+		return err
+	}
+
+	s.broadcastLog("warn", fmt.Sprintf("Deleted custom domain %s", record.Name), "")
+	return nil
+}
+
 func (s *Service) listNodes() []NodeResponse {
 	status := "online"
 	if s.activeTunnelCount() == 0 {
@@ -1578,14 +1685,28 @@ func (s *Service) listNodes() []NodeResponse {
 	}
 }
 
-func (s *Service) listEvents(limit int, access requestAccess) ([]EventResponse, error) {
+func (s *Service) listEvents(access requestAccess, options eventListOptions) ([]EventResponse, error) {
 	var records []EventRecord
+	options.Level = normalizeEventLevelFilter(options.Level)
+	options.Tunnel = strings.ToLower(strings.TrimSpace(options.Tunnel))
+	options.Query = normalizeSearchQuery(options.Query)
+
 	query := s.db.Model(&EventRecord{})
 	if access.Identity != nil && s.authProvider != nil && s.authProvider.Enabled() {
 		query = query.Joins("JOIN tunnel_records ON tunnel_records.subdomain = event_records.tunnel_subdomain").
 			Where("tunnel_records.owner_user_id = ?", access.Identity.UserID)
 	}
-	if err := query.Order("event_records.created_at desc").Limit(limit).Find(&records).Error; err != nil {
+	if options.Level != "" {
+		query = query.Where("LOWER(event_records.level) = ?", options.Level)
+	}
+	if options.Tunnel != "" {
+		query = query.Where("LOWER(event_records.tunnel_subdomain) = ?", options.Tunnel)
+	}
+	if options.Query != "" {
+		like := "%" + options.Query + "%"
+		query = query.Where("LOWER(event_records.message) LIKE ?", like)
+	}
+	if err := query.Order("event_records.created_at desc").Limit(options.Limit).Find(&records).Error; err != nil {
 		return nil, err
 	}
 
@@ -1601,29 +1722,56 @@ func (s *Service) listEvents(limit int, access requestAccess) ([]EventResponse, 
 	return response, nil
 }
 
-func normalizeRequestKindFilter(raw string) string {
-	value := strings.ToUpper(strings.TrimSpace(raw))
-	switch value {
-	case "", "ALL":
-		return ""
-	case "REQUEST", "WEBHOOK":
-		return value
-	default:
-		return ""
-	}
-}
-
-func (s *Service) listRequests(limit int, access requestAccess, kindFilter string) ([]RequestResponse, error) {
+func (s *Service) listRequests(access requestAccess, options requestListOptions) ([]RequestResponse, error) {
 	var records []RequestRecord
+	options.Kind = normalizeRequestKindFilter(options.Kind)
+	options.Provider = strings.ToLower(strings.TrimSpace(options.Provider))
+	options.Tunnel = strings.ToLower(strings.TrimSpace(options.Tunnel))
+	options.Query = normalizeSearchQuery(options.Query)
+	options.StatusClass = normalizeStatusClassFilter(options.StatusClass)
+
 	query := s.db.Model(&RequestRecord{})
 	if access.Identity != nil && s.authProvider != nil && s.authProvider.Enabled() {
 		query = query.Joins("JOIN tunnel_records ON tunnel_records.id = request_records.tunnel_id").
 			Where("tunnel_records.owner_user_id = ?", access.Identity.UserID)
 	}
-	if normalizedKind := normalizeRequestKindFilter(kindFilter); normalizedKind != "" {
-		query = query.Where("request_records.kind = ?", normalizedKind)
+	if options.Kind != "" {
+		query = query.Where("request_records.kind = ?", options.Kind)
 	}
-	if err := query.Order("request_records.created_at desc").Limit(limit).Find(&records).Error; err != nil {
+	if options.Tunnel != "" {
+		query = query.Where("LOWER(request_records.tunnel_subdomain) = ?", options.Tunnel)
+	}
+	if options.Provider != "" {
+		query = query.Where("LOWER(request_records.provider) = ?", options.Provider)
+	}
+	if options.ErrorOnly {
+		query = query.Where("request_records.status >= ?", http.StatusBadRequest)
+	}
+	switch options.StatusClass {
+	case "success":
+		query = query.Where("request_records.status < ?", http.StatusBadRequest)
+	case "client_error":
+		query = query.Where("request_records.status >= ? AND request_records.status < ?", http.StatusBadRequest, http.StatusInternalServerError)
+	case "server_error":
+		query = query.Where("request_records.status >= ?", http.StatusInternalServerError)
+	case "error":
+		query = query.Where("request_records.status >= ?", http.StatusBadRequest)
+	}
+	if options.Query != "" {
+		like := "%" + options.Query + "%"
+		query = query.Where(`
+			LOWER(request_records.method) LIKE ? OR
+			LOWER(request_records.path) LIKE ? OR
+			LOWER(request_records.provider) LIKE ? OR
+			LOWER(request_records.event_type) LIKE ? OR
+			LOWER(request_records.error_type) LIKE ? OR
+			LOWER(request_records.destination) LIKE ? OR
+			LOWER(request_records.request_preview) LIKE ? OR
+			LOWER(request_records.response_preview) LIKE ? OR
+			LOWER(request_records.payload_preview) LIKE ?
+		`, like, like, like, like, like, like, like, like, like)
+	}
+	if err := query.Order("request_records.created_at desc").Limit(options.Limit).Find(&records).Error; err != nil {
 		return nil, err
 	}
 
@@ -1757,11 +1905,13 @@ func (s *Service) broadcastLog(level, message, subdomain string) {
 	}
 	s.logMu.Unlock()
 
-	_ = s.db.Create(&EventRecord{
+	if err := s.db.Create(&EventRecord{
 		Level:           strings.ToLower(level),
 		Message:         message,
 		TunnelSubdomain: subdomain,
-	}).Error
+	}).Error; err == nil {
+		_ = s.pruneEventRecords(maxStoredEventRows)
+	}
 }
 
 func (s *Service) writeHandshakeError(conn net.Conn, message string) {
@@ -2152,7 +2302,38 @@ func (s *Service) recordObservedRequest(tunnel TunnelRecord, observed requestObs
 		ResponsePreview: observed.ResponsePreview,
 	}
 
-	return s.db.Create(&record).Error
+	if err := s.db.Create(&record).Error; err != nil {
+		return err
+	}
+	return s.pruneRequestRecords(maxStoredRequestRows)
+}
+
+func (s *Service) pruneEventRecords(limit int) error {
+	if limit <= 0 {
+		return nil
+	}
+
+	subQuery := s.db.Model(&EventRecord{}).
+		Select("id").
+		Order("created_at desc").
+		Limit(-1).
+		Offset(limit)
+
+	return s.db.Where("id IN (?)", subQuery).Delete(&EventRecord{}).Error
+}
+
+func (s *Service) pruneRequestRecords(limit int) error {
+	if limit <= 0 {
+		return nil
+	}
+
+	subQuery := s.db.Model(&RequestRecord{}).
+		Select("id").
+		Order("created_at desc").
+		Limit(-1).
+		Offset(limit)
+
+	return s.db.Where("id IN (?)", subQuery).Delete(&RequestRecord{}).Error
 }
 
 type statusCapturingResponseWriter struct {
