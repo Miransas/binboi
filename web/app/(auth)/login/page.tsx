@@ -1,4 +1,7 @@
+import { Suspense } from "react";
+
 import { LoginForm } from "../_components/auth-forms";
+import { AuthLoadingCard } from "../_components/auth-primitives";
 import { redirectAuthenticatedUser } from "@/lib/auth-session";
 import { sanitizeRedirectTarget } from "@/lib/auth-routing";
 import { authDatabaseEnabled, githubAuthEnabled } from "@/lib/auth-system";
@@ -14,9 +17,18 @@ export default async function LoginPage({
   );
 
   return (
-    <LoginForm
-      authConfigured={authDatabaseEnabled}
-      githubEnabled={githubAuthEnabled}
-    />
+    <Suspense
+      fallback={
+        <AuthLoadingCard
+          title="Preparing sign in"
+          description="Loading your sign-in options and redirect target."
+        />
+      }
+    >
+      <LoginForm
+        authConfigured={authDatabaseEnabled}
+        githubEnabled={githubAuthEnabled}
+      />
+    </Suspense>
   );
 }

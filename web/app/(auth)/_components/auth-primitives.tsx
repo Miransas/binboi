@@ -41,6 +41,27 @@ export function AuthCard({
   );
 }
 
+export function AuthLoadingCard({
+  title = "Preparing your session",
+  description = "Loading the authentication screen and query parameters.",
+}: {
+  title?: string;
+  description?: string;
+}) {
+  return (
+    <div className="space-y-6">
+      <AuthCard>
+        <AuthHeader
+          eyebrow="Loading"
+          title={title}
+          description={description}
+        />
+        <div className="mt-6 h-32 animate-pulse rounded-[1.5rem] border border-white/10 bg-white/[0.03]" />
+      </AuthCard>
+    </div>
+  );
+}
+
 export function AuthHeader({
   eyebrow,
   title,

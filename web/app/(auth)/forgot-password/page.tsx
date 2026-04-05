@@ -1,4 +1,7 @@
+import { Suspense } from "react";
+
 import { ForgotPasswordForm } from "../_components/auth-forms";
+import { AuthLoadingCard } from "../_components/auth-primitives";
 import { redirectAuthenticatedUser } from "@/lib/auth-session";
 import { sanitizeRedirectTarget } from "@/lib/auth-routing";
 import { authDatabaseEnabled } from "@/lib/auth-system";
@@ -13,5 +16,16 @@ export default async function ForgotPasswordPage({
     sanitizeRedirectTarget(resolvedSearchParams.callbackUrl, "/dashboard"),
   );
 
-  return <ForgotPasswordForm authConfigured={authDatabaseEnabled} />;
+  return (
+    <Suspense
+      fallback={
+        <AuthLoadingCard
+          title="Preparing password recovery"
+          description="Loading the reset request form and callback target."
+        />
+      }
+    >
+      <ForgotPasswordForm authConfigured={authDatabaseEnabled} />
+    </Suspense>
+  );
 }
