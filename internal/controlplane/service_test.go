@@ -46,6 +46,10 @@ func (s stubAuthProvider) ValidateAccessToken(_ context.Context, raw string) (*A
 	return s.identity, nil
 }
 
+func (s stubAuthProvider) Close() error {
+	return nil
+}
+
 func newTestService(t *testing.T) *Service {
 	t.Helper()
 

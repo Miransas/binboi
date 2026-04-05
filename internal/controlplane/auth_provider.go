@@ -25,6 +25,7 @@ type accessAuthenticator interface {
 	Enabled() bool
 	Mode() string
 	ValidateAccessToken(context.Context, string) (*AuthIdentity, error)
+	Close() error
 }
 
 type authProvider struct {
@@ -139,4 +140,13 @@ func (p *authProvider) ValidateAccessToken(ctx context.Context, raw string) (*Au
 	identity.TokenPrefix = prefix
 	identity.AuthMode = p.Mode()
 	return &identity, nil
+}
+
+func (p *authProvider) Close() error {
+	if p == nil || p.pool == nil {
+		return nil
+	}
+	p.pool.Close()
+	p.pool = nil
+	return nil
 }

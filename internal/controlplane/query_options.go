@@ -5,11 +5,7 @@ import (
 	"strings"
 )
 
-const (
-	maxStoredEventRows   = 1000
-	maxStoredRequestRows = 5000
-	maxSearchQueryBytes  = 120
-)
+const maxSearchQueryBytes = 120
 
 type eventListOptions struct {
 	Limit  int

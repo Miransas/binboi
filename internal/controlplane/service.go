@@ -33,18 +33,25 @@ import (
 )
 
 const (
-	defaultAPIAddr       = ":8080"
-	defaultTunnelAddr    = ":8081"
-	defaultProxyAddr     = ":8000"
-	defaultBaseDomain    = "binboi.localhost"
-	defaultDatabase      = "binboi.db"
-	defaultInstance      = "Binboi Self-Hosted"
-	defaultRegion        = "local"
-	maxLogBacklog        = 100
-	maxRecentEventRows   = 50
-	maxRecentRequestRows = 200
-	maxHeaderPreviewRows = 10
-	maxBodyPreviewBytes  = 4096
+	defaultAPIAddr            = ":8080"
+	defaultTunnelAddr         = ":8081"
+	defaultProxyAddr          = ":8000"
+	defaultBaseDomain         = "binboi.localhost"
+	defaultDatabase           = "binboi.db"
+	defaultInstance           = "Binboi Self-Hosted"
+	defaultRegion             = "local"
+	defaultReadHeaderTimeout  = 10 * time.Second
+	defaultReadTimeout        = 30 * time.Second
+	defaultWriteTimeout       = 60 * time.Second
+	defaultIdleTimeout        = 90 * time.Second
+	defaultShutdownTimeout    = 10 * time.Second
+	defaultRecentEventLimit   = 50
+	defaultRecentRequestLimit = 200
+	defaultStoredEventLimit   = 1000
+	defaultStoredRequestLimit = 5000
+	maxLogBacklog             = 100
+	maxHeaderPreviewRows      = 10
+	maxBodyPreviewBytes       = 4096
 )
 
 var (
@@ -65,6 +72,15 @@ type Config struct {
 	InstanceName    string
 	DefaultRegion   string
 	AuthDatabaseURL string
+	ReadHeaderTimeout  time.Duration
+	ReadTimeout        time.Duration
+	WriteTimeout       time.Duration
+	IdleTimeout        time.Duration
+	ShutdownTimeout    time.Duration
+	RecentEventLimit   int
+	RecentRequestLimit int
+	StoredEventLimit   int
+	StoredRequestLimit int
 }
 
 func LoadConfigFromEnv() Config {
@@ -78,6 +94,15 @@ func LoadConfigFromEnv() Config {
 		InstanceName:    envOrDefault("BINBOI_INSTANCE_NAME", defaultInstance),
 		DefaultRegion:   envOrDefault("BINBOI_DEFAULT_REGION", defaultRegion),
 		AuthDatabaseURL: envOrDefault("BINBOI_AUTH_DATABASE_URL", strings.TrimSpace(os.Getenv("DATABASE_URL"))),
+		ReadHeaderTimeout:  durationEnvOrDefault("BINBOI_READ_HEADER_TIMEOUT", defaultReadHeaderTimeout),
+		ReadTimeout:        durationEnvOrDefault("BINBOI_READ_TIMEOUT", defaultReadTimeout),
+		WriteTimeout:       durationEnvOrDefault("BINBOI_WRITE_TIMEOUT", defaultWriteTimeout),
+		IdleTimeout:        durationEnvOrDefault("BINBOI_IDLE_TIMEOUT", defaultIdleTimeout),
+		ShutdownTimeout:    durationEnvOrDefault("BINBOI_SHUTDOWN_TIMEOUT", defaultShutdownTimeout),
+		RecentEventLimit:   intEnvOrDefault("BINBOI_EVENT_LIMIT", defaultRecentEventLimit),
+		RecentRequestLimit: intEnvOrDefault("BINBOI_REQUEST_LIMIT", defaultRecentRequestLimit),
+		StoredEventLimit:   intEnvOrDefault("BINBOI_STORED_EVENT_LIMIT", defaultStoredEventLimit),
+		StoredRequestLimit: intEnvOrDefault("BINBOI_STORED_REQUEST_LIMIT", defaultStoredRequestLimit),
 	}
 
 	if port, err := strconv.Atoi(envOrDefault("BINBOI_PUBLIC_PORT", strconv.Itoa(portFromAddr(cfg.ProxyAddr, 8000)))); err == nil {
@@ -94,6 +119,30 @@ func envOrDefault(key, fallback string) string {
 		return value
 	}
 	return fallback
+}
+
+func durationEnvOrDefault(key string, fallback time.Duration) time.Duration {
+	value := strings.TrimSpace(os.Getenv(key))
+	if value == "" {
+		return fallback
+	}
+	parsed, err := time.ParseDuration(value)
+	if err != nil || parsed <= 0 {
+		return fallback
+	}
+	return parsed
+}
+
+func intEnvOrDefault(key string, fallback int) int {
+	value := strings.TrimSpace(os.Getenv(key))
+	if value == "" {
+		return fallback
+	}
+	parsed, err := strconv.Atoi(value)
+	if err != nil || parsed <= 0 {
+		return fallback
+	}
+	return parsed
 }
 
 func portFromAddr(addr string, fallback int) int {
@@ -335,6 +384,53 @@ func NewService(cfg Config) (*Service, error) {
 	}
 
 	return service, nil
+}
+
+func (s *Service) Close(ctx context.Context) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	var closeErr error
+
+	_ = s.closeAllSessions("control plane shutting down")
+
+	s.logMu.Lock()
+	for client := range s.clients {
+		_ = client.WriteControl(
+			websocket.CloseMessage,
+			websocket.FormatCloseMessage(websocket.CloseGoingAway, "control plane shutting down"),
+			time.Now().Add(250*time.Millisecond),
+		)
+		_ = client.Close()
+		delete(s.clients, client)
+	}
+	s.logMu.Unlock()
+
+	if s.authProvider != nil {
+		closeErr = errors.Join(closeErr, s.authProvider.Close())
+	}
+
+	if s.db != nil {
+		sqlDB, err := s.db.DB()
+		if err != nil {
+			closeErr = errors.Join(closeErr, err)
+		} else {
+			done := make(chan error, 1)
+			go func() {
+				done <- sqlDB.Close()
+			}()
+
+			select {
+			case err := <-done:
+				closeErr = errors.Join(closeErr, err)
+			case <-ctx.Done():
+				closeErr = errors.Join(closeErr, ctx.Err())
+			}
+		}
+	}
+
+	return closeErr
 }
 
 func (s *Service) ensureDefaults() error {
@@ -824,7 +920,7 @@ func (s *Service) handleListTunnels(c *gin.Context) {
 
 func (s *Service) handleListEvents(c *gin.Context) {
 	events, err := s.listEvents(currentRequestAccess(c), eventListOptions{
-		Limit:  parsePositiveLimit(c.Query("limit"), maxRecentEventRows, 500),
+		Limit:  parsePositiveLimit(c.Query("limit"), s.cfg.RecentEventLimit, 500),
 		Level:  c.Query("level"),
 		Tunnel: c.Query("tunnel"),
 		Query:  c.Query("q"),
@@ -838,7 +934,7 @@ func (s *Service) handleListEvents(c *gin.Context) {
 
 func (s *Service) handleListRequests(c *gin.Context) {
 	requests, err := s.listRequests(currentRequestAccess(c), requestListOptions{
-		Limit:       parsePositiveLimit(c.Query("limit"), maxRecentRequestRows, 500),
+		Limit:       parsePositiveLimit(c.Query("limit"), s.cfg.RecentRequestLimit, 500),
 		Kind:        c.Query("kind"),
 		Tunnel:      c.Query("tunnel"),
 		Provider:    c.Query("provider"),
@@ -1105,6 +1201,34 @@ func parsePositiveLimit(raw string, fallback, max int) int {
 	return value
 }
 
+func (s *Service) recentEventLimit() int {
+	if s.cfg.RecentEventLimit > 0 {
+		return s.cfg.RecentEventLimit
+	}
+	return defaultRecentEventLimit
+}
+
+func (s *Service) recentRequestLimit() int {
+	if s.cfg.RecentRequestLimit > 0 {
+		return s.cfg.RecentRequestLimit
+	}
+	return defaultRecentRequestLimit
+}
+
+func (s *Service) storedEventLimit() int {
+	if s.cfg.StoredEventLimit > 0 {
+		return s.cfg.StoredEventLimit
+	}
+	return defaultStoredEventLimit
+}
+
+func (s *Service) storedRequestLimit() int {
+	if s.cfg.StoredRequestLimit > 0 {
+		return s.cfg.StoredRequestLimit
+	}
+	return defaultStoredRequestLimit
+}
+
 func (s *Service) handleV1ListTunnels(c *gin.Context) {
 	access := currentRequestAccess(c)
 	meta := s.apiMeta(access)
@@ -1124,7 +1248,7 @@ func (s *Service) handleV1ListEvents(c *gin.Context) {
 	access := currentRequestAccess(c)
 	meta := s.apiMeta(access)
 	events, err := s.listEvents(access, eventListOptions{
-		Limit:  parsePositiveLimit(c.Query("limit"), maxRecentEventRows, 500),
+		Limit:  parsePositiveLimit(c.Query("limit"), s.cfg.RecentEventLimit, 500),
 		Level:  c.Query("level"),
 		Tunnel: c.Query("tunnel"),
 		Query:  c.Query("q"),
@@ -1140,7 +1264,7 @@ func (s *Service) handleV1ListRequests(c *gin.Context) {
 	access := currentRequestAccess(c)
 	meta := s.apiMeta(access)
 	requests, err := s.listRequests(access, requestListOptions{
-		Limit:       parsePositiveLimit(c.Query("limit"), maxRecentRequestRows, 500),
+		Limit:       parsePositiveLimit(c.Query("limit"), s.cfg.RecentRequestLimit, 500),
 		Kind:        c.Query("kind"),
 		Tunnel:      c.Query("tunnel"),
 		Provider:    c.Query("provider"),
