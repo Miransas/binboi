@@ -1,11 +1,6 @@
 # Binboi
 
-Binboi is a self-hosted tunneling stack built around one clear ngrok-like loop:
-
-1. reserve or attach a public URL
-2. authenticate a local machine with a token
-3. open a relay session from the CLI
-4. forward public HTTP traffic into a local service
+**Binboi** is a modern tunneling and request inspection platform that helps developers expose local applications to the public internet, inspect live traffic, and debug webhooks in real time.
 
 The repository combines:
 
@@ -14,6 +9,57 @@ The repository combines:
 - a Next.js web app for auth, billing, docs, setup, and dashboard workflows
 
 The canonical repository URL is [https://github.com/Miransas/binboi](https://github.com/Miransas/binboi).
+
+## What is Binboi?
+
+Binboi lets you take a local app running on your machine and make it accessible through a public URL.
+
+Instead of manually deploying every small change just to test integrations, you can run your app locally and use Binboi to:
+
+- expose localhost instantly
+- inspect incoming requests
+- debug webhooks live
+- manage tunnels from a dashboard
+- understand errors faster
+
+## Core idea
+
+Your local application normally lives behind `localhost` and cannot be reached from the public internet.
+
+Binboi acts as the bridge between:
+
+- the outside world
+- Binboi's routing and proxy layer
+- your local machine
+- your local application
+
+## How it works
+
+```text
+Internet User / External Service
+              |
+              v
+       Public Binboi URL
+              |
+              v
+        Binboi Server
+   routing + auth + proxy
+              |
+              v
+     Binboi Local Client
+      running on your PC
+              |
+              v
+      localhost application
+   (Next.js, API, Go app, etc.)
+```
+
+At the runtime level, Binboi follows one clear ngrok-like loop:
+
+1. reserve or attach a public URL
+2. authenticate a local machine with a token
+3. open a relay session from the CLI
+4. forward public HTTP traffic into a local service
 
 ## Current status
 
@@ -34,6 +80,12 @@ Still not the focus of this release:
 - team/org multi-tenancy
 - production email provider integration out of the box
 - advanced AI inspection as a shipping feature
+
+## Why Binboi feels different
+
+- It is built around the real developer loop, not only URL exposure.
+- It combines tunneling, request visibility, webhook debugging, and dashboard control in one product.
+- It can run in local preview mode or in a fuller account-backed mode with auth, billing, and access tokens.
 
 ## Repository map
 
