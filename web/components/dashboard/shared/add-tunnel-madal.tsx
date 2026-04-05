@@ -21,7 +21,7 @@ export default function AddTunnelModal({ isOpen, onClose, onSuccess }: AddTunnel
     setLoading(true);
     
     try {
-      await fetchControlPlane("/api/tunnels", {
+      await fetchControlPlane("/api/v1/tunnels", {
         method: "POST",
         body: JSON.stringify({
           subdomain: formData.subdomain,

@@ -1,19 +1,22 @@
 import { NextResponse } from "next/server";
 import { buildApiUrl } from "@/lib/binboi";
+import type { ControlPlaneEnvelope, ControlPlaneInstance, ControlPlaneTunnel } from "@/lib/controlplane";
 
 export async function GET() {
   try {
     const [instanceRes, tunnelsRes] = await Promise.all([
-      fetch(buildApiUrl("/api/instance"), { cache: "no-store" }),
-      fetch(buildApiUrl("/api/tunnels"), { cache: "no-store" }),
+      fetch(buildApiUrl("/api/v1/instance"), { cache: "no-store" }),
+      fetch(buildApiUrl("/api/v1/tunnels"), { cache: "no-store" }),
     ]);
 
     if (!instanceRes.ok || !tunnelsRes.ok) {
       throw new Error("control plane unavailable");
     }
 
-    const instance = await instanceRes.json();
-    const tunnels = await tunnelsRes.json();
+    const instanceBody = (await instanceRes.json()) as ControlPlaneEnvelope<ControlPlaneInstance>;
+    const tunnelsBody = (await tunnelsRes.json()) as ControlPlaneEnvelope<ControlPlaneTunnel[]>;
+    const instance = instanceBody.data;
+    const tunnels = tunnelsBody.data;
 
     const totalRequests = Array.isArray(tunnels)
       ? tunnels.reduce((sum, tunnel) => sum + (tunnel.request_count || 0), 0)

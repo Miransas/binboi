@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# install.sh – Quick installer for Elasiya CLI
-# Usage: curl -fsSL https://raw.githubusercontent.com/sardorazimov/elasiyanetwork/main/install.sh | bash
+# install.sh - Quick installer for the Binboi CLI
+# Usage: curl -fsSL https://raw.githubusercontent.com/Miransas/binboi/main/install.sh | bash
 
 set -e
 
-REPO="sardorazimov/elasiyanetwork"
-BINARY="elasiya"
+REPO="Miransas/binboi"
+BINARY="binboi"
 INSTALL_DIR="/usr/local/bin"
 
 OS="$(uname -s | tr '[:upper:]' '[:lower:]')"
@@ -22,16 +22,44 @@ case "$OS" in
   *) echo "Unsupported OS: $OS"; exit 1 ;;
 esac
 
-echo "Installing Elasiya CLI..."
+echo "Installing Binboi CLI..."
 
-# Build from source using go install
 if command -v go &>/dev/null; then
-  go install github.com/sardorazimov/elasiyanetwork/cmd/elasiya@latest
-  echo "✅  Elasiya installed via go install"
+  go install github.com/miransas/binboi/cmd/binboi-client@latest
+  echo "✅ Binboi installed via go install"
   echo "Make sure \$GOPATH/bin is in your PATH"
   exit 0
 fi
 
-echo "Error: Go is required to install Elasiya from source."
-echo "Install Go from https://go.dev/dl/ and re-run this script."
-exit 1
+if ! command -v curl &>/dev/null; then
+  echo "Error: curl is required when Go is not installed."
+  exit 1
+fi
+
+TAG="$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" | awk -F '\"' '/tag_name/ {print $4; exit}')"
+if [ -z "$TAG" ]; then
+  echo "Error: could not resolve the latest Binboi release tag."
+  exit 1
+fi
+
+VERSION="${TAG#v}"
+ARCHIVE="${BINARY}_${VERSION}_${OS}_${ARCH}.tar.gz"
+URL="https://github.com/${REPO}/releases/download/${TAG}/${ARCHIVE}"
+TMP_DIR="$(mktemp -d)"
+
+cleanup() {
+  rm -rf "$TMP_DIR"
+}
+trap cleanup EXIT
+
+echo "Downloading ${URL}"
+curl -fsSL "$URL" -o "$TMP_DIR/${ARCHIVE}"
+tar -xzf "$TMP_DIR/${ARCHIVE}" -C "$TMP_DIR"
+
+if [ ! -f "$TMP_DIR/${BINARY}_${VERSION}_${OS}_${ARCH}/${BINARY}" ]; then
+  echo "Error: downloaded archive did not contain the expected binary."
+  exit 1
+fi
+
+install -m 0755 "$TMP_DIR/${BINARY}_${VERSION}_${OS}_${ARCH}/${BINARY}" "${INSTALL_DIR}/${BINARY}"
+echo "✅ Binboi installed to ${INSTALL_DIR}/${BINARY}"

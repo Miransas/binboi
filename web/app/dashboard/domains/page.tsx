@@ -24,7 +24,7 @@ export default function DomainsPage() {
   const load = async () => {
     setLoading(true);
     try {
-      const result = await fetchControlPlane<ControlPlaneDomain[]>("/api/domains");
+      const result = await fetchControlPlane<ControlPlaneDomain[]>("/api/v1/domains");
       setDomains(result);
       setError(null);
     } catch (loadError) {
@@ -42,7 +42,7 @@ export default function DomainsPage() {
     if (!newDomain.trim()) return;
     setCreating(true);
     try {
-      await fetchControlPlane("/api/domains", {
+      await fetchControlPlane("/api/v1/domains", {
         method: "POST",
         body: JSON.stringify({ domain: newDomain.trim() }),
       });
@@ -57,7 +57,7 @@ export default function DomainsPage() {
 
   const verifyDomain = async (domain: string) => {
     try {
-      await fetchControlPlane("/api/domains/verify", {
+      await fetchControlPlane("/api/v1/domains/verify", {
         method: "POST",
         body: JSON.stringify({ domain_name: domain }),
       });

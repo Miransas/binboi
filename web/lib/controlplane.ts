@@ -77,6 +77,18 @@ export type ControlPlaneInstance = {
   reserved_tunnels: number;
 };
 
+export type ControlPlaneMeta = {
+  instance_name: string;
+  auth_mode: string;
+  access_scope: "anonymous" | "trusted-local" | "token" | string;
+  generated_at: string;
+};
+
+export type ControlPlaneEnvelope<T> = {
+  data: T;
+  meta: ControlPlaneMeta;
+};
+
 export function buildControlPlaneProxyUrl(path: string) {
   const normalized = path.startsWith("/") ? path : `/${path}`;
   return `/api/controlplane${normalized}`;
@@ -95,9 +107,17 @@ export async function fetchControlPlane<T>(path: string, init?: RequestInit): Pr
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
     const message =
-      typeof body?.error === "string" ? body.error : `Request failed with ${response.status}`;
+      typeof body?.error?.message === "string"
+        ? body.error.message
+        : typeof body?.error === "string"
+          ? body.error
+          : `Request failed with ${response.status}`;
     throw new Error(message);
   }
 
-  return response.json() as Promise<T>;
+  const body = (await response.json().catch(() => null)) as ControlPlaneEnvelope<T> | T | null;
+  if (body && typeof body === "object" && "data" in body) {
+    return body.data;
+  }
+  return body as T;
 }

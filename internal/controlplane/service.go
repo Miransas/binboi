@@ -284,6 +284,28 @@ type InstanceResponse struct {
 	ReservedTunnels  int64  `json:"reserved_tunnels"`
 }
 
+type APIMeta struct {
+	InstanceName string    `json:"instance_name"`
+	AuthMode     string    `json:"auth_mode"`
+	AccessScope  string    `json:"access_scope"`
+	GeneratedAt  time.Time `json:"generated_at"`
+}
+
+type APIEnvelope[T any] struct {
+	Data T       `json:"data"`
+	Meta APIMeta `json:"meta"`
+}
+
+type APIErrorDetail struct {
+	Code    string `json:"code"`
+	Message string `json:"message"`
+}
+
+type APIErrorEnvelope struct {
+	Error APIErrorDetail `json:"error"`
+	Meta  APIMeta        `json:"meta"`
+}
+
 func NewService(cfg Config) (*Service, error) {
 	db, err := gorm.Open(sqlite.Open(cfg.DatabasePath), &gorm.Config{})
 	if err != nil {
@@ -381,7 +403,71 @@ func (s *Service) RegisterRoutes(r *gin.Engine) {
 	admin.POST("/tokens/revoke", s.handleRevokeSessions)
 
 	apiV1 := r.Group("/api/v1")
+	apiV1.GET("/health", s.handleV1Health)
+	apiV1.GET("/instance", s.handleV1Instance)
+	apiV1.GET("/nodes", s.handleV1Nodes)
+	apiV1Operator := apiV1.Group("/")
+	apiV1Operator.Use(s.requireControlPlaneAccess())
+	apiV1Operator.GET("/events", s.handleV1ListEvents)
+	apiV1Operator.GET("/requests", s.handleV1ListRequests)
+	apiV1Operator.GET("/tunnels", s.handleV1ListTunnels)
+	apiV1Operator.POST("/tunnels", s.handleV1CreateTunnel)
+	apiV1Operator.DELETE("/tunnels/:id", s.handleV1DeleteTunnel)
+	apiV1Operator.GET("/domains", s.handleV1ListDomains)
+	apiV1Operator.POST("/domains", s.handleV1CreateDomain)
+	apiV1Operator.POST("/domains/verify", s.handleV1VerifyDomain)
 	apiV1.GET("/auth/me", s.handleAuthMe)
+}
+
+func (s *Service) apiMeta(access requestAccess) APIMeta {
+	authMode := "instance-token-preview"
+	if s.authProvider != nil {
+		authMode = s.authProvider.Mode()
+	}
+	instanceName := fallbackString(s.cfg.InstanceName, defaultInstance)
+
+	accessScope := "anonymous"
+	if access.Identity != nil {
+		accessScope = "token"
+	} else if access.TrustedLocal {
+		accessScope = "trusted-local"
+	}
+
+	return APIMeta{
+		InstanceName: instanceName,
+		AuthMode:     authMode,
+		AccessScope:  accessScope,
+		GeneratedAt:  time.Now().UTC(),
+	}
+}
+
+func writeV1Success[T any](c *gin.Context, status int, meta APIMeta, data T) {
+	c.JSON(status, APIEnvelope[T]{
+		Data: data,
+		Meta: meta,
+	})
+}
+
+func writeV1Error(c *gin.Context, status int, meta APIMeta, code, message string) {
+	c.JSON(status, APIErrorEnvelope{
+		Error: APIErrorDetail{
+			Code:    code,
+			Message: message,
+		},
+		Meta: meta,
+	})
+}
+
+func (s *Service) handleV1Health(c *gin.Context) {
+	writeV1Success(c, http.StatusOK, s.apiMeta(requestAccess{}), gin.H{"status": "ok"})
+}
+
+func (s *Service) handleV1Instance(c *gin.Context) {
+	writeV1Success(c, http.StatusOK, s.apiMeta(requestAccess{}), s.instanceResponse())
+}
+
+func (s *Service) handleV1Nodes(c *gin.Context) {
+	writeV1Success(c, http.StatusOK, s.apiMeta(requestAccess{}), s.listNodes())
 }
 
 func (s *Service) HandleTunnelConnection(conn net.Conn) {
@@ -964,6 +1050,175 @@ func (s *Service) handleAuthMe(c *gin.Context) {
 	})
 }
 
+func parsePositiveLimit(raw string, fallback, max int) int {
+	if strings.TrimSpace(raw) == "" {
+		return fallback
+	}
+
+	value, err := strconv.Atoi(strings.TrimSpace(raw))
+	if err != nil || value <= 0 {
+		return fallback
+	}
+	if value > max {
+		return max
+	}
+	return value
+}
+
+func (s *Service) handleV1ListTunnels(c *gin.Context) {
+	access := currentRequestAccess(c)
+	meta := s.apiMeta(access)
+	records, err := s.listTunnels(access, c.Query("scope"))
+	if err != nil {
+		status := http.StatusInternalServerError
+		if strings.Contains(strings.ToLower(err.Error()), "unsupported tunnel scope") {
+			status = http.StatusBadRequest
+		}
+		writeV1Error(c, status, meta, "TUNNELS_LIST_FAILED", err.Error())
+		return
+	}
+	writeV1Success(c, http.StatusOK, meta, records)
+}
+
+func (s *Service) handleV1ListEvents(c *gin.Context) {
+	access := currentRequestAccess(c)
+	meta := s.apiMeta(access)
+	limit := parsePositiveLimit(c.Query("limit"), maxRecentEventRows, 500)
+	events, err := s.listEvents(limit, access)
+	if err != nil {
+		writeV1Error(c, http.StatusInternalServerError, meta, "EVENTS_LIST_FAILED", "failed to load events")
+		return
+	}
+	writeV1Success(c, http.StatusOK, meta, events)
+}
+
+func (s *Service) handleV1ListRequests(c *gin.Context) {
+	access := currentRequestAccess(c)
+	meta := s.apiMeta(access)
+	limit := parsePositiveLimit(c.Query("limit"), maxRecentRequestRows, 500)
+	requests, err := s.listRequests(limit, access)
+	if err != nil {
+		writeV1Error(c, http.StatusInternalServerError, meta, "REQUESTS_LIST_FAILED", "failed to list requests")
+		return
+	}
+	writeV1Success(c, http.StatusOK, meta, requests)
+}
+
+func (s *Service) handleV1CreateTunnel(c *gin.Context) {
+	access := currentRequestAccess(c)
+	meta := s.apiMeta(access)
+
+	var req struct {
+		Subdomain string `json:"subdomain"`
+		Target    string `json:"target"`
+		Region    string `json:"region"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		writeV1Error(c, http.StatusBadRequest, meta, "INVALID_TUNNEL_PAYLOAD", "invalid tunnel payload")
+		return
+	}
+
+	record, err := s.createTunnel(req.Subdomain, req.Target, req.Region, access)
+	if err != nil {
+		status := http.StatusBadRequest
+		if strings.Contains(strings.ToLower(err.Error()), "already reserved") {
+			status = http.StatusConflict
+		}
+		writeV1Error(c, status, meta, "TUNNEL_CREATE_FAILED", err.Error())
+		return
+	}
+
+	s.broadcastLog("info", fmt.Sprintf("Reserved tunnel %s -> %s", record.Subdomain, record.Target), record.Subdomain)
+	writeV1Success(c, http.StatusCreated, meta, s.mapTunnelRecord(record))
+}
+
+func (s *Service) handleV1DeleteTunnel(c *gin.Context) {
+	access := currentRequestAccess(c)
+	meta := s.apiMeta(access)
+	id := c.Param("id")
+	if id == "" {
+		writeV1Error(c, http.StatusBadRequest, meta, "MISSING_TUNNEL_ID", "missing tunnel id")
+		return
+	}
+
+	if err := s.deleteTunnel(id, access); err != nil {
+		status := http.StatusInternalServerError
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			status = http.StatusNotFound
+		} else if strings.Contains(strings.ToLower(err.Error()), "another account") {
+			status = http.StatusForbidden
+		}
+		writeV1Error(c, status, meta, "TUNNEL_DELETE_FAILED", err.Error())
+		return
+	}
+
+	writeV1Success(c, http.StatusOK, meta, gin.H{"status": "deleted", "id": id})
+}
+
+func (s *Service) handleV1ListDomains(c *gin.Context) {
+	access := currentRequestAccess(c)
+	meta := s.apiMeta(access)
+	domains, err := s.listDomains(access)
+	if err != nil {
+		writeV1Error(c, http.StatusInternalServerError, meta, "DOMAINS_LIST_FAILED", "failed to load domains")
+		return
+	}
+	writeV1Success(c, http.StatusOK, meta, domains)
+}
+
+func (s *Service) handleV1CreateDomain(c *gin.Context) {
+	access := currentRequestAccess(c)
+	meta := s.apiMeta(access)
+
+	var req struct {
+		Domain string `json:"domain"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		writeV1Error(c, http.StatusBadRequest, meta, "INVALID_DOMAIN_PAYLOAD", "invalid domain payload")
+		return
+	}
+
+	record, err := s.createDomain(req.Domain, access)
+	if err != nil {
+		writeV1Error(c, http.StatusBadRequest, meta, "DOMAIN_CREATE_FAILED", err.Error())
+		return
+	}
+
+	writeV1Success(c, http.StatusCreated, meta, DomainResponse{
+		Name:        record.Name,
+		Type:        record.Type,
+		Status:      record.Status,
+		ExpectedTXT: record.ExpectedTXT,
+		VerifiedAt:  record.VerifiedAt,
+	})
+}
+
+func (s *Service) handleV1VerifyDomain(c *gin.Context) {
+	access := currentRequestAccess(c)
+	meta := s.apiMeta(access)
+
+	var req struct {
+		DomainName string `json:"domain_name"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		writeV1Error(c, http.StatusBadRequest, meta, "INVALID_DOMAIN_PAYLOAD", "invalid domain payload")
+		return
+	}
+
+	result, err := s.verifyDomain(req.DomainName, access)
+	if err != nil {
+		writeV1Error(c, http.StatusBadRequest, meta, "DOMAIN_VERIFY_FAILED", err.Error())
+		return
+	}
+
+	status := http.StatusOK
+	if result.Status != "VERIFIED" {
+		status = http.StatusAccepted
+	}
+
+	writeV1Success(c, status, meta, result)
+}
+
 func (s *Service) rotateToken() (string, error) {
 	token, err := s.currentToken()
 	if err != nil {
@@ -1398,7 +1653,7 @@ func (s *Service) instanceResponse() InstanceResponse {
 	}
 
 	return InstanceResponse{
-		InstanceName:     s.cfg.InstanceName,
+		InstanceName:     fallbackString(s.cfg.InstanceName, defaultInstance),
 		Database:         databaseMode,
 		DatabasePath:     s.cfg.DatabasePath,
 		ManagedDomain:    s.cfg.BaseDomain,

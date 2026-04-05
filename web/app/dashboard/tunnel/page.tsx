@@ -29,7 +29,7 @@ export default function TunnelPage() {
   const load = async () => {
     setLoading(true);
     try {
-      const result = await fetchControlPlane<ControlPlaneTunnel[]>("/api/tunnels");
+      const result = await fetchControlPlane<ControlPlaneTunnel[]>("/api/v1/tunnels");
       setTunnels(result);
       setError(null);
     } catch (loadError) {
@@ -51,7 +51,7 @@ export default function TunnelPage() {
 
     setCreating(true);
     try {
-      await fetchControlPlane("/api/tunnels", {
+      await fetchControlPlane("/api/v1/tunnels", {
         method: "POST",
         body: JSON.stringify({
           subdomain: plan === "FREE" ? "" : subdomain,
@@ -76,7 +76,7 @@ export default function TunnelPage() {
     if (!confirmed) return;
 
     try {
-      await fetchControlPlane(`/api/tunnels/${id}`, { method: "DELETE" });
+      await fetchControlPlane(`/api/v1/tunnels/${id}`, { method: "DELETE" });
       await load();
     } catch (deleteError) {
       setError(deleteError instanceof Error ? deleteError.message : "Tunnel deletion failed.");

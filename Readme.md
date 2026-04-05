@@ -1,70 +1,131 @@
 # Binboi
 
-Binboi is a self-hosted tunneling platform with three connected products in one repository:
+Binboi is a self-hosted tunneling stack built around one clear ngrok-like loop:
 
-- a Go control plane and public relay
-- a CLI agent that opens tunnels from local machines
-- a Next.js web app for auth, billing, onboarding, and dashboard workflows
+1. reserve or attach a public URL
+2. authenticate a local machine with a token
+3. open a relay session from the CLI
+4. forward public HTTP traffic into a local service
+
+The repository combines:
+
+- a Go control plane, tunnel listener, and public proxy
+- a CLI agent for `login`, `whoami`, and `http`
+- a Next.js web app for auth, billing, docs, setup, and dashboard workflows
 
 The canonical repository URL is [https://github.com/Miransas/binboi](https://github.com/Miransas/binboi).
 
-## What Binboi currently does
+## Current status
 
-- Creates and manages HTTP tunnels over a single yamux-backed control connection
-- Issues user-scoped access tokens for the CLI
-- Supports custom auth pages, NextAuth sessions, and GitHub OAuth when configured
-- Stores relay state in SQLite by default
-- Stores product users, sessions, billing state, invites, and auth tokens in Postgres
-- Exposes a premium marketing site, docs area, auth flow, and dashboard in the Next.js app
-- Syncs paid plans through Paddle checkout and webhook events
+Working now:
 
-## Product boundaries
+- HTTP tunnel reservation and forwarding
+- CLI authentication with personal access tokens or preview tokens
+- control plane state for tunnels, requests, events, domains, and instance metadata
+- dashboard access token management
+- custom auth flows, NextAuth sessions, and GitHub OAuth when configured
+- billing integration through Paddle
+- browser-safe control plane access through the Next.js proxy layer
 
-Stable enough to iterate on:
+Still not the focus of this release:
 
-- Tunnel reservation and lifecycle
-- CLI login and relay handshake
-- Dashboard onboarding and access token management
-- Email verification, password reset, invite acceptance, and session-backed auth
-- Billing plan upgrades, cancelation, and webhook reconciliation
-- Domain registration and verification flows
-
-Still intentionally incomplete:
-
-- raw TCP as a finished product surface
-- fully managed TLS/CA lifecycle
-- production email delivery wiring
-- advanced AI inspection policies
-- richer org/team account management
+- raw TCP as a finished product
+- full managed TLS lifecycle
+- team/org multi-tenancy
+- production email provider integration out of the box
+- advanced AI inspection as a shipping feature
 
 ## Repository map
 
 - [`cmd/`](./cmd/README.md): CLI and server entrypoints
-- [`internal/`](./internal/README.md): Go application internals for auth, relay, proxy, and storage
-- [`web/`](./web/README.md): Next.js App Router frontend, auth APIs, database schema, and billing UI
-- [`configs/`](./configs/README.md): local YAML configuration examples
-- [`packaging/`](./packaging/README.md): release packaging assets including Homebrew
-- [`docs/`](./docs/README.md): extra project documentation, architecture notes, and release docs
-- [`scripts/`](./scripts/README.md): helper automation space
+- [`internal/`](./internal/README.md): Go runtime internals
+- [`web/`](./web/README.md): Next.js product app
+- [`configs/`](./configs/README.md): sample config files and env examples
+- [`docs/`](./docs/README.md): architecture, API, release, and environment docs
+- [`packaging/`](./packaging/README.md): release packaging and Homebrew files
 
-## Architecture at a glance
+## Stable API contract
 
-1. The Go server in [`cmd/binboi-server`](./cmd/binboi-server/README.md) starts the control plane API, the tunnel listener, and the public proxy.
-2. The CLI in [`cmd/binboi-client`](./cmd/binboi-client/README.md) authenticates with an access token and opens a relay session.
-3. The Next.js app in [`web/`](./web/README.md) handles auth UI, auth APIs, protected dashboard pages, pricing, billing, and docs.
-4. SQLite stores relay runtime state by default, while Postgres stores user-facing SaaS data such as users, sessions, invites, verification tokens, access tokens, and subscriptions.
+The Go control plane now exposes a stable product contract under `/api/v1/*`.
 
-For a longer subsystem breakdown, see [`docs/architecture-overview.md`](./docs/architecture-overview.md).
+Core endpoints:
+
+- `GET /api/v1/health`
+- `GET /api/v1/instance`
+- `GET /api/v1/nodes`
+- `GET /api/v1/tunnels?scope=all|active|inactive`
+- `POST /api/v1/tunnels`
+- `DELETE /api/v1/tunnels/:id`
+- `GET /api/v1/events?limit=50`
+- `GET /api/v1/requests?limit=200`
+- `GET /api/v1/domains`
+- `POST /api/v1/domains`
+- `POST /api/v1/domains/verify`
+- `GET /api/v1/auth/me`
+
+All `/api/v1/*` endpoints except `GET /api/v1/auth/me` return an envelope:
+
+```json
+{
+  "data": {},
+  "meta": {
+    "instance_name": "Binboi Self-Hosted",
+    "auth_mode": "personal-access-token",
+    "access_scope": "trusted-local",
+    "generated_at": "2026-04-05T20:00:00Z"
+  }
+}
+```
+
+This keeps the contract stable while still preserving the older `/api/*` routes for compatibility and operational tooling.
 
 ## Quick start
 
-### 1. Start the relay
+### Option A: local preview mode
+
+This is the fastest path to a working ngrok-style tunnel loop.
+
+1. Start the Go control plane:
 
 ```bash
 go run ./cmd/binboi-server
 ```
 
-### 2. Start the web app
+2. Build the CLI:
+
+```bash
+go build -o binboi ./cmd/binboi-client
+```
+
+3. Get the preview token:
+
+```bash
+curl http://127.0.0.1:8080/api/tokens/current
+```
+
+4. Log in and open a tunnel:
+
+```bash
+./binboi login --token <preview-token>
+./binboi whoami
+./binboi http 3000 my-app
+```
+
+5. Visit the public URL:
+
+```text
+http://my-app.binboi.localhost:8000
+```
+
+### Option B: local full-stack mode
+
+Use this when you want the real product loop with accounts, access tokens, dashboard auth, and billing state.
+
+1. Start Postgres.
+2. Set `BINBOI_AUTH_DATABASE_URL` for the Go service.
+3. Set `DATABASE_URL` and `AUTH_SECRET` for the web app.
+4. Start the Go control plane.
+5. Start the web app:
 
 ```bash
 cd web
@@ -72,47 +133,11 @@ npm install
 npm run dev
 ```
 
-### 3. Build the CLI
+6. Open the dashboard at `http://127.0.0.1:3000/dashboard`, create an access token, then authenticate the CLI.
 
-```bash
-go build -o binboi ./cmd/binboi-client
-```
+## Environment model
 
-### 4. Authenticate and open a tunnel
-
-```bash
-./binboi login --token <access-token>
-./binboi whoami
-./binboi start 3000 my-app
-```
-
-The default managed development domain is `binboi.localhost`, so a local tunnel will look like:
-
-```text
-http://my-app.binboi.localhost:8000
-```
-
-## Runtime dependencies
-
-### Core services
-
-- Go 1.25+ for the relay and CLI
-- Node.js 20+ for the web app
-- SQLite for relay state via `BINBOI_DATABASE_PATH`
-- Postgres for product auth and billing via `DATABASE_URL` and `BINBOI_AUTH_DATABASE_URL`
-
-### Optional external integrations
-
-- GitHub OAuth via `AUTH_GITHUB_ID` and `AUTH_GITHUB_SECRET`
-- OpenAI via `OPENAI_API_KEY`, `OPENAI_MODEL`, and `OPENAI_BASE_URL` for assistant responses
-- Paddle via `PADDLE_API_KEY`, `PADDLE_CLIENT_TOKEN`, `PADDLE_WEBHOOK_SECRET`, `PADDLE_PRO_PRICE_ID`, and `PADDLE_SCALE_PRICE_ID`
-- Email delivery provider for production verification, reset, and invite links
-
-See [`docs/api-requirements.md`](./docs/api-requirements.md) for a more explicit dependency list and endpoint map.
-
-## Important environment variables
-
-### Relay
+### Go control plane
 
 - `BINBOI_API_ADDR`
 - `BINBOI_TUNNEL_ADDR`
@@ -130,12 +155,14 @@ See [`docs/api-requirements.md`](./docs/api-requirements.md) for a more explicit
 - `BINBOI_AUTH_TOKEN`
 - `BINBOI_DASHBOARD_URL`
 
-### Web
+### Web app
 
-- `NEXT_PUBLIC_BINBOI_API_BASE`
-- `NEXT_PUBLIC_BINBOI_WS_BASE`
 - `DATABASE_URL`
 - `AUTH_SECRET`
+- `NEXT_PUBLIC_BINBOI_API_BASE`
+- `NEXT_PUBLIC_BINBOI_WS_BASE`
+- `BINBOI_API_BASE`
+- `BINBOI_WS_BASE`
 - `AUTH_GITHUB_ID`
 - `AUTH_GITHUB_SECRET`
 - `OPENAI_API_KEY`
@@ -150,26 +177,47 @@ See [`docs/api-requirements.md`](./docs/api-requirements.md) for a more explicit
 - `PADDLE_SCALE_PRICE_ID`
 - `PADDLE_SCALE_PRODUCT_ID`
 
-## Local development notes
+Detailed setup guidance:
 
-- Without `DATABASE_URL`, the web app can still run in preview mode, but database-backed auth is intentionally disabled.
-- Without `OPENAI_API_KEY`, assistant endpoints stay available but fall back to non-LLM guidance.
-- Without Paddle credentials, pricing UI can render, but paid plan checkout and subscription sync will stay unavailable.
-- Without a production email provider, auth flows can still expose preview links for verification and password reset during development.
+- [`docs/environments.md`](./docs/environments.md)
+- [`docs/api-requirements.md`](./docs/api-requirements.md)
+- [`docs/architecture-overview.md`](./docs/architecture-overview.md)
 
-## Release workflow
+## Deployment notes
 
-- Build a local CLI binary: `make build-cli`
-- Build release archives: `make release-cli VERSION=0.4.0`
-- Homebrew formula template: [`packaging/homebrew/binboi.rb`](./packaging/homebrew/binboi.rb)
-- Release guide: [`docs/releasing-cli.md`](./docs/releasing-cli.md)
+### Local
 
-## Documentation index
+- preview mode can run with SQLite only
+- full-stack local needs both SQLite and Postgres
+
+### Shared dev or staging
+
+- run Go and Next.js as separate services
+- set `BINBOI_API_BASE` in the Next.js environment to the private Go API address
+- keep browser-facing code on the Next.js `/api/controlplane/*` proxy routes
+
+### Production-like
+
+- terminate TLS at your ingress or reverse proxy
+- keep the Go API reachable from Next.js over a private network
+- do not rely on preview token mode
+- use Postgres-backed auth
+
+## Docker
+
+[`docker-compose.yml`](./docker-compose.yml) now reflects the Go control plane plus Postgres split and uses the correct health endpoint: `GET /api/health`.
+
+## Installation helpers
+
+- local source install: `go build -o binboi ./cmd/binboi-client`
+- quick installer: [`install.sh`](./install.sh)
+- Homebrew formula: [`packaging/homebrew/binboi.rb`](./packaging/homebrew/binboi.rb)
+- release notes: [`docs/releasing-cli.md`](./docs/releasing-cli.md)
+
+## Extra docs
 
 - [`CONTRIBUTING.md`](./CONTRIBUTING.md)
 - [`SECURITY.md`](./SECURITY.md)
 - [`LICENSE`](./LICENSE)
-- [`docs/architecture-overview.md`](./docs/architecture-overview.md)
-- [`docs/api-requirements.md`](./docs/api-requirements.md)
 
 _Documentation maintained by Sardor Azimov._

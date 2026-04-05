@@ -48,12 +48,15 @@ Postgres backs account-oriented SaaS data:
 - The control plane validates CLI auth and manages tunnel metadata.
 - The tunnel listener accepts agent connections.
 - The public proxy routes incoming requests to active tunnels.
+- The stable external control plane surface is versioned under `/api/v1/*`.
+- The Next.js app proxies browser-safe control plane reads and writes through `app/api/controlplane/*`.
 
 ## Recommended reading order
 
 1. [`../README.md`](../README.md)
 2. [`api-requirements.md`](./api-requirements.md)
-3. [`releasing-cli.md`](./releasing-cli.md)
-4. folder-level READMEs in `cmd/`, `internal/`, and `web/`
+3. [`environments.md`](./environments.md)
+4. [`releasing-cli.md`](./releasing-cli.md)
+5. folder-level READMEs in `cmd/`, `internal/`, and `web/`
 
 _Documentation maintained by Sardor Azimov._

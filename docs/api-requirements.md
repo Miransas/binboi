@@ -13,15 +13,27 @@ Primary responsibilities:
 - runtime token validation for the CLI
 - public proxy integration
 
-Representative endpoints and channels:
+Stable versioned product endpoints:
+
+- `GET /api/v1/health`
+- `GET /api/v1/instance`
+- `GET /api/v1/nodes`
+- `GET /api/v1/tunnels`
+- `POST /api/v1/tunnels`
+- `DELETE /api/v1/tunnels/:id`
+- `GET /api/v1/events`
+- `GET /api/v1/requests`
+- `GET /api/v1/domains`
+- `POST /api/v1/domains`
+- `POST /api/v1/domains/verify`
+- `GET /api/v1/auth/me`
+
+Legacy or operational endpoints still used internally or for preview administration:
 
 - `/ws/logs`
 - `/api/tokens/current`
 - `/api/tokens/generate`
 - `/api/tokens/revoke`
-- `/api/domains`
-- `/api/domains/verify`
-- `/api/tunnels`
 
 ### Next.js application API
 
@@ -33,6 +45,7 @@ Current route groups include:
 - `app/api/assistant`
 - `app/api/ai/assist`
 - `app/api/stats`
+- `app/api/controlplane/*`
 - `app/api/v1/tokens`
 
 ## Which APIs and services do you actually need?
@@ -109,5 +122,8 @@ Current route groups include:
 - Without `OPENAI_API_KEY`, assistant routes can still answer with fallback guidance, but no live model response is attempted.
 - Without email delivery, auth flows rely on preview links and are not production-complete.
 - Without Paddle configuration, pricing remains informational and billing actions should be treated as incomplete.
+- For split deployments, set `BINBOI_API_BASE` in the Next.js environment so server-side routes can reach the Go control plane over the correct private address.
+
+See [`environments.md`](./environments.md) for local, dev, and production setup guidance.
 
 _Documentation maintained by Sardor Azimov._

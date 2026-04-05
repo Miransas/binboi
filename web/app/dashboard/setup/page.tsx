@@ -39,7 +39,7 @@ export default function SetupPage() {
     async function load() {
       try {
         const [instance, tokensResponse] = await Promise.all([
-          fetchControlPlane<ControlPlaneInstance>("/api/instance"),
+          fetchControlPlane<ControlPlaneInstance>("/api/v1/instance"),
           fetch("/api/v1/tokens", { cache: "no-store" }).then(async (response) => {
             const body = (await response.json()) as {
               limits?: { plan?: "FREE" | "PRO" | "SCALE"; tokens_used?: number };

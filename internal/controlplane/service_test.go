@@ -2,6 +2,7 @@ package controlplane
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -147,6 +148,112 @@ func TestProtectedTunnelRoutesRequireTokenOrTrustedLocal(t *testing.T) {
 	router.ServeHTTP(recorder, localAdmin)
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("local /api/tunnels = %d, want %d", recorder.Code, http.StatusOK)
+	}
+}
+
+func TestV1InstanceRouteReturnsEnvelope(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	service := newTestService(t)
+	router := gin.New()
+	service.RegisterRoutes(router)
+
+	request := httptest.NewRequest(http.MethodGet, "/api/v1/instance", nil)
+	request.RemoteAddr = "127.0.0.1:4040"
+	recorder := httptest.NewRecorder()
+	router.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("/api/v1/instance = %d, want %d", recorder.Code, http.StatusOK)
+	}
+
+	var payload struct {
+		Data InstanceResponse `json:"data"`
+		Meta APIMeta          `json:"meta"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode /api/v1/instance response: %v", err)
+	}
+
+	if payload.Data.ManagedDomain != "binboi.localhost" {
+		t.Fatalf("managed domain = %q, want %q", payload.Data.ManagedDomain, "binboi.localhost")
+	}
+	if payload.Meta.InstanceName == "" {
+		t.Fatal("expected meta.instance_name to be populated")
+	}
+}
+
+func TestV1TunnelListReturnsEnvelopeAndHonorsScope(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	service := newTestService(t)
+	service.authProvider = stubAuthProvider{
+		enabled: true,
+		identity: &AuthIdentity{
+			UserID:      "user_123",
+			Email:       "dev@binboi.test",
+			Plan:        "PRO",
+			TokenPrefix: "binboi_pat_test",
+			AuthMode:    "personal-access-token",
+		},
+	}
+
+	activeAt := time.Now().UTC()
+	if err := service.db.Create(&TunnelRecord{
+		ID:              "active_tunnel",
+		Subdomain:       "alpha",
+		OwnerUserID:     "user_123",
+		OwnerEmail:      "dev@binboi.test",
+		Target:          "http://localhost:3000",
+		TargetPort:      3000,
+		Status:          "ACTIVE",
+		Region:          "local",
+		LastConnectedAt: &activeAt,
+	}).Error; err != nil {
+		t.Fatalf("insert active tunnel: %v", err)
+	}
+	if err := service.db.Create(&TunnelRecord{
+		ID:          "inactive_tunnel",
+		Subdomain:   "beta",
+		OwnerUserID: "user_123",
+		OwnerEmail:  "dev@binboi.test",
+		Target:      "http://localhost:4000",
+		TargetPort:  4000,
+		Status:      "INACTIVE",
+		Region:      "local",
+	}).Error; err != nil {
+		t.Fatalf("insert inactive tunnel: %v", err)
+	}
+
+	router := gin.New()
+	service.RegisterRoutes(router)
+
+	request := httptest.NewRequest(http.MethodGet, "/api/v1/tunnels?scope=active", nil)
+	request.RemoteAddr = "8.8.8.8:4040"
+	request.Header.Set("Authorization", "Bearer binboi_pat_test_secret")
+	recorder := httptest.NewRecorder()
+	router.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("/api/v1/tunnels?scope=active = %d, want %d", recorder.Code, http.StatusOK)
+	}
+
+	var payload struct {
+		Data []TunnelResponse `json:"data"`
+		Meta APIMeta          `json:"meta"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode /api/v1/tunnels response: %v", err)
+	}
+
+	if len(payload.Data) != 1 {
+		t.Fatalf("active tunnel count = %d, want 1", len(payload.Data))
+	}
+	if payload.Data[0].Status != "ACTIVE" {
+		t.Fatalf("tunnel status = %q, want ACTIVE", payload.Data[0].Status)
+	}
+	if payload.Meta.AccessScope != "token" {
+		t.Fatalf("access scope = %q, want %q", payload.Meta.AccessScope, "token")
 	}
 }
 

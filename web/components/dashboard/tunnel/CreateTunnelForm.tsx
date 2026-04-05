@@ -14,7 +14,7 @@ export default function CreateTunnelForm({ onSuccess }: { onSuccess: () => void 
     setLoading(true);
 
     try {
-      await fetchControlPlane("/api/tunnels", {
+      await fetchControlPlane("/api/v1/tunnels", {
         method: "POST",
         body: JSON.stringify({
           subdomain: formData.subdomain,

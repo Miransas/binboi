@@ -17,24 +17,23 @@ services:
       BINBOI_API_ADDR: ":8080"
       BINBOI_TUNNEL_ADDR: ":8081"
       BINBOI_PROXY_ADDR: ":8000"
-
       BINBOI_BASE_DOMAIN: "binboi.localhost"
       BINBOI_PUBLIC_SCHEME: "http"
       BINBOI_PUBLIC_PORT: "8000"
-
       BINBOI_DATABASE_PATH: "/data/binboi.db"
-
-      BINBOI_ENV: "development"
-      BINBOI_LOG_LEVEL: "debug"
+      BINBOI_AUTH_DATABASE_URL: "postgresql://binboi:binboi@postgres:5432/binboi?sslmode=disable"
 
     volumes:
       - binboi-data:/data
 
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/health"]
       interval: 10s
       timeout: 3s
       retries: 5
+
+    depends_on:
+      - postgres
 
     networks:
       - binboi-net

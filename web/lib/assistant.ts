@@ -232,7 +232,11 @@ async function fetchJson<T>(path: string, timeoutMs = CONTROL_PLANE_TIMEOUT_MS):
     if (!response.ok) {
       return null;
     }
-    return (await response.json()) as T;
+    const payload = (await response.json()) as { data?: T } | T;
+    if (payload && typeof payload === "object" && "data" in payload) {
+      return payload.data ?? null;
+    }
+    return payload as T;
   } catch {
     return null;
   } finally {
@@ -764,10 +768,10 @@ export async function runAssistantAssist(
   const suggestions = buildTroubleshootingHints(query, context).slice(0, 4);
 
   const [instance, tunnels, events, requests] = await Promise.all([
-    fetchJson<RuntimeInstance>("/api/instance"),
-    fetchJson<RuntimeTunnel[]>("/api/tunnels"),
-    fetchJson<RuntimeEvent[]>("/api/events"),
-    fetchJson<RuntimeRequest[]>("/api/requests"),
+    fetchJson<RuntimeInstance>("/api/v1/instance"),
+    fetchJson<RuntimeTunnel[]>("/api/v1/tunnels"),
+    fetchJson<RuntimeEvent[]>("/api/v1/events"),
+    fetchJson<RuntimeRequest[]>("/api/v1/requests"),
   ]);
 
   const runtimeAvailable = Boolean(instance || tunnels || events || requests);
