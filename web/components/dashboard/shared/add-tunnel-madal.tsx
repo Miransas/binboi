@@ -4,6 +4,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, Globe, Server, ArrowRight } from "lucide-react";
 import { useState } from "react";
 
+import { fetchControlPlane } from "@/lib/controlplane";
+
 interface AddTunnelModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -19,22 +21,19 @@ export default function AddTunnelModal({ isOpen, onClose, onSuccess }: AddTunnel
     setLoading(true);
     
     try {
-      const res = await fetch("http://localhost:8080/api/tunnels", {
+      await fetchControlPlane("/api/tunnels", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           subdomain: formData.subdomain,
           target: `http://localhost:${formData.target}`,
-          status: "INACTIVE"
+          region: "local",
         }),
       });
 
-      if (res.ok) {
-        onSuccess();
-        onClose();
-      }
-    } catch {
-      console.error("🔴 [LINK_FAILED]: Could not create tunnel.");
+      onSuccess();
+      onClose();
+    } catch (error) {
+      console.error("🔴 [LINK_FAILED]: Could not create tunnel.", error);
     } finally {
       setLoading(false);
     }

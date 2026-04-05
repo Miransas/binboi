@@ -1,0 +1,6 @@
+./ddlmod.go
+./ddlmod_parse_all_columns.go
+./error_translator.go
+./errors.go
+./migrator.go
+./sqlite.go

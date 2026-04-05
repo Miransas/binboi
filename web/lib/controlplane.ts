@@ -1,5 +1,3 @@
-import { buildApiUrl } from "@/lib/binboi";
-
 export type ControlPlaneTunnel = {
   id: string;
   subdomain: string;
@@ -79,8 +77,13 @@ export type ControlPlaneInstance = {
   reserved_tunnels: number;
 };
 
+export function buildControlPlaneProxyUrl(path: string) {
+  const normalized = path.startsWith("/") ? path : `/${path}`;
+  return `/api/controlplane${normalized}`;
+}
+
 export async function fetchControlPlane<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(buildApiUrl(path), {
+  const response = await fetch(buildControlPlaneProxyUrl(path), {
     ...init,
     headers: {
       "Content-Type": "application/json",

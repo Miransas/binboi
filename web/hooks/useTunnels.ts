@@ -1,8 +1,11 @@
 "use client";
 
-import useSWR from 'swr';
-import { buildApiUrl } from '@/lib/binboi';
-import type { ControlPlaneTunnel } from '@/lib/controlplane';
+import useSWR from "swr";
+
+import {
+  buildControlPlaneProxyUrl,
+  type ControlPlaneTunnel,
+} from "@/lib/controlplane";
 
 const fetcher = async (url: string) => {
   const res = await fetch(url);
@@ -14,15 +17,15 @@ const fetcher = async (url: string) => {
 
 export function useTunnels() {
   const { data, error, mutate } = useSWR(
-    buildApiUrl(`/api/tunnels`),
+    buildControlPlaneProxyUrl("/api/tunnels"),
     fetcher,
-    { refreshInterval: 5000, revalidateOnFocus: false }
+    { refreshInterval: 5000, revalidateOnFocus: false },
   );
 
   return {
     tunnels: (Array.isArray(data) ? data : []) as ControlPlaneTunnel[],
     isLoading: !error && !data,
     isError: error,
-    refresh: mutate
+    refresh: mutate,
   };
 }

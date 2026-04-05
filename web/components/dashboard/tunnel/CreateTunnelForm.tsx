@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { useSession } from "next-auth/react";
+
+import { fetchControlPlane } from "@/lib/controlplane";
 
 export default function CreateTunnelForm({ onSuccess }: { onSuccess: () => void }) {
-  const { data: session } = useSession();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({ subdomain: "", target: "localhost:3000" });
 
@@ -14,54 +14,52 @@ export default function CreateTunnelForm({ onSuccess }: { onSuccess: () => void 
     setLoading(true);
 
     try {
-      const res = await fetch("http://localhost:8080/api/tunnels", {
+      await fetchControlPlane("/api/tunnels", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          user_id: session?.user?.id,
           subdomain: formData.subdomain,
           target: formData.target,
-          region: "eu-central",
+          region: "local",
         }),
       });
 
-      const data = await res.json();
-
-      if (res.ok) {
-        alert("✨ Neural Tunnel Established!");
-        onSuccess(); // Listeyi yenilemek için
-      } else {
-        alert(`🔴 Error: ${data.error}`);
-      }
-    } catch {
-      alert("🔴 Binboi Core Server is offline!");
+      alert("✨ Neural Tunnel Established!");
+      onSuccess();
+    } catch (error) {
+      alert(
+        `🔴 Error: ${error instanceof Error ? error.message : "Binboi control plane is offline."}`,
+      );
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <motion.form 
-      initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-      onSubmit={handleSubmit} className="p-6 bg-[#0d0d0d] border border-white/10 rounded-2xl space-y-4"
+    <motion.form
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      onSubmit={handleSubmit}
+      className="space-y-4 rounded-2xl border border-white/10 bg-[#0d0d0d] p-6"
     >
       <div>
         <label className="text-[10px] font-mono text-gray-500 uppercase">Desired Subdomain</label>
-        <input 
-          type="text" placeholder="sazlab"
+        <input
+          type="text"
+          placeholder="sazlab"
           className="w-full bg-white/5 border border-white/10 p-3 rounded-lg text-miransas-cyan outline-none focus:border-miransas-cyan/50"
-          onChange={(e) => setFormData({...formData, subdomain: e.target.value})}
+          onChange={(e) => setFormData({ ...formData, subdomain: e.target.value })}
         />
       </div>
       <div>
         <label className="text-[10px] font-mono text-gray-500 uppercase">Local Target</label>
-        <input 
-          type="text" placeholder="localhost:3000"
+        <input
+          type="text"
+          placeholder="localhost:3000"
           className="w-full bg-white/5 border border-white/10 p-3 rounded-lg text-white outline-none"
-          onChange={(e) => setFormData({...formData, target: e.target.value})}
+          onChange={(e) => setFormData({ ...formData, target: e.target.value })}
         />
       </div>
-      <button 
+      <button
         disabled={loading}
         className="w-full bg-miransas-cyan text-black font-bold p-3 rounded-lg hover:shadow-[0_0_20px_rgba(0,255,209,0.3)] disabled:opacity-50"
       >

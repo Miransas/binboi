@@ -4,6 +4,7 @@ This folder contains the Next.js route handlers used by the product site.
 
 Current route groups include:
 
+- `controlplane/`: safe proxy layer for browser-facing control plane requests
 - `auth/`: custom auth APIs plus NextAuth handler
 - `billing/`: checkout and plan management
 - `paddle/`: webhook intake

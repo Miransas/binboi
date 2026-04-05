@@ -2,8 +2,10 @@
 
 import useSWR from "swr";
 
-import { buildApiUrl } from "@/lib/binboi";
-import type { ControlPlaneRequest } from "@/lib/controlplane";
+import {
+  buildControlPlaneProxyUrl,
+  type ControlPlaneRequest,
+} from "@/lib/controlplane";
 
 const fetcher = async (url: string) => {
   const response = await fetch(url, { cache: "no-store" });
@@ -14,7 +16,7 @@ const fetcher = async (url: string) => {
 };
 
 export function useRequests() {
-  const { data, error, mutate } = useSWR(buildApiUrl("/api/requests"), fetcher, {
+  const { data, error, mutate } = useSWR(buildControlPlaneProxyUrl("/api/requests"), fetcher, {
     refreshInterval: 4000,
     revalidateOnFocus: false,
   });
