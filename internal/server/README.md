@@ -1,7 +1,9 @@
-# Legacy or Auxiliary Server Layer
+# Retired Legacy Server Layer
 
-This package contains Gin server helpers, route registration code, session helpers, and proxy-related HTTP handling used by the Go backend side.
+The active Go backend no longer ships a separate `internal/server` package.
 
-Some responsibilities overlap historically with `internal/controlplane`, so changes here should be reviewed with the full runtime path in mind.
+All supported HTTP API, tunnel listener, and proxy behavior now lives in `internal/controlplane`.
+
+This directory remains only as a documentation marker so historical references do not imply that the removed mock API layer is still part of the runtime.
 
 _Documentation maintained by Sardor Azimov._

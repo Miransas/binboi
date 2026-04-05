@@ -1,12 +1,13 @@
+import type { ControlPlaneRequest } from "@/lib/controlplane";
 import type { AssistantContext } from "@/lib/assistant-types";
 
 export type WebhookDeliveryStatus = "SUCCESS" | "FAILED" | "RETRYING";
 
 export type WebhookDeliveryRecord = {
   id: string;
-  provider: "Stripe" | "Clerk" | "Supabase" | "GitHub" | "Linear" | "Neon";
+  provider: string;
   eventType: string;
-  method: "POST";
+  method: string;
   path: string;
   status: number;
   deliveryStatus: WebhookDeliveryStatus;
@@ -24,7 +25,7 @@ export type WebhookDeliveryRecord = {
   responseHeaders: string[];
 };
 
-export const webhookDeliveryRecords: WebhookDeliveryRecord[] = [
+export const previewWebhookDeliveryRecords: WebhookDeliveryRecord[] = [
   {
     id: "wh_01h-stripe-signature",
     provider: "Stripe",
@@ -250,6 +251,134 @@ export const webhookDeliveryRecords: WebhookDeliveryRecord[] = [
     responseHeaders: ["content-type: text/plain"],
   },
 ];
+
+export const webhookDeliveryRecords = previewWebhookDeliveryRecords;
+
+function inferProviderFromPath(path: string) {
+  const lower = path.toLowerCase();
+  if (lower.includes("stripe")) {
+    return "Stripe";
+  }
+  if (lower.includes("clerk")) {
+    return "Clerk";
+  }
+  if (lower.includes("supabase")) {
+    return "Supabase";
+  }
+  if (lower.includes("github")) {
+    return "GitHub";
+  }
+  if (lower.includes("linear")) {
+    return "Linear";
+  }
+  if (lower.includes("neon")) {
+    return "Neon";
+  }
+  return "Webhook";
+}
+
+function inferSignatureHeader(
+  provider: string,
+  requestHeaders: string[] | undefined,
+) {
+  const knownHeader = requestHeaders?.find((header) => {
+    const lower = header.toLowerCase();
+    return (
+      lower.startsWith("stripe-signature:") ||
+      lower.startsWith("svix-signature:") ||
+      lower.startsWith("x-supabase-signature:") ||
+      lower.startsWith("x-hub-signature-256:") ||
+      lower.startsWith("linear-signature:")
+    );
+  });
+
+  if (knownHeader) {
+    return knownHeader.split(":")[0]?.trim().toLowerCase();
+  }
+
+  switch (provider) {
+    case "Stripe":
+      return "stripe-signature";
+    case "Clerk":
+      return "svix-signature";
+    case "Supabase":
+      return "x-supabase-signature";
+    case "GitHub":
+      return "x-hub-signature-256";
+    case "Linear":
+      return "linear-signature";
+    default:
+      return undefined;
+  }
+}
+
+function inferDeliveryStatus(record: ControlPlaneRequest): WebhookDeliveryStatus {
+  if (record.status < 400) {
+    return "SUCCESS";
+  }
+
+  const classification = `${record.error_type || ""} ${record.response_preview || ""}`.toUpperCase();
+  if (
+    record.status === 502 ||
+    record.status === 503 ||
+    record.status === 504 ||
+    classification.includes("TIMEOUT") ||
+    classification.includes("BAD_GATEWAY") ||
+    classification.includes("SERVICE_UNAVAILABLE")
+  ) {
+    return "RETRYING";
+  }
+
+  return "FAILED";
+}
+
+function estimateRetries(status: WebhookDeliveryStatus, record: ControlPlaneRequest) {
+  if (status === "RETRYING") {
+    return 1;
+  }
+  if (status === "FAILED" && record.status >= 500) {
+    return 1;
+  }
+  return 0;
+}
+
+export function buildWebhookDeliveryRecordsFromRequests(
+  requests: ControlPlaneRequest[],
+): WebhookDeliveryRecord[] {
+  return requests
+    .filter((record) => (record.kind || "").toUpperCase() === "WEBHOOK")
+    .map((record) => {
+      const provider = record.provider || inferProviderFromPath(record.path || "");
+      const deliveryStatus = inferDeliveryStatus(record);
+
+      return {
+        id: record.id,
+        provider,
+        eventType: record.event_type || "Unclassified event",
+        method: record.method || "POST",
+        path: record.path || "/",
+        status: record.status,
+        deliveryStatus,
+        destination: record.destination || record.target || "Unknown destination",
+        receivedAt: record.created_at,
+        durationMs: record.duration_ms,
+        retries: estimateRetries(deliveryStatus, record),
+        errorClassification: record.error_type || undefined,
+        tunnelId: record.tunnel_id,
+        source: record.source || "Dashboard live delivery stream",
+        requestPreview:
+          record.request_preview || `${record.method || "POST"} ${record.path || "/"}`,
+        payloadPreview: record.payload_preview || "No payload preview was captured.",
+        responsePreview: record.response_preview || "No response preview was captured.",
+        signatureHeader: inferSignatureHeader(provider, record.request_headers),
+        responseHeaders: record.response_headers ?? [],
+      } satisfies WebhookDeliveryRecord;
+    })
+    .sort(
+      (left, right) =>
+        new Date(right.receivedAt).getTime() - new Date(left.receivedAt).getTime(),
+    );
+}
 
 export function buildAssistantContextForDelivery(record: WebhookDeliveryRecord): AssistantContext {
   return {

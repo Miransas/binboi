@@ -1,7 +1,9 @@
-# Go Models
+# Retired Go Models
 
-This package contains shared Go data models used across the relay and persistence layers.
+The active Go runtime no longer depends on a shared `internal/models` package.
 
-Keep structs here focused on shared backend/runtime concerns rather than CLI presentation details.
+Runtime structs now live closer to the active subsystems that own them, primarily inside `internal/controlplane`.
+
+This directory remains only as a documentation marker for historical references.
 
 _Documentation maintained by Sardor Azimov._

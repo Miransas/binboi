@@ -1,0 +1,13 @@
+# test log
+getenv TMPDIR
+open /var/folders/g9/5lfc90qd3mn9qf5lv_6fmv5r0000gn/T
+getenv TMPDIR
+open /var/folders/g9/5lfc90qd3mn9qf5lv_6fmv5r0000gn/T
+getenv TMPDIR
+open /var/folders/g9/5lfc90qd3mn9qf5lv_6fmv5r0000gn/T
+getenv TMPDIR
+open /var/folders/g9/5lfc90qd3mn9qf5lv_6fmv5r0000gn/T
+getenv TMPDIR
+open /var/folders/g9/5lfc90qd3mn9qf5lv_6fmv5r0000gn/T
+getenv TMPDIR
+open /var/folders/g9/5lfc90qd3mn9qf5lv_6fmv5r0000gn/T

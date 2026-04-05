@@ -4,9 +4,24 @@ import useSWR from "swr";
 
 import { fetchControlPlane, type ControlPlaneRequest } from "@/lib/controlplane";
 
-export function useRequests() {
-  const { data, error, mutate } = useSWR("/api/v1/requests", (path: string) =>
-    fetchControlPlane<ControlPlaneRequest[]>(path), {
+type UseRequestsOptions = {
+  kind?: "REQUEST" | "WEBHOOK";
+};
+
+function buildRequestsPath(options?: UseRequestsOptions) {
+  const params = new URLSearchParams();
+  if (options?.kind) {
+    params.set("kind", options.kind);
+  }
+
+  const query = params.toString();
+  return query ? `/api/v1/requests?${query}` : "/api/v1/requests";
+}
+
+export function useRequests(options?: UseRequestsOptions) {
+  const path = buildRequestsPath(options);
+  const { data, error, mutate } = useSWR(path, (requestPath: string) =>
+    fetchControlPlane<ControlPlaneRequest[]>(requestPath), {
     refreshInterval: 4000,
     revalidateOnFocus: false,
   });

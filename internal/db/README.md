@@ -1,10 +1,9 @@
-# Go Storage Layer
+# Retired Go Storage Layer
 
-This package contains Go-side persistence helpers for relay data and runtime token state.
+The active Go runtime no longer uses this package.
 
-It currently bridges:
+Binboi now keeps runtime relay persistence inside `internal/controlplane` and product auth data in the web-side database layer under `web/db`.
 
-- SQLite-backed relay data
-- Postgres-backed product auth references where needed
+This directory remains only as a documentation marker so older references do not imply that mock token or tunnel stores are still part of the shipped runtime.
 
 _Documentation maintained by Sardor Azimov._

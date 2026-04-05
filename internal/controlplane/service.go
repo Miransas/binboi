@@ -830,7 +830,7 @@ func (s *Service) handleListEvents(c *gin.Context) {
 }
 
 func (s *Service) handleListRequests(c *gin.Context) {
-	requests, err := s.listRequests(maxRecentRequestRows, currentRequestAccess(c))
+	requests, err := s.listRequests(maxRecentRequestRows, currentRequestAccess(c), c.Query("kind"))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list requests"})
 		return
@@ -1096,7 +1096,7 @@ func (s *Service) handleV1ListRequests(c *gin.Context) {
 	access := currentRequestAccess(c)
 	meta := s.apiMeta(access)
 	limit := parsePositiveLimit(c.Query("limit"), maxRecentRequestRows, 500)
-	requests, err := s.listRequests(limit, access)
+	requests, err := s.listRequests(limit, access, c.Query("kind"))
 	if err != nil {
 		writeV1Error(c, http.StatusInternalServerError, meta, "REQUESTS_LIST_FAILED", "failed to list requests")
 		return
@@ -1601,12 +1601,27 @@ func (s *Service) listEvents(limit int, access requestAccess) ([]EventResponse, 
 	return response, nil
 }
 
-func (s *Service) listRequests(limit int, access requestAccess) ([]RequestResponse, error) {
+func normalizeRequestKindFilter(raw string) string {
+	value := strings.ToUpper(strings.TrimSpace(raw))
+	switch value {
+	case "", "ALL":
+		return ""
+	case "REQUEST", "WEBHOOK":
+		return value
+	default:
+		return ""
+	}
+}
+
+func (s *Service) listRequests(limit int, access requestAccess, kindFilter string) ([]RequestResponse, error) {
 	var records []RequestRecord
 	query := s.db.Model(&RequestRecord{})
 	if access.Identity != nil && s.authProvider != nil && s.authProvider.Enabled() {
 		query = query.Joins("JOIN tunnel_records ON tunnel_records.id = request_records.tunnel_id").
 			Where("tunnel_records.owner_user_id = ?", access.Identity.UserID)
+	}
+	if normalizedKind := normalizeRequestKindFilter(kindFilter); normalizedKind != "" {
+		query = query.Where("request_records.kind = ?", normalizedKind)
 	}
 	if err := query.Order("request_records.created_at desc").Limit(limit).Find(&records).Error; err != nil {
 		return nil, err

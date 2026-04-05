@@ -17,7 +17,8 @@ import { WebhookDeliveryCard } from "@/components/dashboard/webhooks/webhook-del
 import { WebhookDeliveryDrawer } from "@/components/dashboard/webhooks/webhook-delivery-drawer";
 import {
   buildAssistantContextForDelivery,
-  webhookDeliveryRecords,
+  buildWebhookDeliveryRecordsFromRequests,
+  previewWebhookDeliveryRecords,
   type WebhookDeliveryRecord,
 } from "@/lib/webhook-debug-data";
 import {
@@ -26,6 +27,7 @@ import {
   DashboardSurface,
   DashboardTimeline,
 } from "@/components/dashboard/shared/dashboard-primitives";
+import { useRequests } from "@/hooks/useRequests";
 
 const providerNotes = [
   {
@@ -44,22 +46,32 @@ const providerNotes = [
 
 export function WebhookDebugWorkbench() {
   const pathname = usePathname();
+  const { requests, isError, isLoading } = useRequests({ kind: "WEBHOOK" });
   const [query, setQuery] = useState("");
   const [provider, setProvider] = useState<"ALL" | WebhookDeliveryRecord["provider"]>("ALL");
   const [status, setStatus] = useState<"ALL" | WebhookDeliveryRecord["deliveryStatus"]>("ALL");
   const [failedOnly, setFailedOnly] = useState(false);
-  const [selectedId, setSelectedId] = useState<string | null>(webhookDeliveryRecords[0]?.id ?? null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
+  const dataMode = isError ? "fallback" : requests.length > 0 ? "live" : isLoading ? "loading" : "empty";
+  const deliveries = useMemo(
+    () =>
+      dataMode === "fallback"
+        ? previewWebhookDeliveryRecords
+        : buildWebhookDeliveryRecordsFromRequests(requests),
+    [dataMode, requests],
+  );
+
   const providers = useMemo(
-    () => ["ALL", ...new Set(webhookDeliveryRecords.map((record) => record.provider))] as const,
-    [],
+    () => ["ALL", ...new Set(deliveries.map((record) => record.provider))] as const,
+    [deliveries],
   );
 
   const filtered = useMemo(() => {
     const lower = query.trim().toLowerCase();
 
-    return webhookDeliveryRecords.filter((record) => {
+    return deliveries.filter((record) => {
       if (provider !== "ALL" && record.provider !== provider) {
         return false;
       }
@@ -88,19 +100,19 @@ export function WebhookDebugWorkbench() {
 
       return haystack.includes(lower);
     });
-  }, [failedOnly, provider, query, status]);
+  }, [deliveries, failedOnly, provider, query, status]);
 
   const selected =
     filtered.find((record) => record.id === selectedId) ??
     filtered[0] ??
     null;
 
-  const failedCount = webhookDeliveryRecords.filter((record) => record.deliveryStatus === "FAILED").length;
-  const retryingCount = webhookDeliveryRecords.filter((record) => record.deliveryStatus === "RETRYING").length;
-  const avgLatency = Math.round(
-    webhookDeliveryRecords.reduce((total, record) => total + record.durationMs, 0) /
-      webhookDeliveryRecords.length,
-  );
+  const failedCount = deliveries.filter((record) => record.deliveryStatus === "FAILED").length;
+  const retryingCount = deliveries.filter((record) => record.deliveryStatus === "RETRYING").length;
+  const avgLatency =
+    deliveries.length > 0
+      ? Math.round(deliveries.reduce((total, record) => total + record.durationMs, 0) / deliveries.length)
+      : 0;
   const selectedTimeline =
     selected
       ? ([
@@ -147,7 +159,7 @@ export function WebhookDebugWorkbench() {
       summary:
         selected
           ? `Webhook debugger is focused on ${selected.provider} ${selected.eventType} with delivery status ${selected.deliveryStatus} and response ${selected.status}.`
-          : `Webhook debugger has ${filtered.length} filtered deliveries ready for inspection.`,
+          : `Webhook debugger has ${filtered.length} filtered deliveries ready for inspection in ${dataMode} mode.`,
     },
     requestContext: selected
       ? buildAssistantContextForDelivery(selected).requestContext
@@ -176,9 +188,13 @@ export function WebhookDebugWorkbench() {
               Feed model
             </p>
             <p className="mt-3 text-sm leading-7 text-zinc-300">
-              This debugger uses a realistic provider replay model so Stripe, Clerk, Supabase,
-              GitHub, Linear, and Neon delivery failures stay explorable even before Binboi
-              stores dedicated webhook delivery rows separately from the core request stream.
+              {dataMode === "live"
+                ? "These delivery rows are derived from live control-plane request records tagged as webhook traffic."
+                : dataMode === "fallback"
+                  ? "The control plane is unreachable right now, so Binboi is showing replay deliveries to keep the webhook workflow explorable."
+                  : dataMode === "loading"
+                    ? "Binboi is loading recent webhook traffic from the control plane."
+                    : "No live webhook deliveries have been captured yet. The debugger will populate as soon as a webhook reaches an active tunnel."}
             </p>
           </DashboardSurface>
         </div>
@@ -279,12 +295,29 @@ export function WebhookDebugWorkbench() {
 
         <section className="mt-10 grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_0.9fr]">
           <div className="space-y-4">
-            {filtered.length === 0 ? (
+            {isLoading && dataMode === "loading" ? (
               <DashboardSurface accent="neutral" className="border-dashed p-8">
-                <p className="text-sm leading-7 text-zinc-500">
-                  No deliveries matched the current filters. Broaden the provider or status
-                  filters, or search for a different event type.
+                <p className="text-sm leading-7 text-zinc-400">
+                  Loading recent webhook deliveries from the control plane...
                 </p>
+              </DashboardSurface>
+            ) : filtered.length === 0 ? (
+              <DashboardSurface accent="neutral" className="border-dashed p-8">
+                {dataMode === "empty" && !query && provider === "ALL" && status === "ALL" && !failedOnly ? (
+                  <div className="space-y-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-zinc-500">
+                      Waiting for the first live delivery
+                    </p>
+                    <p className="text-sm leading-7 text-zinc-400">
+                      No webhook requests have reached your tunnels yet. Trigger Stripe, GitHub, Clerk, or another provider against a live Binboi URL and this feed will fill automatically.
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-sm leading-7 text-zinc-500">
+                    No deliveries matched the current filters. Broaden the provider or status
+                    filters, or search for a different event type.
+                  </p>
+                )}
               </DashboardSurface>
             ) : (
               filtered.map((record) => (

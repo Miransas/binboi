@@ -33,10 +33,10 @@ export function RequestDebugWorkbench() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  const dataMode = isError ? "fallback" : requests.length > 0 ? "live" : "preview";
+  const dataMode = isError ? "fallback" : requests.length > 0 ? "live" : isLoading ? "loading" : "empty";
   const sourceRecords = useMemo(
     () =>
-      (dataMode === "live" ? requests : previewRequestRecords).map((record) =>
+      (dataMode === "fallback" ? previewRequestRecords : requests).map((record) =>
         normalizeRequestRecord(record),
       ),
     [dataMode, requests],
@@ -124,7 +124,9 @@ export function RequestDebugWorkbench() {
       summary:
         dataMode === "live"
           ? "The requests page is backed by live control-plane inspection records."
-          : "The requests page is using preview replay traffic because live inspection records are not available yet.",
+          : dataMode === "fallback"
+            ? "The requests page is using preview replay traffic because the control plane is unavailable."
+            : "The requests page is waiting for live inspection records from the control plane.",
     },
   });
 
@@ -185,7 +187,9 @@ export function RequestDebugWorkbench() {
                 ? "Live relay inspection is active. These records were captured from the control plane while traffic moved through public tunnel URLs."
                 : dataMode === "fallback"
                   ? "The control plane is unreachable right now, so Binboi is showing preview replay traffic to keep the debugging workflow explorable."
-                  : "No live requests have been captured yet, so Binboi is showing preview replay traffic until the first tunnel request arrives."}
+                  : dataMode === "loading"
+                    ? "Binboi is loading recent request records from the control plane."
+                    : "No live requests have been captured yet. The feed will populate automatically after the first request reaches an active tunnel."}
             </p>
           </DashboardSurface>
         </div>
@@ -298,23 +302,39 @@ export function RequestDebugWorkbench() {
 
         <div className="mt-8 grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(22rem,0.9fr)]">
           <div className="space-y-4">
-            {isLoading && dataMode === "live" ? (
+            {isLoading && dataMode === "loading" ? (
               <DashboardSurface accent="neutral" className="px-6 py-10 text-sm text-zinc-400">
                 Inspecting the control plane for recent request records...
               </DashboardSurface>
             ) : filtered.length === 0 ? (
               <DashboardSurface accent="neutral" className="px-6 py-10">
                 <div className="mx-auto max-w-xl text-center">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-zinc-500">
-                    No matching traffic
-                  </p>
-                  <h2 className="mt-4 text-2xl font-semibold text-white">
-                    Your filters currently hide every request in the inspection stream.
-                  </h2>
-                  <p className="mt-3 text-sm leading-7 text-zinc-400">
-                    Clear the current search or switch back to all statuses so the request feed can
-                    show matching records again.
-                  </p>
+                  {dataMode === "empty" && !query && kind === "ALL" && status === "ALL" ? (
+                    <>
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-zinc-500">
+                        Waiting for the first request
+                      </p>
+                      <h2 className="mt-4 text-2xl font-semibold text-white">
+                        The request feed is ready as soon as your public URL sees traffic.
+                      </h2>
+                      <p className="mt-3 text-sm leading-7 text-zinc-400">
+                        Start a tunnel, hit its public URL once, and Binboi will store the request line, latency, previews, and response details here.
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-zinc-500">
+                        No matching traffic
+                      </p>
+                      <h2 className="mt-4 text-2xl font-semibold text-white">
+                        Your filters currently hide every request in the inspection stream.
+                      </h2>
+                      <p className="mt-3 text-sm leading-7 text-zinc-400">
+                        Clear the current search or switch back to all statuses so the request feed can
+                        show matching records again.
+                      </p>
+                    </>
+                  )}
                 </div>
               </DashboardSurface>
             ) : (

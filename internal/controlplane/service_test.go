@@ -348,7 +348,7 @@ func TestListRequestsFiltersByOwner(t *testing.T) {
 
 	requests, err := service.listRequests(20, requestAccess{
 		Identity: &AuthIdentity{UserID: "user_a"},
-	})
+	}, "")
 	if err != nil {
 		t.Fatalf("listRequests returned error: %v", err)
 	}
@@ -357,5 +357,59 @@ func TestListRequestsFiltersByOwner(t *testing.T) {
 	}
 	if requests[0].TunnelSubdomain != "alpha" {
 		t.Fatalf("listRequests()[0].TunnelSubdomain = %q, want %q", requests[0].TunnelSubdomain, "alpha")
+	}
+}
+
+func TestListRequestsHonorsKindFilter(t *testing.T) {
+	service := newTestService(t)
+
+	now := time.Now().UTC()
+	tunnel := TunnelRecord{
+		ID:         "tunnel_a",
+		Subdomain:  "alpha",
+		Target:     "http://localhost:3000",
+		TargetPort: 3000,
+		Status:     "ACTIVE",
+		Region:     "local",
+		CreatedAt:  now,
+	}
+	if err := service.db.Create(&tunnel).Error; err != nil {
+		t.Fatalf("insert tunnel: %v", err)
+	}
+
+	if err := service.db.Create(&RequestRecord{
+		ID:              "req_standard",
+		TunnelID:        tunnel.ID,
+		TunnelSubdomain: tunnel.Subdomain,
+		Kind:            "REQUEST",
+		Method:          http.MethodGet,
+		Path:            "/health",
+		Status:          http.StatusOK,
+		CreatedAt:       now,
+	}).Error; err != nil {
+		t.Fatalf("insert standard request: %v", err)
+	}
+	if err := service.db.Create(&RequestRecord{
+		ID:              "req_webhook",
+		TunnelID:        tunnel.ID,
+		TunnelSubdomain: tunnel.Subdomain,
+		Kind:            "WEBHOOK",
+		Method:          http.MethodPost,
+		Path:            "/api/webhooks/stripe",
+		Status:          http.StatusAccepted,
+		CreatedAt:       now.Add(time.Second),
+	}).Error; err != nil {
+		t.Fatalf("insert webhook request: %v", err)
+	}
+
+	requests, err := service.listRequests(20, requestAccess{TrustedLocal: true}, "WEBHOOK")
+	if err != nil {
+		t.Fatalf("listRequests with kind filter returned error: %v", err)
+	}
+	if len(requests) != 1 {
+		t.Fatalf("listRequests(kind=WEBHOOK) len = %d, want 1", len(requests))
+	}
+	if requests[0].Kind != "WEBHOOK" {
+		t.Fatalf("listRequests(kind=WEBHOOK)[0].Kind = %q, want %q", requests[0].Kind, "WEBHOOK")
 	}
 }

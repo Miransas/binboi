@@ -1,6 +1,6 @@
 # Go Internals
 
-This folder contains the Go implementation for the relay, control plane, CLI support, storage, and protocol layers.
+This folder contains the active Go implementation for the relay, control plane, CLI support, auth integration, and protocol layers.
 
 Subfolders are organized by subsystem:
 
@@ -9,11 +9,10 @@ Subfolders are organized by subsystem:
 - `client/`
 - `config/`
 - `controlplane/`
-- `db/`
-- `models/`
 - `protocol/`
 - `proxy/`
-- `server/`
 - `utils/`
+
+Legacy experimental packages such as `db/`, `models/`, and `server/` have been retired from the active build and are kept only as documentation markers so the current runtime path stays centered on `controlplane/`.
 
 _Documentation maintained by Sardor Azimov._
