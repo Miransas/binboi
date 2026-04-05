@@ -4,7 +4,7 @@ import { ForgotPasswordForm } from "../_components/auth-forms";
 import { AuthLoadingCard } from "../_components/auth-primitives";
 import { redirectAuthenticatedUser } from "@/lib/auth-session";
 import { sanitizeRedirectTarget } from "@/lib/auth-routing";
-import { authDatabaseEnabled } from "@/lib/auth-system";
+import { authDatabaseEnabled, previewAuthEnabled } from "@/lib/auth-system";
 
 export default async function ForgotPasswordPage({
   searchParams,
@@ -25,7 +25,7 @@ export default async function ForgotPasswordPage({
         />
       }
     >
-      <ForgotPasswordForm authConfigured={authDatabaseEnabled} />
+      <ForgotPasswordForm authConfigured={authDatabaseEnabled} previewEnabled={previewAuthEnabled} />
     </Suspense>
   );
 }

@@ -6,6 +6,7 @@ Key files:
 
 - `architecture-overview.md`: subsystem map
 - `api-requirements.md`: internal API and external integration requirements
+- `deploy-readiness.md`: release checklist and smoke-test runbook
 - `environments.md`: local, dev, and production environment guide
 - `releasing-cli.md`: release and Homebrew notes
 

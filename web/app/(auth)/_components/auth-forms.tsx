@@ -101,6 +101,23 @@ function AuthTopLinks() {
   );
 }
 
+function authUnavailableCode(previewEnabled: boolean) {
+  return previewEnabled ? "AUTH_PREVIEW_ONLY" : "AUTH_UNAVAILABLE";
+}
+
+function authFallbackLabel(authConfigured: boolean, previewEnabled: boolean) {
+  if (authConfigured) {
+    return "Database auth enabled";
+  }
+  return previewEnabled ? "Preview only" : "Auth unavailable";
+}
+
+function authUnavailableMessage(previewEnabled: boolean, capability: string) {
+  return previewEnabled
+    ? `Database-backed auth is not configured for this deployment. ${capability} is disabled until DATABASE_URL is available, but local preview mode can still be used intentionally.`
+    : `Database-backed auth is not configured for this deployment, so ${capability} is unavailable.`;
+}
+
 function PasswordChecklist({
   password,
   confirmPassword,
@@ -187,9 +204,11 @@ function AuthPreviewLinkCard({
 export function LoginForm({
   authConfigured,
   githubEnabled,
+  previewEnabled,
 }: {
   authConfigured: boolean;
   githubEnabled: boolean;
+  previewEnabled: boolean;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -233,8 +252,8 @@ export function LoginForm({
     }
 
     if (!authConfigured) {
-      setError("Database-backed auth is not configured for this deployment.");
-      setErrorCode("AUTH_PREVIEW_ONLY");
+      setError(authUnavailableMessage(previewEnabled, "sign-in"));
+      setErrorCode(authUnavailableCode(previewEnabled));
       return;
     }
 
@@ -306,7 +325,7 @@ export function LoginForm({
           items={[
             { label: "Session", value: "Protected dashboard access" },
             { label: "Identity", value: "Email verification enforced" },
-            { label: "Fallback", value: authConfigured ? "Database auth enabled" : "Preview only" },
+            { label: "Fallback", value: authFallbackLabel(authConfigured, previewEnabled) },
           ]}
         />
 
@@ -314,8 +333,7 @@ export function LoginForm({
           {notice ? <AuthStatus tone="success">{notice}</AuthStatus> : null}
           {!authConfigured ? (
             <AuthStatus tone="warning">
-              This deployment is running without a configured auth database. Sign-in is disabled
-              until `DATABASE_URL` is available.
+              {authUnavailableMessage(previewEnabled, "sign-in")}
             </AuthStatus>
           ) : null}
           {error ? <AuthStatus tone="error">{error}</AuthStatus> : null}
@@ -411,7 +429,13 @@ export function LoginForm({
   );
 }
 
-export function RegisterForm({ authConfigured }: { authConfigured: boolean }) {
+export function RegisterForm({
+  authConfigured,
+  previewEnabled,
+}: {
+  authConfigured: boolean;
+  previewEnabled: boolean;
+}) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = sanitizeRedirectTarget(
@@ -455,8 +479,8 @@ export function RegisterForm({ authConfigured }: { authConfigured: boolean }) {
     }
 
     if (!authConfigured) {
-      setError("Database-backed auth is not configured for this deployment.");
-      setErrorCode("AUTH_PREVIEW_ONLY");
+      setError(authUnavailableMessage(previewEnabled, "registration"));
+      setErrorCode(authUnavailableCode(previewEnabled));
       return;
     }
 
@@ -509,8 +533,7 @@ export function RegisterForm({ authConfigured }: { authConfigured: boolean }) {
         <div className="mt-8 space-y-4">
           {!authConfigured ? (
             <AuthStatus tone="warning">
-              Database-backed auth is not configured for this deployment yet, so registration is
-              unavailable until `DATABASE_URL` is set.
+              {authUnavailableMessage(previewEnabled, "registration")}
             </AuthStatus>
           ) : null}
           {inviteToken ? (
@@ -601,7 +624,13 @@ export function RegisterForm({ authConfigured }: { authConfigured: boolean }) {
   );
 }
 
-export function ForgotPasswordForm({ authConfigured }: { authConfigured: boolean }) {
+export function ForgotPasswordForm({
+  authConfigured,
+  previewEnabled,
+}: {
+  authConfigured: boolean;
+  previewEnabled: boolean;
+}) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = sanitizeRedirectTarget(
@@ -621,7 +650,7 @@ export function ForgotPasswordForm({ authConfigured }: { authConfigured: boolean
     }
 
     if (!authConfigured) {
-      setError("Database-backed auth is not configured for this deployment.");
+      setError(authUnavailableMessage(previewEnabled, "password reset"));
       return;
     }
 
@@ -666,8 +695,7 @@ export function ForgotPasswordForm({ authConfigured }: { authConfigured: boolean
         <div className="mt-8 space-y-4">
           {!authConfigured ? (
             <AuthStatus tone="warning">
-              Database-backed auth is not configured for this deployment, so password reset is not
-              available yet.
+              {authUnavailableMessage(previewEnabled, "password reset")}
             </AuthStatus>
           ) : null}
           {error ? <AuthStatus tone="error">{error}</AuthStatus> : null}
@@ -706,7 +734,13 @@ export function ForgotPasswordForm({ authConfigured }: { authConfigured: boolean
   );
 }
 
-export function ResetPasswordForm({ authConfigured }: { authConfigured: boolean }) {
+export function ResetPasswordForm({
+  authConfigured,
+  previewEnabled,
+}: {
+  authConfigured: boolean;
+  previewEnabled: boolean;
+}) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get("token") || "";
@@ -744,8 +778,8 @@ export function ResetPasswordForm({ authConfigured }: { authConfigured: boolean 
     }
 
     if (!authConfigured) {
-      setError("Database-backed auth is not configured for this deployment.");
-      setErrorCode("AUTH_PREVIEW_ONLY");
+      setError(authUnavailableMessage(previewEnabled, "password reset"));
+      setErrorCode(authUnavailableCode(previewEnabled));
       return;
     }
 
@@ -864,7 +898,13 @@ export function ResetPasswordForm({ authConfigured }: { authConfigured: boolean 
   );
 }
 
-export function VerifyEmailForm({ authConfigured }: { authConfigured: boolean }) {
+export function VerifyEmailForm({
+  authConfigured,
+  previewEnabled,
+}: {
+  authConfigured: boolean;
+  previewEnabled: boolean;
+}) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get("token") || "";
@@ -889,7 +929,7 @@ export function VerifyEmailForm({ authConfigured }: { authConfigured: boolean })
 
       if (!authConfigured) {
         setStatus("error");
-        setMessage("Database-backed auth is not configured for this deployment.");
+        setMessage(authUnavailableMessage(previewEnabled, "email verification"));
         return;
       }
 
@@ -924,7 +964,7 @@ export function VerifyEmailForm({ authConfigured }: { authConfigured: boolean })
     return () => {
       cancelled = true;
     };
-  }, [authConfigured, callbackUrl, router, token]);
+  }, [authConfigured, callbackUrl, previewEnabled, router, token]);
 
   const resendVerification = async () => {
     if (!email.trim()) {
@@ -1008,7 +1048,13 @@ export function VerifyEmailForm({ authConfigured }: { authConfigured: boolean })
   );
 }
 
-export function CheckEmailView({ authConfigured }: { authConfigured: boolean }) {
+export function CheckEmailView({
+  authConfigured,
+  previewEnabled,
+}: {
+  authConfigured: boolean;
+  previewEnabled: boolean;
+}) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const email = searchParams.get("email") || "your inbox";
@@ -1046,7 +1092,7 @@ export function CheckEmailView({ authConfigured }: { authConfigured: boolean }) 
 
   const resend = async () => {
     if (!authConfigured) {
-      setError("Database-backed auth is not configured for this deployment.");
+      setError(authUnavailableMessage(previewEnabled, "email verification"));
       return;
     }
 
@@ -1155,11 +1201,13 @@ export function CheckEmailView({ authConfigured }: { authConfigured: boolean }) 
 
 export function AcceptInviteForm({
   authConfigured,
+  previewEnabled,
   token,
   invitedEmail,
   invalidMessage,
 }: {
   authConfigured: boolean;
+  previewEnabled: boolean;
   token: string;
   invitedEmail?: string;
   invalidMessage?: string | null;
@@ -1204,8 +1252,8 @@ export function AcceptInviteForm({
     }
 
     if (!authConfigured) {
-      setError("Database-backed auth is not configured for this deployment.");
-      setErrorCode("AUTH_PREVIEW_ONLY");
+      setError(authUnavailableMessage(previewEnabled, "invite acceptance"));
+      setErrorCode(authUnavailableCode(previewEnabled));
       return;
     }
 
@@ -1260,8 +1308,7 @@ export function AcceptInviteForm({
         <div className="mt-8 space-y-4">
           {!authConfigured ? (
             <AuthStatus tone="warning">
-              Database-backed auth is not configured for this deployment yet, so invite acceptance
-              is unavailable.
+              {authUnavailableMessage(previewEnabled, "invite acceptance")}
             </AuthStatus>
           ) : null}
           {alreadySignedIn ? (

@@ -4,7 +4,7 @@ import { LoginForm } from "../_components/auth-forms";
 import { AuthLoadingCard } from "../_components/auth-primitives";
 import { redirectAuthenticatedUser } from "@/lib/auth-session";
 import { sanitizeRedirectTarget } from "@/lib/auth-routing";
-import { authDatabaseEnabled, githubAuthEnabled } from "@/lib/auth-system";
+import { authDatabaseEnabled, githubAuthEnabled, previewAuthEnabled } from "@/lib/auth-system";
 
 export default async function LoginPage({
   searchParams,
@@ -28,6 +28,7 @@ export default async function LoginPage({
       <LoginForm
         authConfigured={authDatabaseEnabled}
         githubEnabled={githubAuthEnabled}
+        previewEnabled={previewAuthEnabled}
       />
     </Suspense>
   );

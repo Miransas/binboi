@@ -5,6 +5,7 @@ import { buildPathWithQuery, sanitizeRedirectTarget } from "@/lib/auth-routing";
 import {
   AuthRouteError,
   authDatabaseEnabled,
+  previewAuthEnabled,
   registerCredentialsUser,
 } from "@/lib/auth-system";
 
@@ -25,8 +26,10 @@ export async function POST(request: Request) {
     if (!authDatabaseEnabled) {
       throw new AuthRouteError(
         503,
-        "AUTH_PREVIEW_ONLY",
-        "Database-backed auth is not configured for this deployment. Use local preview mode instead.",
+        previewAuthEnabled ? "AUTH_PREVIEW_ONLY" : "AUTH_UNAVAILABLE",
+        previewAuthEnabled
+          ? "Database-backed auth is not configured for this deployment. Use local preview mode instead."
+          : "Database-backed auth is not configured for this deployment.",
       );
     }
 

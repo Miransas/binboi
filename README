@@ -81,11 +81,20 @@ Still not the focus of this release:
 - production email provider integration out of the box
 - advanced AI inspection as a shipping feature
 
+## Release posture
+
+Binboi now has two explicit operating modes:
+
+- local preview mode for intentional developer-only testing
+- full account-backed mode for the real product path
+
+Preview mode is no longer meant to be an invisible production fallback. If you want preview behavior without Postgres auth, enable it deliberately with `BINBOI_ALLOW_PREVIEW_MODE=true`.
+
 ## Why Binboi feels different
 
 - It is built around the real developer loop, not only URL exposure.
 - It combines tunneling, request visibility, webhook debugging, and dashboard control in one product.
-- It can run in local preview mode or in a fuller account-backed mode with auth, billing, and access tokens.
+- It keeps local preview mode available for intentional testing while making the account-backed deployment path the default serious setup.
 
 ## Repository map
 
@@ -109,7 +118,7 @@ Core endpoints:
 - `POST /api/v1/tunnels`
 - `DELETE /api/v1/tunnels/:id`
 - `GET /api/v1/events?limit=50`
-- `GET /api/v1/requests?limit=200`
+- `GET /api/v1/requests?limit=200&kind=REQUEST|WEBHOOK`
 - `GET /api/v1/domains`
 - `POST /api/v1/domains`
 - `POST /api/v1/domains/verify`
@@ -135,11 +144,12 @@ This keeps the contract stable while still preserving the older `/api/*` routes 
 
 ### Option A: local preview mode
 
-This is the fastest path to a working ngrok-style tunnel loop.
+This is the fastest path to a working ngrok-style tunnel loop, but it should be treated as an explicit local-only mode.
 
 1. Start the Go control plane:
 
 ```bash
+export BINBOI_ALLOW_PREVIEW_MODE=true
 go run ./cmd/binboi-server
 ```
 
@@ -171,7 +181,7 @@ http://my-app.binboi.localhost:8000
 
 ### Option B: local full-stack mode
 
-Use this when you want the real product loop with accounts, access tokens, dashboard auth, and billing state.
+Use this when you want the real product loop with accounts, access tokens, dashboard auth, and billing state. This is the recommended default for serious self-hosting.
 
 1. Start Postgres.
 2. Set `BINBOI_AUTH_DATABASE_URL` for the Go service.
@@ -199,6 +209,7 @@ npm run dev
 - `BINBOI_PUBLIC_PORT`
 - `BINBOI_DATABASE_PATH`
 - `BINBOI_AUTH_DATABASE_URL`
+- `BINBOI_ALLOW_PREVIEW_MODE`
 
 ### CLI
 
@@ -234,6 +245,7 @@ Detailed setup guidance:
 - [`docs/environments.md`](./docs/environments.md)
 - [`docs/api-requirements.md`](./docs/api-requirements.md)
 - [`docs/architecture-overview.md`](./docs/architecture-overview.md)
+- [`docs/deploy-readiness.md`](./docs/deploy-readiness.md)
 
 ## Deployment notes
 
@@ -254,6 +266,17 @@ Detailed setup guidance:
 - keep the Go API reachable from Next.js over a private network
 - do not rely on preview token mode
 - use Postgres-backed auth
+- leave `BINBOI_ALLOW_PREVIEW_MODE` unset or explicitly set it to `false`
+
+## Release checklist
+
+- confirm `DATABASE_URL`, `AUTH_SECRET`, and `BINBOI_AUTH_DATABASE_URL`
+- confirm preview mode is disabled for production-like deployments
+- verify `GET /api/v1/health`, `GET /api/v1/instance`, and `GET /api/v1/tunnels`
+- create one dashboard access token and validate `binboi login` plus `binboi whoami`
+- expose a local app with `binboi http 3000 my-app`
+- hit the public URL once and confirm the request appears in the dashboard request feed
+- use [`docs/deploy-readiness.md`](./docs/deploy-readiness.md) for the full preflight and smoke sequence
 
 ## Docker
 

@@ -121,8 +121,8 @@ export default function TypographyPage() {
                 </p>
                 <pre className="mt-4 overflow-x-auto rounded-[1.25rem] border border-white/10 bg-[#030304] p-4 text-sm leading-7 text-miransas-cyan">
                   <code>{`$ binboi whoami
-User: preview@binboi.local
-Plan: FREE
+User: operator@company.com
+Plan: PRO
 API: http://localhost:8080
 Status: authenticated`}</code>
                 </pre>

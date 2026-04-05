@@ -22,12 +22,14 @@ Required envs:
 - `BINBOI_PUBLIC_SCHEME`
 - `BINBOI_PUBLIC_PORT`
 - `BINBOI_DATABASE_PATH`
+- `BINBOI_ALLOW_PREVIEW_MODE=true`
 
 Behavior:
 
 - the control plane uses a single preview token in SQLite
 - the CLI can authenticate with that preview token
 - the web app can still render, but database-backed auth remains disabled without `DATABASE_URL`
+- preview mode should now be treated as an explicit local-development choice, not a production fallback
 
 ## 2. Local full-stack mode
 
@@ -59,6 +61,10 @@ Recommended local addresses:
 - public proxy: `127.0.0.1:8000`
 - web app: `127.0.0.1:3000`
 
+Recommended additions:
+
+- set `BINBOI_ALLOW_PREVIEW_MODE=false` so local full-stack behaves like the real product path
+
 ## 3. Shared dev or staging
 
 Use this when web and Go services run separately but still communicate over a private network.
@@ -69,6 +75,7 @@ Recommended setup:
 - Next.js uses `BINBOI_API_BASE` for server-side control plane calls
 - browser-side code uses `NEXT_PUBLIC_BINBOI_API_BASE`
 - dashboard client components talk through Next.js `/api/controlplane/*` proxy routes instead of hitting Go directly
+- keep `BINBOI_ALLOW_PREVIEW_MODE=false` unless you are intentionally testing the preview-only path
 
 This is the reason the stable control plane contract now lives under `/api/v1/*`.
 
@@ -86,6 +93,7 @@ Production expectations:
 - set `AUTH_SECRET`
 - set `BINBOI_AUTH_DATABASE_URL`
 - set `DATABASE_URL`
+- leave `BINBOI_ALLOW_PREVIEW_MODE` unset or set it to `false`
 - terminate TLS at your ingress or edge
 - keep Go API reachable from Next.js over a private address and set `BINBOI_API_BASE`
 - do not rely on preview token mode
@@ -101,7 +109,7 @@ The Go service now exposes a stable product surface under `/api/v1/*`:
 - `POST /api/v1/tunnels`
 - `DELETE /api/v1/tunnels/:id`
 - `GET /api/v1/events?limit=50`
-- `GET /api/v1/requests?limit=200`
+- `GET /api/v1/requests?limit=200&kind=REQUEST|WEBHOOK`
 - `GET /api/v1/domains`
 - `POST /api/v1/domains`
 - `POST /api/v1/domains/verify`

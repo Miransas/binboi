@@ -1,5 +1,5 @@
 import { AcceptInviteForm } from "../../_components/auth-forms";
-import { authDatabaseEnabled, AuthRouteError, getInviteLookup } from "@/lib/auth-system";
+import { authDatabaseEnabled, AuthRouteError, getInviteLookup, previewAuthEnabled } from "@/lib/auth-system";
 
 export default async function InviteTokenPage({
   params,
@@ -26,6 +26,7 @@ export default async function InviteTokenPage({
   return (
     <AcceptInviteForm
       authConfigured={authDatabaseEnabled}
+      previewEnabled={previewAuthEnabled}
       token={resolvedParams.token}
       invitedEmail={result.valid ? result.email : undefined}
       invalidMessage={result.valid ? null : result.message}

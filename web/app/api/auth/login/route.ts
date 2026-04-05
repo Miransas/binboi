@@ -5,9 +5,11 @@ import { sanitizeRedirectTarget } from "@/lib/auth-routing";
 import { getCurrentSession } from "@/lib/auth-session";
 import {
   AuthRouteError,
+  authDeploymentMode,
   authDatabaseEnabled,
   authenticateCredentials,
   githubAuthEnabled,
+  previewAuthEnabled,
 } from "@/lib/auth-system";
 
 export const runtime = "nodejs";
@@ -18,7 +20,7 @@ export async function GET() {
 
   return NextResponse.json({
     authenticated: Boolean(session?.user?.id),
-    mode: authDatabaseEnabled ? "database" : "preview",
+    mode: authDeploymentMode,
     credentialsEnabled: authDatabaseEnabled,
     githubEnabled: githubAuthEnabled,
     user: session?.user ?? null,
@@ -36,8 +38,10 @@ export async function POST(request: Request) {
     if (!authDatabaseEnabled) {
       throw new AuthRouteError(
         503,
-        "AUTH_PREVIEW_ONLY",
-        "Database-backed auth is not configured for this deployment. Use local preview mode instead.",
+        previewAuthEnabled ? "AUTH_PREVIEW_ONLY" : "AUTH_UNAVAILABLE",
+        previewAuthEnabled
+          ? "Database-backed auth is not configured for this deployment. Use local preview mode instead."
+          : "Database-backed auth is not configured for this deployment.",
       );
     }
 

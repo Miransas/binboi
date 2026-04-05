@@ -14,7 +14,7 @@ export type TocItem = {
 type Tone = "cyan" | "emerald" | "amber" | "zinc";
 
 const shellSurface =
-  "relative overflow-hidden rounded-[2rem] border border-white/[0.08] bg-[linear-gradient(180deg,rgba(8,13,23,0.94),rgba(5,9,18,0.985))] shadow-[0_34px_110px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.03)] backdrop-blur-xl";
+  "rounded-3xl border border-white/[0.08] bg-[#0f1014]";
 
 function toneClasses(tone: Tone) {
   switch (tone) {
@@ -43,19 +43,16 @@ export function DocsPageShell({
   children: ReactNode;
 }) {
   return (
-    <div className="space-y-8 lg:space-y-10">
+    <div className="space-y-10">
       <header className={shellSurface}>
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_0%,rgba(134,169,255,0.18),transparent_32%),radial-gradient(circle_at_88%_10%,rgba(255,255,255,0.05),transparent_20%),linear-gradient(180deg,rgba(255,255,255,0.02),transparent_24%,transparent_100%)]" />
-        <div className="pointer-events-none absolute inset-x-12 top-0 h-px bg-gradient-to-r from-transparent via-white/14 to-transparent" />
-
-        <div className="relative px-6 py-7 sm:px-8 lg:px-10 lg:py-10">
+        <div className="px-6 py-7 sm:px-8 lg:px-10 lg:py-10">
           <div className={cn("grid gap-6", toc?.length ? "xl:grid-cols-[minmax(0,1fr)_16rem] xl:items-end" : "")}>
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-full border border-[#86a9ff]/16 bg-[#86a9ff]/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.24em] text-[#dfe7ff]">
+                <span className="rounded-full border border-white/[0.1] bg-white/[0.03] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.24em] text-zinc-200">
                   {eyebrow}
                 </span>
-                <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.24em] text-zinc-400">
+                <span className="rounded-full border border-white/10 bg-transparent px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.24em] text-zinc-500">
                   Docs experience
                 </span>
               </div>
@@ -70,7 +67,7 @@ export function DocsPageShell({
 
             {toc?.length ? (
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
-                <div className="rounded-[1.5rem] border border-white/10 bg-black/25 px-4 py-4">
+                <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-4">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-zinc-500">
                     Guide sections
                   </p>
@@ -79,7 +76,7 @@ export function DocsPageShell({
                   </p>
                 </div>
 
-                <div className="rounded-[1.5rem] border border-white/10 bg-black/25 px-4 py-4">
+                <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-4">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-zinc-500">
                     Reading flow
                   </p>
@@ -110,7 +107,7 @@ export function DocsPageShell({
         ) : null}
       </header>
 
-      <div className={cn("grid gap-8 xl:grid-cols-[minmax(0,1fr)_18rem] xl:items-start 2xl:gap-10", !toc?.length && "xl:grid-cols-1")}>
+      <div className={cn("grid gap-10 xl:grid-cols-[minmax(0,1fr)_17rem] xl:items-start", !toc?.length && "xl:grid-cols-1")}>
         <div className="min-w-0 space-y-8 lg:space-y-10">{children}</div>
 
         {toc?.length ? (
@@ -137,13 +134,13 @@ export function DocsSection({
   children: ReactNode;
 }) {
   return (
-    <section id={id} className={cn(shellSurface, "scroll-mt-28 px-6 py-6 sm:px-8 sm:py-8 lg:px-9 lg:py-9")}>
-      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.02),transparent_24%,transparent_100%)]" />
-      <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-
-      <div className="relative">
+    <section
+      id={id}
+      className="scroll-mt-28 border-t border-white/[0.08] pt-8 first:border-t-0 first:pt-0"
+    >
+      <div>
         {eyebrow ? (
-          <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-[#dfe7ff]">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-zinc-500">
             {eyebrow}
           </p>
         ) : null}

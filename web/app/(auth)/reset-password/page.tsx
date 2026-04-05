@@ -2,7 +2,7 @@ import { Suspense } from "react";
 
 import { ResetPasswordForm } from "../_components/auth-forms";
 import { AuthLoadingCard } from "../_components/auth-primitives";
-import { authDatabaseEnabled } from "@/lib/auth-system";
+import { authDatabaseEnabled, previewAuthEnabled } from "@/lib/auth-system";
 
 export default function ResetPasswordPage() {
   return (
@@ -14,7 +14,7 @@ export default function ResetPasswordPage() {
         />
       }
     >
-      <ResetPasswordForm authConfigured={authDatabaseEnabled} />
+      <ResetPasswordForm authConfigured={authDatabaseEnabled} previewEnabled={previewAuthEnabled} />
     </Suspense>
   );
 }

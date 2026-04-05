@@ -459,7 +459,25 @@ export const LaserFlow: React.FC<Props> = ({
       renderer.forceContextLoss();
       if (mount.contains(canvas)) mount.removeChild(canvas);
     };
-  }, [dpr]);
+  }, [
+    color,
+    decay,
+    dpr,
+    falloffStart,
+    flowSpeed,
+    flowStrength,
+    fogFallSpeed,
+    fogIntensity,
+    fogScale,
+    horizontalBeamOffset,
+    horizontalSizing,
+    mouseTiltStrength,
+    verticalBeamOffset,
+    verticalSizing,
+    wispDensity,
+    wispIntensity,
+    wispSpeed,
+  ]);
 
   useEffect(() => {
     const uniforms = uniformsRef.current;

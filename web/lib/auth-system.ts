@@ -13,12 +13,23 @@ import {
 } from "@/db/schema";
 
 export const authDatabaseEnabled = dbAvailable;
+const previewModeEnv = String(process.env.BINBOI_ALLOW_PREVIEW_MODE ?? "")
+  .trim()
+  .toLowerCase();
+const previewModeRequested =
+  previewModeEnv === "true" ||
+  (previewModeEnv !== "false" && process.env.NODE_ENV !== "production");
 export const githubAuthEnabled = Boolean(
   authDatabaseEnabled &&
     process.env.AUTH_GITHUB_ID &&
     process.env.AUTH_GITHUB_SECRET,
 );
-export const previewAuthEnabled = !authDatabaseEnabled;
+export const previewAuthEnabled = !authDatabaseEnabled && previewModeRequested;
+export const authDeploymentMode = authDatabaseEnabled
+  ? "database"
+  : previewAuthEnabled
+    ? "preview"
+    : "unavailable";
 
 const EMAIL_VERIFICATION_TTL_MS = 1000 * 60 * 60 * 24;
 const PASSWORD_RESET_TTL_MS = 1000 * 60 * 30;
@@ -73,8 +84,10 @@ function requireAuthDatabase() {
   if (!authDatabaseEnabled || !db) {
     throw new AuthRouteError(
       503,
-      "AUTH_PREVIEW_ONLY",
-      "Database-backed auth is not configured for this deployment. Use local preview mode until DATABASE_URL is available.",
+      previewAuthEnabled ? "AUTH_PREVIEW_ONLY" : "AUTH_UNAVAILABLE",
+      previewAuthEnabled
+        ? "Database-backed auth is not configured for this deployment. Use local preview mode until DATABASE_URL is available."
+        : "Database-backed auth is not configured for this deployment.",
     );
   }
 }

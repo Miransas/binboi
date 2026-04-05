@@ -5,13 +5,9 @@ import { useEffect, useState, type ComponentType } from "react";
 import { AnimatePresence, cubicBezier, motion, type Variants } from "framer-motion";
 import {
   ArrowRight,
-  BookOpen,
-  Command,
   Globe,
   KeyRound,
-  LayoutDashboard,
   ShieldCheck,
-  Sparkles,
   TerminalSquare,
   Waypoints,
   Webhook,
@@ -22,7 +18,6 @@ import {
 import {
   AccentBadge,
   PremiumSurface,
-  SectionHeading,
   type Accent,
 } from "./landing-primitives";
 
@@ -161,12 +156,12 @@ const engineModules: EngineModule[] = [
     icon: Waypoints,
     steps: ["Pick nearest node", "Measure edge latency", "Keep session warm"],
     details: [
-      "Selected lowest-latency preview region",
+      "Selected lowest-latency active region",
       "Measured round trip between edge and agent",
       "Kept tunnel session ready for the next webhook burst",
     ],
     logs: [
-      "Preferred node: fra-preview",
+      "Preferred node: fra-edge-01",
       "> Edge-to-agent latency settled at 42ms",
       "> Session warmed for webhook retries and bursts",
       "Route remained stable across repeat deliveries",

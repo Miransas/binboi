@@ -48,7 +48,7 @@ export const blogPosts: BlogPostSummary[] = [
     highlights: [
       "Full tokens are shown once and only stored as hashes plus prefixes.",
       "Each machine can be rotated independently without changing dashboard access.",
-      "The same model scales from self-hosted preview to a future multi-user product.",
+      "The same model scales from local self-hosting to a future multi-user product.",
     ],
     searchBody:
       "Binboi authentication uses dashboard-issued personal access tokens for the CLI, stores only token hashes in the database, and keeps account access separate from machine access.",
@@ -123,7 +123,7 @@ export const changelogEntries: ChangelogEntry[] = [
       {
         label: "Backend",
         items: [
-          "Standardized the SQLite-backed preview control plane.",
+          "Standardized the SQLite-backed local control plane.",
           "Added cleaner tunnel lifecycle handling, domain verification endpoints, and event feeds.",
           "Improved dashboard fallback behavior when the backend is offline.",
         ],
@@ -154,7 +154,7 @@ export const integrationCards = [
     name: "Stripe",
     label: "Payments",
     summary:
-      "Keep a stable public URL for local payment webhooks and diagnose signature failures before pushing a preview deployment.",
+      "Keep a stable public URL for local payment webhooks and diagnose signature failures before shipping a remote test build.",
   },
   {
     name: "Clerk",

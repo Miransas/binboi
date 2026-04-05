@@ -2,11 +2,10 @@
 
 import Link from "next/link";
 import { useEffect, useState, type ComponentType } from "react";
-import { AnimatePresence, cubicBezier, motion, type Variants } from "framer-motion";
+import { motion } from "framer-motion";
 import {
   ArrowRight,
   BookOpen,
-  Command,
   Globe,
   KeyRound,
   LayoutDashboard,
@@ -16,8 +15,6 @@ import {
   Waypoints,
   Webhook,
 } from "lucide-react";
-
-import { BinboiAssistant } from "@/components/shared/binboi-assistant";
 import { integrationCards } from "@/content/site-content";
 
 import {
@@ -159,12 +156,12 @@ const engineModules: EngineModule[] = [
     icon: Waypoints,
     steps: ["Pick nearest node", "Measure edge latency", "Keep session warm"],
     details: [
-      "Selected lowest-latency preview region",
+      "Selected lowest-latency active region",
       "Measured round trip between edge and agent",
       "Kept tunnel session ready for the next webhook burst",
     ],
     logs: [
-      "Preferred node: fra-preview",
+      "Preferred node: fra-edge-01",
       "> Edge-to-agent latency settled at 42ms",
       "> Session warmed for webhook retries and bursts",
       "Route remained stable across repeat deliveries",
@@ -350,7 +347,7 @@ function LinkCard({
 }
 
 export default function SaaSPage() {
-  const [scenario, setScenario] = useState<EngineScenario>(() => generateScenario());
+  const [, setScenario] = useState<EngineScenario>(() => generateScenario());
 
   useEffect(() => {
     const timer = window.setInterval(() => {

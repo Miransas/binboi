@@ -70,7 +70,29 @@ const CONSTANTS = {
   segmentCount: 150,
 }
 
-export function PhotonBeam(props: PhotonBeamProps = {}) {
+export function PhotonBeam({
+  colorBg = "#080808",
+  colorLine = "#005f6f",
+  colorSignal = "#00d9ff",
+  useColor2 = false,
+  colorSignal2 = "#00ffff",
+  useColor3 = false,
+  colorSignal3 = "#00b8d4",
+  lineCount = 80,
+  spreadHeight = 30.33,
+  spreadDepth = 0,
+  curveLength = 50,
+  straightLength = 100,
+  curvePower = 0.8265,
+  waveSpeed = 2.48,
+  waveHeight = 0.145,
+  lineOpacity = 0.557,
+  signalCount = 94,
+  speedGlobal = 0.345,
+  trailLength = 3,
+  bloomStrength = 3.0,
+  bloomRadius = 0.5,
+}: PhotonBeamProps = {}) {
   const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -97,30 +119,30 @@ export function PhotonBeam(props: PhotonBeamProps = {}) {
 
       // --- CONFIGURATION ---
       const params: Params = {
-        colorBg: props.colorBg ?? "#080808",
-        colorLine: props.colorLine ?? "#005f6f",
-        colorSignal: props.colorSignal ?? "#00d9ff",
-        useColor2: props.useColor2 ?? false,
-        colorSignal2: props.colorSignal2 ?? "#00ffff",
-        useColor3: props.useColor3 ?? false,
-        colorSignal3: props.colorSignal3 ?? "#00b8d4",
-        lineCount: props.lineCount ?? 80,
+        colorBg,
+        colorLine,
+        colorSignal,
+        useColor2,
+        colorSignal2,
+        useColor3,
+        colorSignal3,
+        lineCount,
         globalRotation: 0,
         positionX: 0,
         positionY: 0,
-        spreadHeight: props.spreadHeight ?? 30.33,
-        spreadDepth: props.spreadDepth ?? 0,
-        curveLength: props.curveLength ?? 50,
-        straightLength: props.straightLength ?? 100,
-        curvePower: props.curvePower ?? 0.8265,
-        waveSpeed: props.waveSpeed ?? 2.48,
-        waveHeight: props.waveHeight ?? 0.145,
-        lineOpacity: props.lineOpacity ?? 0.557,
-        signalCount: props.signalCount ?? 94,
-        speedGlobal: props.speedGlobal ?? 0.345,
-        trailLength: props.trailLength ?? 3,
-        bloomStrength: props.bloomStrength ?? 3.0,
-        bloomRadius: props.bloomRadius ?? 0.5,
+        spreadHeight,
+        spreadDepth,
+        curveLength,
+        straightLength,
+        curvePower,
+        waveSpeed,
+        waveHeight,
+        lineOpacity,
+        signalCount,
+        speedGlobal,
+        trailLength,
+        bloomStrength,
+        bloomRadius,
       }
 
       params.positionX = (params.curveLength - params.straightLength) / 2
@@ -389,9 +411,9 @@ export function PhotonBeam(props: PhotonBeamProps = {}) {
       if (handleResize) {
         window.removeEventListener("resize", handleResize)
       }
-      if (containerRef.current && renderer?.domElement) {
+      if (container && renderer?.domElement) {
         try {
-          containerRef.current.removeChild(renderer.domElement)
+          container.removeChild(renderer.domElement)
         } catch {
           /* element may already be removed */
         }
@@ -401,7 +423,29 @@ export function PhotonBeam(props: PhotonBeamProps = {}) {
       backgroundLines.forEach((l) => l.geometry.dispose())
       signals.forEach((s) => s.mesh.geometry.dispose())
     }
-  }, [])
+  }, [
+    bloomRadius,
+    bloomStrength,
+    colorBg,
+    colorLine,
+    colorSignal,
+    colorSignal2,
+    colorSignal3,
+    curveLength,
+    curvePower,
+    lineCount,
+    lineOpacity,
+    signalCount,
+    speedGlobal,
+    spreadDepth,
+    spreadHeight,
+    straightLength,
+    trailLength,
+    useColor2,
+    useColor3,
+    waveHeight,
+    waveSpeed,
+  ])
 
   return (
     // Kart içinde absolute durması için class'ları hafifçe güncelledim

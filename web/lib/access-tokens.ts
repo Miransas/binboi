@@ -5,6 +5,7 @@ import { auth, authEnabled } from "@/auth";
 import { db, dbAvailable } from "@/db";
 import { ensureAppDatabaseSchema } from "@/db/ensure-schema";
 import { buildApiUrl } from "@/lib/binboi";
+import { previewAuthEnabled } from "@/lib/auth-system";
 import {
   accessTokens,
   users,
@@ -200,6 +201,13 @@ function buildLimits(
 
 async function resolveViewer(): Promise<Viewer> {
   if (!dbAvailable || !authEnabled || !db) {
+    if (!previewAuthEnabled) {
+      throw new AccessTokenRouteError(
+        503,
+        "Access tokens require database-backed auth. Configure DATABASE_URL or explicitly enable BINBOI_ALLOW_PREVIEW_MODE=true for local preview.",
+      );
+    }
+
     return {
       mode: "preview",
       user: {

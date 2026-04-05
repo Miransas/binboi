@@ -21,6 +21,7 @@ import {
   verifyPaddleWebhookSignature,
 } from "@/lib/paddle";
 import { normalizeBillingPlan, type BillingPlan } from "@/lib/pricing";
+import { previewAuthEnabled } from "@/lib/auth-system";
 
 export class BillingRouteError extends Error {
   status: number;
@@ -188,6 +189,13 @@ function resolvePlanFromSubscription(data: PaddleSubscriptionEventData): Billing
 
 async function resolveViewer(): Promise<BillingViewer> {
   if (!dbAvailable || !authEnabled || !db) {
+    if (!previewAuthEnabled) {
+      throw new BillingRouteError(
+        503,
+        "Billing requires database-backed auth. Configure DATABASE_URL or explicitly enable BINBOI_ALLOW_PREVIEW_MODE=true for local preview.",
+      );
+    }
+
     return {
       mode: "preview",
       user: {
