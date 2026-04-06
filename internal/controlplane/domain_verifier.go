@@ -24,7 +24,9 @@ func (s *Service) runPendingDomainVerifier(ctx context.Context) {
 	defer s.backgroundWG.Done()
 
 	run := func() {
-		if err := s.verifyPendingDomains(ctx); err != nil && !errors.Is(err, context.Canceled) {
+		err := s.verifyPendingDomains(ctx)
+		s.recordDomainVerifierRun(err)
+		if err != nil && !errors.Is(err, context.Canceled) {
 			s.logRuntimeEvent(slog.LevelWarn, "pending domain verification cycle failed", "error", err)
 		}
 	}

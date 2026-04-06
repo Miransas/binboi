@@ -126,6 +126,14 @@ These manifests now track:
 - release date and minimum CLI version
 - deploy modes and build targets
 
+## Deployment Templates
+
+Production and staging starting points now live here:
+
+- [`configs/binboi.production.env.example`](./configs/binboi.production.env.example): Go control plane production/staging env template
+- [`web/.env.production.example`](./web/.env.production.example): Next.js production/staging env template
+- [`docs/staging-runbook.md`](./docs/staging-runbook.md): staging bring-up and verification order
+
 ## Stable API contract
 
 The Go control plane now exposes a stable product contract under `/api/v1/*`.
@@ -324,4 +332,4 @@ Current recommendation:
 - [`SECURITY.md`](./SECURITY.md)
 - [`LICENSE`](./LICENSE)
 
-_Documentation maintained by Sardor Azimov._
+_Documentation maintained by Sardor Azimov, Miransas._

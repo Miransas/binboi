@@ -15,5 +15,6 @@ Key files:
 - `production-domain-checklist.md`: real-domain rollout and TLS verification checklist
 - `releasing-cli.md`: release and Homebrew notes
 - `smoke-test-checklist.md`: short release-day backend smoke checklist
+- `staging-runbook.md`: practical staging bring-up order and verification commands
 
 _Documentation maintained by Sardor Azimov, Miransas._

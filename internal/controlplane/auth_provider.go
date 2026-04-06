@@ -26,6 +26,7 @@ type accessAuthenticator interface {
 	Mode() string
 	ValidateAccessToken(context.Context, string) (*AuthIdentity, error)
 	LookupUserPlan(context.Context, string) (string, error)
+	HealthCheck(context.Context) error
 	Close() error
 }
 
@@ -172,6 +173,13 @@ func (p *authProvider) LookupUserPlan(ctx context.Context, userID string) (strin
 		plan = "FREE"
 	}
 	return plan, nil
+}
+
+func (p *authProvider) HealthCheck(ctx context.Context) error {
+	if !p.Enabled() {
+		return nil
+	}
+	return p.pool.Ping(ctx)
 }
 
 func (p *authProvider) Close() error {

@@ -79,6 +79,8 @@ Recommended setup:
 
 This is the reason the stable control plane contract now lives under `/api/v1/*`.
 
+For a concrete bring-up sequence, use [staging-runbook.md](/Users/sardorazimov/binboi/docs/staging-runbook.md).
+
 ## 4. Production-like deployment
 
 Recommended split:
@@ -129,4 +131,4 @@ All `/api/v1/*` endpoints except `GET /api/v1/auth/me` return an envelope shaped
 }
 ```
 
-_Documentation maintained by Sardor Azimov._
+_Documentation maintained by Sardor Azimov, Miransas._

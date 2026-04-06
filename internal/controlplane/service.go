@@ -62,6 +62,7 @@ const (
 	defaultProxyRateBurst         = 240
 	defaultEventRetentionMaxAge   = 0
 	defaultRequestRetentionMaxAge = 0
+	defaultCaptureBodyLimit       = 256 * 1024
 	maxLogBacklog                 = 100
 	maxHeaderPreviewRows          = 10
 	maxBodyPreviewBytes           = 4096
@@ -100,6 +101,7 @@ type Config struct {
 	AuditExportLimit       int
 	EventRetentionMaxAge   time.Duration
 	RequestRetentionMaxAge time.Duration
+	CaptureBodyLimit       int
 	DomainVerifyInterval   time.Duration
 	DomainVerifyBatchSize  int
 	DomainLookupTimeout    time.Duration
@@ -135,6 +137,7 @@ func LoadConfigFromEnv() Config {
 		AuditExportLimit:       intEnvOrDefault("BINBOI_AUDIT_EXPORT_LIMIT", defaultAuditExportLimit),
 		EventRetentionMaxAge:   durationEnvOrDefault("BINBOI_EVENT_RETENTION_MAX_AGE", defaultEventRetentionMaxAge),
 		RequestRetentionMaxAge: durationEnvOrDefault("BINBOI_REQUEST_RETENTION_MAX_AGE", defaultRequestRetentionMaxAge),
+		CaptureBodyLimit:       nonNegativeIntEnvOrDefault("BINBOI_CAPTURE_BODY_LIMIT", defaultCaptureBodyLimit),
 		DomainVerifyInterval:   durationEnvOrDefault("BINBOI_DOMAIN_VERIFY_INTERVAL", defaultDomainVerifyInterval),
 		DomainVerifyBatchSize:  intEnvOrDefault("BINBOI_DOMAIN_VERIFY_BATCH_SIZE", defaultDomainVerifyBatchSize),
 		DomainLookupTimeout:    durationEnvOrDefault("BINBOI_DOMAIN_LOOKUP_TIMEOUT", defaultDomainLookupTimeout),
@@ -274,6 +277,7 @@ type RequestRecord struct {
 	ID              string `gorm:"primaryKey"`
 	TunnelID        string `gorm:"index"`
 	TunnelSubdomain string `gorm:"index"`
+	ReplayOfRequestID string `gorm:"index"`
 	Kind            string
 	Provider        string
 	EventType       string
@@ -315,6 +319,9 @@ type Service struct {
 
 	mu       sync.RWMutex
 	sessions map[string]*activeSession
+
+	workerMu            sync.RWMutex
+	domainVerifierState workerReadinessState
 
 	logMu   sync.Mutex
 	clients map[*websocket.Conn]struct{}
@@ -448,7 +455,7 @@ func NewService(cfg Config) (*Service, error) {
 		return nil, fmt.Errorf("open sqlite database: %w", err)
 	}
 
-	if err := db.AutoMigrate(&InstanceToken{}, &TunnelRecord{}, &DomainRecord{}, &EventRecord{}, &RequestRecord{}); err != nil {
+	if err := db.AutoMigrate(&InstanceToken{}, &TunnelRecord{}, &DomainRecord{}, &EventRecord{}, &RequestRecord{}, &RequestArchiveRecord{}); err != nil {
 		return nil, fmt.Errorf("migrate sqlite database: %w", err)
 	}
 
@@ -591,6 +598,7 @@ func (s *Service) RegisterRoutes(r *gin.Engine) {
 	api.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
+	api.GET("/ready", s.handleReady)
 	api.GET("/instance", func(c *gin.Context) {
 		c.JSON(http.StatusOK, s.instanceResponse())
 	})
@@ -601,6 +609,8 @@ func (s *Service) RegisterRoutes(r *gin.Engine) {
 
 	operator := api.Group("/")
 	operator.Use(s.requireControlPlaneAccess())
+	operator.Use(s.quotaHeadersMiddleware())
+	operator.GET("/limits", s.handleQuotaLimits)
 	operator.GET("/events/export", s.handleExportEvents)
 	operator.GET("/events", s.handleListEvents)
 	operator.GET("/requests", s.handleListRequests)
@@ -622,11 +632,14 @@ func (s *Service) RegisterRoutes(r *gin.Engine) {
 	apiV1 := r.Group("/api/v1")
 	apiV1.Use(s.apiRateLimit(true))
 	apiV1.GET("/health", s.handleV1Health)
+	apiV1.GET("/ready", s.handleV1Ready)
 	apiV1.GET("/instance", s.handleV1Instance)
 	apiV1.GET("/nodes", s.handleV1Nodes)
 	apiV1.GET("/metrics", s.requireControlPlaneAccess(), s.handleV1Metrics)
 	apiV1Operator := apiV1.Group("/")
 	apiV1Operator.Use(s.requireControlPlaneAccess())
+	apiV1Operator.Use(s.quotaHeadersMiddleware())
+	apiV1Operator.GET("/limits", s.handleV1QuotaLimits)
 	apiV1Operator.GET("/events/export", s.handleV1ExportEvents)
 	apiV1Operator.GET("/events", s.handleV1ListEvents)
 	apiV1Operator.GET("/requests", s.handleV1ListRequests)
@@ -674,6 +687,16 @@ func writeV1Error(c *gin.Context, status int, meta APIMeta, code, message string
 
 func (s *Service) handleV1Health(c *gin.Context) {
 	writeV1Success(c, http.StatusOK, s.apiMeta(requestAccess{}), gin.H{"status": "ok"})
+}
+
+func (s *Service) handleReady(c *gin.Context) {
+	response, status := s.readinessResponse(c.Request.Context())
+	c.JSON(status, response)
+}
+
+func (s *Service) handleV1Ready(c *gin.Context) {
+	response, status := s.readinessResponse(c.Request.Context())
+	writeV1Success(c, status, s.apiMeta(requestAccess{}), response)
 }
 
 func (s *Service) handleV1Instance(c *gin.Context) {
@@ -1073,6 +1096,16 @@ func (s *Service) handleListEvents(c *gin.Context) {
 	c.JSON(http.StatusOK, events)
 }
 
+func (s *Service) handleQuotaLimits(c *gin.Context) {
+	snapshot, err := s.quotaSnapshot(c.Request.Context(), currentRequestAccess(c))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load quota limits"})
+		return
+	}
+	applyQuotaHeaders(c, snapshot)
+	c.JSON(http.StatusOK, snapshot)
+}
+
 func (s *Service) handleListRequests(c *gin.Context) {
 	requests, err := s.listRequests(currentRequestAccess(c), requestListOptions{
 		Limit:       parsePositiveLimit(c.Query("limit"), s.recentRequestLimit(), 500),
@@ -1110,6 +1143,7 @@ func (s *Service) handleCreateTunnel(c *gin.Context) {
 		} else {
 			status = planQuotaStatus(err, status)
 		}
+		s.hydrateQuotaHeaders(c, access)
 		c.JSON(status, gin.H{"error": err.Error()})
 		return
 	}
@@ -1129,6 +1163,7 @@ func (s *Service) handleCreateTunnel(c *gin.Context) {
 			"public_url": s.BuildPublicURL(record.Subdomain),
 		},
 	}, true)
+	s.hydrateQuotaHeaders(c, access)
 	c.JSON(http.StatusCreated, s.mapTunnelRecord(record))
 }
 
@@ -1140,6 +1175,7 @@ func (s *Service) handleDeleteTunnel(c *gin.Context) {
 	}
 
 	record, err := s.deleteTunnel(id, currentRequestAccess(c))
+	access := currentRequestAccess(c)
 	if err != nil {
 		status := http.StatusInternalServerError
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -1147,6 +1183,7 @@ func (s *Service) handleDeleteTunnel(c *gin.Context) {
 		} else if strings.Contains(strings.ToLower(err.Error()), "another account") {
 			status = http.StatusForbidden
 		}
+		s.hydrateQuotaHeaders(c, access)
 		c.JSON(status, gin.H{"error": err.Error()})
 		return
 	}
@@ -1165,6 +1202,7 @@ func (s *Service) handleDeleteTunnel(c *gin.Context) {
 			"region": record.Region,
 		},
 	}, true)
+	s.hydrateQuotaHeaders(c, access)
 	c.JSON(http.StatusOK, gin.H{"status": "deleted"})
 }
 
@@ -1257,7 +1295,9 @@ func (s *Service) handleCreateDomain(c *gin.Context) {
 	}
 
 	record, err := s.createDomain(req.Domain, currentRequestAccess(c))
+	access := currentRequestAccess(c)
 	if err != nil {
+		s.hydrateQuotaHeaders(c, access)
 		c.JSON(planQuotaStatus(err, http.StatusBadRequest), gin.H{"error": err.Error()})
 		return
 	}
@@ -1276,6 +1316,7 @@ func (s *Service) handleCreateDomain(c *gin.Context) {
 			"type":         record.Type,
 		},
 	}, true)
+	s.hydrateQuotaHeaders(c, access)
 	c.JSON(http.StatusCreated, s.domainResponse(record))
 }
 
@@ -1287,6 +1328,7 @@ func (s *Service) handleDeleteDomain(c *gin.Context) {
 	}
 
 	record, err := s.deleteDomain(name, currentRequestAccess(c))
+	access := currentRequestAccess(c)
 	if err != nil {
 		status := http.StatusInternalServerError
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -1298,6 +1340,7 @@ func (s *Service) handleDeleteDomain(c *gin.Context) {
 		} else {
 			status = http.StatusBadRequest
 		}
+		s.hydrateQuotaHeaders(c, access)
 		c.JSON(status, gin.H{"error": err.Error()})
 		return
 	}
@@ -1315,6 +1358,7 @@ func (s *Service) handleDeleteDomain(c *gin.Context) {
 			"status": record.Status,
 		},
 	}, true)
+	s.hydrateQuotaHeaders(c, access)
 	c.JSON(http.StatusOK, gin.H{"status": "deleted", "name": name})
 }
 
@@ -1478,6 +1522,18 @@ func (s *Service) requestRetentionMaxAge() time.Duration {
 	return 0
 }
 
+func (s *Service) handleV1QuotaLimits(c *gin.Context) {
+	access := currentRequestAccess(c)
+	meta := s.apiMeta(access)
+	snapshot, err := s.quotaSnapshot(c.Request.Context(), access)
+	if err != nil {
+		writeV1Error(c, http.StatusInternalServerError, meta, "LIMITS_LOAD_FAILED", "failed to load quota limits")
+		return
+	}
+	applyQuotaHeaders(c, snapshot)
+	writeV1Success(c, http.StatusOK, meta, snapshot)
+}
+
 func (s *Service) handleV1ListTunnels(c *gin.Context) {
 	access := currentRequestAccess(c)
 	meta := s.apiMeta(access)
@@ -1551,6 +1607,7 @@ func (s *Service) handleV1CreateTunnel(c *gin.Context) {
 		} else {
 			status = planQuotaStatus(err, status)
 		}
+		s.hydrateQuotaHeaders(c, access)
 		writeV1Error(c, status, meta, "TUNNEL_CREATE_FAILED", err.Error())
 		return
 	}
@@ -1570,6 +1627,7 @@ func (s *Service) handleV1CreateTunnel(c *gin.Context) {
 			"public_url": s.BuildPublicURL(record.Subdomain),
 		},
 	}, true)
+	s.hydrateQuotaHeaders(c, access)
 	writeV1Success(c, http.StatusCreated, meta, s.mapTunnelRecord(record))
 }
 
@@ -1590,6 +1648,7 @@ func (s *Service) handleV1DeleteTunnel(c *gin.Context) {
 		} else if strings.Contains(strings.ToLower(err.Error()), "another account") {
 			status = http.StatusForbidden
 		}
+		s.hydrateQuotaHeaders(c, access)
 		writeV1Error(c, status, meta, "TUNNEL_DELETE_FAILED", err.Error())
 		return
 	}
@@ -1608,6 +1667,7 @@ func (s *Service) handleV1DeleteTunnel(c *gin.Context) {
 			"region": record.Region,
 		},
 	}, true)
+	s.hydrateQuotaHeaders(c, access)
 	writeV1Success(c, http.StatusOK, meta, gin.H{"status": "deleted", "id": id})
 }
 
@@ -1636,6 +1696,7 @@ func (s *Service) handleV1CreateDomain(c *gin.Context) {
 
 	record, err := s.createDomain(req.Domain, access)
 	if err != nil {
+		s.hydrateQuotaHeaders(c, access)
 		writeV1Error(c, planQuotaStatus(err, http.StatusBadRequest), meta, "DOMAIN_CREATE_FAILED", err.Error())
 		return
 	}
@@ -1654,6 +1715,7 @@ func (s *Service) handleV1CreateDomain(c *gin.Context) {
 			"type":         record.Type,
 		},
 	}, true)
+	s.hydrateQuotaHeaders(c, access)
 	writeV1Success(c, http.StatusCreated, meta, s.domainResponse(record))
 }
 
@@ -1678,6 +1740,7 @@ func (s *Service) handleV1DeleteDomain(c *gin.Context) {
 		} else {
 			status = http.StatusBadRequest
 		}
+		s.hydrateQuotaHeaders(c, access)
 		writeV1Error(c, status, meta, "DOMAIN_DELETE_FAILED", err.Error())
 		return
 	}
@@ -1695,6 +1758,7 @@ func (s *Service) handleV1DeleteDomain(c *gin.Context) {
 			"status": record.Status,
 		},
 	}, true)
+	s.hydrateQuotaHeaders(c, access)
 	writeV1Success(c, http.StatusOK, meta, gin.H{"status": "deleted", "name": name})
 }
 
@@ -1712,6 +1776,7 @@ func (s *Service) handleV1VerifyDomain(c *gin.Context) {
 
 	record, err := s.verifyDomain(req.DomainName, access)
 	if err != nil {
+		s.hydrateQuotaHeaders(c, access)
 		writeV1Error(c, planQuotaStatus(err, http.StatusBadRequest), meta, "DOMAIN_VERIFY_FAILED", err.Error())
 		return
 	}
@@ -1735,6 +1800,7 @@ func (s *Service) handleV1VerifyDomain(c *gin.Context) {
 			"verified_at":  formatTime(record.VerifiedAt),
 		},
 	}, true)
+	s.hydrateQuotaHeaders(c, access)
 	writeV1Success(c, status, meta, s.domainResponse(record))
 }
 

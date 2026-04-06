@@ -18,9 +18,10 @@ import (
 )
 
 type stubAuthProvider struct {
-	identity *AuthIdentity
-	err      error
-	enabled  bool
+	identity  *AuthIdentity
+	err       error
+	enabled   bool
+	healthErr error
 }
 
 func (s stubAuthProvider) Enabled() bool {
@@ -58,6 +59,13 @@ func (s stubAuthProvider) LookupUserPlan(_ context.Context, userID string) (stri
 		return s.identity.Plan, nil
 	}
 	return "FREE", nil
+}
+
+func (s stubAuthProvider) HealthCheck(_ context.Context) error {
+	if !s.enabled {
+		return nil
+	}
+	return s.healthErr
 }
 
 func (s stubAuthProvider) Close() error {
@@ -324,6 +332,157 @@ func TestHealthRouteSetsRequestIDHeader(t *testing.T) {
 	}
 	if recorder.Header().Get(requestIDHeader) == "" {
 		t.Fatal("expected X-Request-ID header to be populated")
+	}
+}
+
+func TestReadyRouteReturnsDetailedChecks(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	service := newTestService(t)
+	now := time.Now().UTC()
+	service.recordDomainVerifierRun(nil)
+	service.workerMu.Lock()
+	service.domainVerifierState.LastRunAt = &now
+	service.domainVerifierState.LastSuccessAt = &now
+	service.workerMu.Unlock()
+
+	router := gin.New()
+	service.RegisterRoutes(router)
+
+	request := httptest.NewRequest(http.MethodGet, "/api/ready", nil)
+	request.RemoteAddr = "127.0.0.1:4040"
+	recorder := httptest.NewRecorder()
+	router.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("/api/ready = %d, want %d", recorder.Code, http.StatusOK)
+	}
+
+	var payload ReadinessResponse
+	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode /api/ready response: %v", err)
+	}
+
+	if !payload.Ready {
+		t.Fatal("expected ready response to be true")
+	}
+	if payload.Checks["sqlite"].Status != "ok" {
+		t.Fatalf("sqlite status = %q, want ok", payload.Checks["sqlite"].Status)
+	}
+	if payload.Checks["domain_verifier"].Status != "ok" {
+		t.Fatalf("domain verifier status = %q, want ok", payload.Checks["domain_verifier"].Status)
+	}
+	if payload.Checks["tls"].Status != "external" {
+		t.Fatalf("tls status = %q, want external", payload.Checks["tls"].Status)
+	}
+}
+
+func TestV1ReadyRouteReturnsServiceUnavailableWhenAuthHealthFails(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	service := newTestService(t)
+	service.authProvider = stubAuthProvider{
+		enabled:   true,
+		healthErr: errors.New("postgres unreachable"),
+	}
+
+	router := gin.New()
+	service.RegisterRoutes(router)
+
+	request := httptest.NewRequest(http.MethodGet, "/api/v1/ready", nil)
+	request.RemoteAddr = "127.0.0.1:4040"
+	recorder := httptest.NewRecorder()
+	router.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusServiceUnavailable {
+		t.Fatalf("/api/v1/ready = %d, want %d", recorder.Code, http.StatusServiceUnavailable)
+	}
+
+	var payload struct {
+		Data ReadinessResponse `json:"data"`
+		Meta APIMeta           `json:"meta"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode /api/v1/ready response: %v", err)
+	}
+
+	if payload.Data.Ready {
+		t.Fatal("expected ready response to be false")
+	}
+	if payload.Data.Checks["auth"].Status != "error" {
+		t.Fatalf("auth status = %q, want error", payload.Data.Checks["auth"].Status)
+	}
+}
+
+func TestV1LimitsRouteReturnsQuotaEnvelope(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	service := newTestService(t)
+	if err := service.db.Create(&TunnelRecord{
+		ID:         "quota_tunnel",
+		Subdomain:  "quota",
+		Target:     "http://localhost:3000",
+		TargetPort: 3000,
+		Status:     "ACTIVE",
+		Region:     "local",
+	}).Error; err != nil {
+		t.Fatalf("insert tunnel: %v", err)
+	}
+
+	router := gin.New()
+	service.RegisterRoutes(router)
+
+	request := httptest.NewRequest(http.MethodGet, "/api/v1/limits", nil)
+	request.RemoteAddr = "127.0.0.1:4040"
+	recorder := httptest.NewRecorder()
+	router.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("/api/v1/limits = %d, want %d", recorder.Code, http.StatusOK)
+	}
+
+	var payload struct {
+		Data QuotaSnapshot `json:"data"`
+		Meta APIMeta       `json:"meta"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode /api/v1/limits response: %v", err)
+	}
+
+	if payload.Data.Plan != "PREVIEW" {
+		t.Fatalf("plan = %q, want PREVIEW", payload.Data.Plan)
+	}
+	if payload.Data.ReservedTunnels.Used != 1 {
+		t.Fatalf("reserved tunnels used = %d, want 1", payload.Data.ReservedTunnels.Used)
+	}
+	if payload.Data.ActiveTunnels.Used != 1 {
+		t.Fatalf("active tunnels used = %d, want 1", payload.Data.ActiveTunnels.Used)
+	}
+	if recorder.Header().Get("X-Binboi-Plan") != "PREVIEW" {
+		t.Fatalf("X-Binboi-Plan = %q, want PREVIEW", recorder.Header().Get("X-Binboi-Plan"))
+	}
+}
+
+func TestTunnelListIncludesQuotaHeaders(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	service := newTestService(t)
+	router := gin.New()
+	service.RegisterRoutes(router)
+
+	request := httptest.NewRequest(http.MethodGet, "/api/tunnels", nil)
+	request.RemoteAddr = "127.0.0.1:4040"
+	recorder := httptest.NewRecorder()
+	router.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("/api/tunnels = %d, want %d", recorder.Code, http.StatusOK)
+	}
+	if recorder.Header().Get("X-Binboi-Quota-Scope") != "trusted-local" {
+		t.Fatalf("X-Binboi-Quota-Scope = %q, want trusted-local", recorder.Header().Get("X-Binboi-Quota-Scope"))
+	}
+	if recorder.Header().Get("X-Binboi-Quota-Reserved-Tunnels-Limit") == "" {
+		t.Fatal("expected reserved tunnel quota header to be populated")
 	}
 }
 
