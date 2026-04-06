@@ -15,5 +15,3 @@ Verification:
 binboi version
 binboi whoami
 ```
-
-Sardor Azimov

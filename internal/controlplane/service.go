@@ -32,29 +32,32 @@ import (
 )
 
 const (
-	defaultAPIAddr            = ":8080"
-	defaultTunnelAddr         = ":8081"
-	defaultProxyAddr          = ":8000"
-	defaultBaseDomain         = "binboi.localhost"
-	defaultDatabase           = "binboi.db"
-	defaultInstance           = "Binboi Self-Hosted"
-	defaultRegion             = "local"
-	defaultReadHeaderTimeout  = 10 * time.Second
-	defaultReadTimeout        = 30 * time.Second
-	defaultWriteTimeout       = 60 * time.Second
-	defaultIdleTimeout        = 90 * time.Second
-	defaultShutdownTimeout    = 10 * time.Second
-	defaultRecentEventLimit   = 50
-	defaultRecentRequestLimit = 200
-	defaultStoredEventLimit   = 1000
-	defaultStoredRequestLimit = 5000
-	defaultAPIRateLimit       = 240
-	defaultAPIRateBurst       = 60
-	defaultProxyRateLimit     = 1200
-	defaultProxyRateBurst     = 240
-	maxLogBacklog             = 100
-	maxHeaderPreviewRows      = 10
-	maxBodyPreviewBytes       = 4096
+	defaultAPIAddr               = ":8080"
+	defaultTunnelAddr            = ":8081"
+	defaultProxyAddr             = ":8000"
+	defaultBaseDomain            = "binboi.localhost"
+	defaultDatabase              = "binboi.db"
+	defaultInstance              = "Binboi Self-Hosted"
+	defaultRegion                = "local"
+	defaultReadHeaderTimeout     = 10 * time.Second
+	defaultReadTimeout           = 30 * time.Second
+	defaultWriteTimeout          = 60 * time.Second
+	defaultIdleTimeout           = 90 * time.Second
+	defaultShutdownTimeout       = 10 * time.Second
+	defaultRecentEventLimit      = 50
+	defaultRecentRequestLimit    = 200
+	defaultStoredEventLimit      = 1000
+	defaultStoredRequestLimit    = 5000
+	defaultDomainVerifyInterval  = 90 * time.Second
+	defaultDomainVerifyBatchSize = 25
+	defaultDomainLookupTimeout   = 5 * time.Second
+	defaultAPIRateLimit          = 240
+	defaultAPIRateBurst          = 60
+	defaultProxyRateLimit        = 1200
+	defaultProxyRateBurst        = 240
+	maxLogBacklog                = 100
+	maxHeaderPreviewRows         = 10
+	maxBodyPreviewBytes          = 4096
 )
 
 var (
@@ -65,55 +68,61 @@ var (
 )
 
 type Config struct {
-	APIAddr            string
-	TunnelAddr         string
-	ProxyAddr          string
-	BaseDomain         string
-	PublicScheme       string
-	PublicPort         int
-	DatabasePath       string
-	InstanceName       string
-	DefaultRegion      string
-	AuthDatabaseURL    string
-	ReadHeaderTimeout  time.Duration
-	ReadTimeout        time.Duration
-	WriteTimeout       time.Duration
-	IdleTimeout        time.Duration
-	ShutdownTimeout    time.Duration
-	RecentEventLimit   int
-	RecentRequestLimit int
-	StoredEventLimit   int
-	StoredRequestLimit int
-	APIRateLimit       int
-	APIRateBurst       int
-	ProxyRateLimit     int
-	ProxyRateBurst     int
+	APIAddr               string
+	TunnelAddr            string
+	ProxyAddr             string
+	BaseDomain            string
+	PublicScheme          string
+	PublicPort            int
+	DatabasePath          string
+	InstanceName          string
+	DefaultRegion         string
+	AuthDatabaseURL       string
+	ReadHeaderTimeout     time.Duration
+	ReadTimeout           time.Duration
+	WriteTimeout          time.Duration
+	IdleTimeout           time.Duration
+	ShutdownTimeout       time.Duration
+	RecentEventLimit      int
+	RecentRequestLimit    int
+	StoredEventLimit      int
+	StoredRequestLimit    int
+	DomainVerifyInterval  time.Duration
+	DomainVerifyBatchSize int
+	DomainLookupTimeout   time.Duration
+	APIRateLimit          int
+	APIRateBurst          int
+	ProxyRateLimit        int
+	ProxyRateBurst        int
 }
 
 func LoadConfigFromEnv() Config {
 	cfg := Config{
-		APIAddr:            envOrDefault("BINBOI_API_ADDR", defaultAPIAddr),
-		TunnelAddr:         envOrDefault("BINBOI_TUNNEL_ADDR", defaultTunnelAddr),
-		ProxyAddr:          envOrDefault("BINBOI_PROXY_ADDR", defaultProxyAddr),
-		BaseDomain:         envOrDefault("BINBOI_BASE_DOMAIN", defaultBaseDomain),
-		PublicScheme:       envOrDefault("BINBOI_PUBLIC_SCHEME", "http"),
-		DatabasePath:       envOrDefault("BINBOI_DATABASE_PATH", defaultDatabase),
-		InstanceName:       envOrDefault("BINBOI_INSTANCE_NAME", defaultInstance),
-		DefaultRegion:      envOrDefault("BINBOI_DEFAULT_REGION", defaultRegion),
-		AuthDatabaseURL:    envOrDefault("BINBOI_AUTH_DATABASE_URL", strings.TrimSpace(os.Getenv("DATABASE_URL"))),
-		ReadHeaderTimeout:  durationEnvOrDefault("BINBOI_READ_HEADER_TIMEOUT", defaultReadHeaderTimeout),
-		ReadTimeout:        durationEnvOrDefault("BINBOI_READ_TIMEOUT", defaultReadTimeout),
-		WriteTimeout:       durationEnvOrDefault("BINBOI_WRITE_TIMEOUT", defaultWriteTimeout),
-		IdleTimeout:        durationEnvOrDefault("BINBOI_IDLE_TIMEOUT", defaultIdleTimeout),
-		ShutdownTimeout:    durationEnvOrDefault("BINBOI_SHUTDOWN_TIMEOUT", defaultShutdownTimeout),
-		RecentEventLimit:   intEnvOrDefault("BINBOI_EVENT_LIMIT", defaultRecentEventLimit),
-		RecentRequestLimit: intEnvOrDefault("BINBOI_REQUEST_LIMIT", defaultRecentRequestLimit),
-		StoredEventLimit:   intEnvOrDefault("BINBOI_STORED_EVENT_LIMIT", defaultStoredEventLimit),
-		StoredRequestLimit: intEnvOrDefault("BINBOI_STORED_REQUEST_LIMIT", defaultStoredRequestLimit),
-		APIRateLimit:       nonNegativeIntEnvOrDefault("BINBOI_API_RATE_LIMIT", defaultAPIRateLimit),
-		APIRateBurst:       nonNegativeIntEnvOrDefault("BINBOI_API_RATE_BURST", defaultAPIRateBurst),
-		ProxyRateLimit:     nonNegativeIntEnvOrDefault("BINBOI_PROXY_RATE_LIMIT", defaultProxyRateLimit),
-		ProxyRateBurst:     nonNegativeIntEnvOrDefault("BINBOI_PROXY_RATE_BURST", defaultProxyRateBurst),
+		APIAddr:               envOrDefault("BINBOI_API_ADDR", defaultAPIAddr),
+		TunnelAddr:            envOrDefault("BINBOI_TUNNEL_ADDR", defaultTunnelAddr),
+		ProxyAddr:             envOrDefault("BINBOI_PROXY_ADDR", defaultProxyAddr),
+		BaseDomain:            envOrDefault("BINBOI_BASE_DOMAIN", defaultBaseDomain),
+		PublicScheme:          envOrDefault("BINBOI_PUBLIC_SCHEME", "http"),
+		DatabasePath:          envOrDefault("BINBOI_DATABASE_PATH", defaultDatabase),
+		InstanceName:          envOrDefault("BINBOI_INSTANCE_NAME", defaultInstance),
+		DefaultRegion:         envOrDefault("BINBOI_DEFAULT_REGION", defaultRegion),
+		AuthDatabaseURL:       envOrDefault("BINBOI_AUTH_DATABASE_URL", strings.TrimSpace(os.Getenv("DATABASE_URL"))),
+		ReadHeaderTimeout:     durationEnvOrDefault("BINBOI_READ_HEADER_TIMEOUT", defaultReadHeaderTimeout),
+		ReadTimeout:           durationEnvOrDefault("BINBOI_READ_TIMEOUT", defaultReadTimeout),
+		WriteTimeout:          durationEnvOrDefault("BINBOI_WRITE_TIMEOUT", defaultWriteTimeout),
+		IdleTimeout:           durationEnvOrDefault("BINBOI_IDLE_TIMEOUT", defaultIdleTimeout),
+		ShutdownTimeout:       durationEnvOrDefault("BINBOI_SHUTDOWN_TIMEOUT", defaultShutdownTimeout),
+		RecentEventLimit:      intEnvOrDefault("BINBOI_EVENT_LIMIT", defaultRecentEventLimit),
+		RecentRequestLimit:    intEnvOrDefault("BINBOI_REQUEST_LIMIT", defaultRecentRequestLimit),
+		StoredEventLimit:      intEnvOrDefault("BINBOI_STORED_EVENT_LIMIT", defaultStoredEventLimit),
+		StoredRequestLimit:    intEnvOrDefault("BINBOI_STORED_REQUEST_LIMIT", defaultStoredRequestLimit),
+		DomainVerifyInterval:  durationEnvOrDefault("BINBOI_DOMAIN_VERIFY_INTERVAL", defaultDomainVerifyInterval),
+		DomainVerifyBatchSize: intEnvOrDefault("BINBOI_DOMAIN_VERIFY_BATCH_SIZE", defaultDomainVerifyBatchSize),
+		DomainLookupTimeout:   durationEnvOrDefault("BINBOI_DOMAIN_LOOKUP_TIMEOUT", defaultDomainLookupTimeout),
+		APIRateLimit:          nonNegativeIntEnvOrDefault("BINBOI_API_RATE_LIMIT", defaultAPIRateLimit),
+		APIRateBurst:          nonNegativeIntEnvOrDefault("BINBOI_API_RATE_BURST", defaultAPIRateBurst),
+		ProxyRateLimit:        nonNegativeIntEnvOrDefault("BINBOI_PROXY_RATE_LIMIT", defaultProxyRateLimit),
+		ProxyRateBurst:        nonNegativeIntEnvOrDefault("BINBOI_PROXY_RATE_BURST", defaultProxyRateBurst),
 	}
 
 	if port, err := strconv.Atoi(envOrDefault("BINBOI_PUBLIC_PORT", strconv.Itoa(portFromAddr(cfg.ProxyAddr, 8000)))); err == nil {
@@ -210,16 +219,18 @@ type TunnelRecord struct {
 }
 
 type DomainRecord struct {
-	ID          uint   `gorm:"primaryKey"`
-	Name        string `gorm:"uniqueIndex"`
-	OwnerUserID string `gorm:"index"`
-	OwnerEmail  string
-	Type        string
-	Status      string
-	ExpectedTXT string
-	VerifiedAt  *time.Time
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+	ID                      uint   `gorm:"primaryKey"`
+	Name                    string `gorm:"uniqueIndex"`
+	OwnerUserID             string `gorm:"index"`
+	OwnerEmail              string
+	Type                    string
+	Status                  string
+	ExpectedTXT             string
+	VerifiedAt              *time.Time
+	LastVerificationCheckAt *time.Time
+	LastVerificationError   string `gorm:"type:text"`
+	CreatedAt               time.Time
+	UpdatedAt               time.Time
 }
 
 type EventRecord struct {
@@ -261,13 +272,16 @@ type activeSession struct {
 }
 
 type Service struct {
-	cfg          Config
-	db           *gorm.DB
-	authProvider accessAuthenticator
-	startedAt    time.Time
-	metrics      runtimeMetrics
-	apiLimiter   *requestRateLimiter
-	proxyLimiter *requestRateLimiter
+	cfg              Config
+	db               *gorm.DB
+	authProvider     accessAuthenticator
+	startedAt        time.Time
+	metrics          runtimeMetrics
+	apiLimiter       *requestRateLimiter
+	proxyLimiter     *requestRateLimiter
+	backgroundCancel func()
+	backgroundWG     sync.WaitGroup
+	lookupTXT        func(context.Context, string) ([]string, error)
 
 	mu       sync.RWMutex
 	sessions map[string]*activeSession
@@ -400,6 +414,9 @@ func NewService(cfg Config) (*Service, error) {
 		clients:   make(map[*websocket.Conn]struct{}),
 		backlog:   make([]string, 0, maxLogBacklog),
 	}
+	service.lookupTXT = func(ctx context.Context, host string) ([]string, error) {
+		return net.DefaultResolver.LookupTXT(ctx, host)
+	}
 
 	authProvider, err := newAuthProvider(cfg.AuthDatabaseURL)
 	if err != nil {
@@ -411,6 +428,7 @@ func NewService(cfg Config) (*Service, error) {
 	if err := service.ensureDefaults(); err != nil {
 		return nil, err
 	}
+	service.startBackgroundWorkers()
 
 	return service, nil
 }
@@ -423,6 +441,22 @@ func (s *Service) Close(ctx context.Context) error {
 	var closeErr error
 
 	_ = s.closeAllSessions("control plane shutting down")
+
+	if s.backgroundCancel != nil {
+		s.backgroundCancel()
+	}
+
+	done := make(chan struct{})
+	go func() {
+		s.backgroundWG.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+	case <-ctx.Done():
+		closeErr = errors.Join(closeErr, ctx.Err())
+	}
 
 	s.logMu.Lock()
 	for client := range s.clients {
@@ -1701,13 +1735,7 @@ func (s *Service) listDomains(access requestAccess) ([]DomainResponse, error) {
 
 	response := make([]DomainResponse, 0, len(records))
 	for _, record := range records {
-		response = append(response, DomainResponse{
-			Name:        record.Name,
-			Type:        record.Type,
-			Status:      record.Status,
-			ExpectedTXT: record.ExpectedTXT,
-			VerifiedAt:  record.VerifiedAt,
-		})
+		response = append(response, s.domainResponse(record))
 	}
 	return response, nil
 }
@@ -1756,48 +1784,14 @@ func (s *Service) verifyDomain(name string, access requestAccess) (DomainRespons
 		return DomainResponse{}, err
 	}
 
-	if record.Type == "MANAGED" {
-		return DomainResponse{
-			Name:        record.Name,
-			Type:        record.Type,
-			Status:      "VERIFIED",
-			ExpectedTXT: record.ExpectedTXT,
-			VerifiedAt:  record.VerifiedAt,
-		}, nil
-	}
-
-	txtRecords, err := net.LookupTXT(record.Name)
+	result, changed, err := s.refreshDomainVerification(context.Background(), record)
 	if err != nil {
-		return DomainResponse{
-			Name:        record.Name,
-			Type:        record.Type,
-			Status:      record.Status,
-			ExpectedTXT: record.ExpectedTXT,
-			VerifiedAt:  record.VerifiedAt,
-		}, nil
+		return DomainResponse{}, err
 	}
-
-	for _, txtRecord := range txtRecords {
-		if strings.Contains(txtRecord, record.ExpectedTXT) {
-			now := time.Now().UTC()
-			record.Status = "VERIFIED"
-			record.VerifiedAt = &now
-			record.ExpectedTXT = ""
-			if err := s.db.Save(&record).Error; err != nil {
-				return DomainResponse{}, err
-			}
-			s.broadcastLog("info", fmt.Sprintf("Verified custom domain %s", record.Name), "")
-			break
-		}
+	if changed && result.Status == "VERIFIED" {
+		s.broadcastLog("info", fmt.Sprintf("Verified custom domain %s", result.Name), "")
 	}
-
-	return DomainResponse{
-		Name:        record.Name,
-		Type:        record.Type,
-		Status:      record.Status,
-		ExpectedTXT: record.ExpectedTXT,
-		VerifiedAt:  record.VerifiedAt,
-	}, nil
+	return result, nil
 }
 
 func (s *Service) deleteDomain(name string, access requestAccess) error {

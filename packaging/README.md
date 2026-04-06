@@ -9,5 +9,6 @@ Current focus:
 - Cargo wrapper crate metadata
 - Python wrapper package metadata
 - Debian control and post-install metadata
+- GitHub release automation for wrapper channels
 
-_Documentation maintained by Sardor Azimov._
+_Documentation maintained by Sardor Azimov, Miransas._

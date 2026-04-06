@@ -691,7 +691,7 @@ ${verifyCommands.join("\n")}
 
 ${markdownSections}
 
-_Documentation maintained by ${maintainer}._
+_Documentation maintained by ${maintainer}, ${organization}._
 `,
 );
 

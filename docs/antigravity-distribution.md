@@ -241,4 +241,4 @@ X-Miransas-Release-Channel: candidate
 ```
 
 
-_Documentation maintained by Sardor Azimov._
+_Documentation maintained by Sardor Azimov, Miransas._

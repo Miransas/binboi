@@ -1,0 +1,10 @@
+.DS_Store
+.gocache/
+dist/
+binboi
+main
+binboi.db
+rust/target/
+packaging/python/binboi_wrapper/__pycache__/
+*.pyc
+*.pyo

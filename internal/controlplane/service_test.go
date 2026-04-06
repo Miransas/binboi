@@ -63,20 +63,26 @@ func newTestService(t *testing.T) *Service {
 
 	service := &Service{
 		cfg: Config{
-			BaseDomain:     "binboi.localhost",
-			PublicScheme:   "http",
-			PublicPort:     8000,
-			DefaultRegion:  "local",
-			APIRateLimit:   defaultAPIRateLimit,
-			APIRateBurst:   defaultAPIRateBurst,
-			ProxyRateLimit: defaultProxyRateLimit,
-			ProxyRateBurst: defaultProxyRateBurst,
+			BaseDomain:            "binboi.localhost",
+			PublicScheme:          "http",
+			PublicPort:            8000,
+			DefaultRegion:         "local",
+			DomainVerifyInterval:  defaultDomainVerifyInterval,
+			DomainVerifyBatchSize: defaultDomainVerifyBatchSize,
+			DomainLookupTimeout:   defaultDomainLookupTimeout,
+			APIRateLimit:          defaultAPIRateLimit,
+			APIRateBurst:          defaultAPIRateBurst,
+			ProxyRateLimit:        defaultProxyRateLimit,
+			ProxyRateBurst:        defaultProxyRateBurst,
 		},
 		db:           db,
 		sessions:     make(map[string]*activeSession),
 		clients:      make(map[*websocket.Conn]struct{}),
 		backlog:      make([]string, 0, maxLogBacklog),
 		authProvider: &authProvider{},
+	}
+	service.lookupTXT = func(ctx context.Context, host string) ([]string, error) {
+		return []string{}, nil
 	}
 	service.configureRuntimeGuards()
 
@@ -120,6 +126,9 @@ func TestLoadConfigFromEnvParsesTimeoutsAndLimits(t *testing.T) {
 	t.Setenv("BINBOI_REQUEST_LIMIT", "250")
 	t.Setenv("BINBOI_STORED_EVENT_LIMIT", "1500")
 	t.Setenv("BINBOI_STORED_REQUEST_LIMIT", "5500")
+	t.Setenv("BINBOI_DOMAIN_VERIFY_INTERVAL", "45s")
+	t.Setenv("BINBOI_DOMAIN_VERIFY_BATCH_SIZE", "19")
+	t.Setenv("BINBOI_DOMAIN_LOOKUP_TIMEOUT", "3s")
 	t.Setenv("BINBOI_API_RATE_LIMIT", "320")
 	t.Setenv("BINBOI_API_RATE_BURST", "44")
 	t.Setenv("BINBOI_PROXY_RATE_LIMIT", "980")
@@ -153,6 +162,15 @@ func TestLoadConfigFromEnvParsesTimeoutsAndLimits(t *testing.T) {
 	}
 	if cfg.StoredRequestLimit != 5500 {
 		t.Fatalf("StoredRequestLimit = %d, want 5500", cfg.StoredRequestLimit)
+	}
+	if cfg.DomainVerifyInterval != 45*time.Second {
+		t.Fatalf("DomainVerifyInterval = %s, want 45s", cfg.DomainVerifyInterval)
+	}
+	if cfg.DomainVerifyBatchSize != 19 {
+		t.Fatalf("DomainVerifyBatchSize = %d, want 19", cfg.DomainVerifyBatchSize)
+	}
+	if cfg.DomainLookupTimeout != 3*time.Second {
+		t.Fatalf("DomainLookupTimeout = %s, want 3s", cfg.DomainLookupTimeout)
 	}
 	if cfg.APIRateLimit != 320 {
 		t.Fatalf("APIRateLimit = %d, want 320", cfg.APIRateLimit)
@@ -760,6 +778,48 @@ func TestDeleteDomainProtectsManagedBaseDomain(t *testing.T) {
 
 	if err := service.deleteDomain(service.cfg.BaseDomain, requestAccess{TrustedLocal: true}); err == nil {
 		t.Fatal("deleteDomain on managed base domain returned nil error")
+	}
+}
+
+func TestVerifyPendingDomainsMarksMatchingTXTAsVerified(t *testing.T) {
+	service := newTestService(t)
+	service.lookupTXT = func(ctx context.Context, host string) ([]string, error) {
+		if host != "docs.example.com" {
+			t.Fatalf("lookupTXT host = %q, want %q", host, "docs.example.com")
+		}
+		return []string{"binboi-verification=expected-value"}, nil
+	}
+
+	record, err := service.createDomain("docs.example.com", requestAccess{TrustedLocal: true})
+	if err != nil {
+		t.Fatalf("createDomain returned error: %v", err)
+	}
+
+	record.ExpectedTXT = "binboi-verification=expected-value"
+	if err := service.db.Save(&record).Error; err != nil {
+		t.Fatalf("save domain expectation: %v", err)
+	}
+
+	if err := service.verifyPendingDomains(context.Background()); err != nil {
+		t.Fatalf("verifyPendingDomains returned error: %v", err)
+	}
+
+	var refreshed DomainRecord
+	if err := service.db.Where("name = ?", "docs.example.com").First(&refreshed).Error; err != nil {
+		t.Fatalf("reload domain: %v", err)
+	}
+
+	if refreshed.Status != "VERIFIED" {
+		t.Fatalf("domain status = %q, want %q", refreshed.Status, "VERIFIED")
+	}
+	if refreshed.VerifiedAt == nil {
+		t.Fatal("expected verified_at to be set")
+	}
+	if refreshed.LastVerificationCheckAt == nil {
+		t.Fatal("expected last_verification_check_at to be set")
+	}
+	if refreshed.ExpectedTXT != "" {
+		t.Fatalf("expected verification token to be cleared, got %q", refreshed.ExpectedTXT)
 	}
 }
 

@@ -156,4 +156,4 @@ For the current launch:
 - treat Go as contributor-facing
 - do not market npm, bun, cargo, apt, or pip as supported until they are actually published and tested
 
-_Documentation maintained by Sardor Azimov._
+_Documentation maintained by Sardor Azimov, Miransas._
