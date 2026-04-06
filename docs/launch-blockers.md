@@ -205,4 +205,4 @@ Do not launch publicly if any of these are true:
 - metrics or request IDs are missing during smoke validation
 - public domain/TLS is not ready
 
-_Documentation maintained by Sardor Azimov._
+_Documentation maintained by Sardor Azimov, Miransas._

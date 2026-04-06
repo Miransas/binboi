@@ -12,6 +12,7 @@ Key files:
 - `environments.md`: local, dev, and production environment guide
 - `install-channel-matrix.md`: what each install channel delivers today
 - `launch-blockers.md`: backend-focused release blocker list
+- `production-domain-checklist.md`: real-domain rollout and TLS verification checklist
 - `releasing-cli.md`: release and Homebrew notes
 - `smoke-test-checklist.md`: short release-day backend smoke checklist
 

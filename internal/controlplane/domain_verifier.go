@@ -92,16 +92,30 @@ func (s *Service) verifyPendingDomains(ctx context.Context) error {
 			return err
 		}
 		if changed && updated.Status == "VERIFIED" {
-			s.broadcastLog("info", fmt.Sprintf("Verified custom domain %s", updated.Name), "")
+			s.writeEvent(EventRecord{
+				Level:        "info",
+				Message:      fmt.Sprintf("Verified custom domain %s", updated.Name),
+				OwnerUserID:  updated.OwnerUserID,
+				OwnerEmail:   updated.OwnerEmail,
+				AccessScope:  "system",
+				Action:       "domain.verify",
+				ResourceType: "domain",
+				ResourceID:   updated.Name,
+				DetailsJSON: marshalEventDetails(map[string]any{
+					"status":      updated.Status,
+					"verified_at": formatTime(updated.VerifiedAt),
+					"auto":        true,
+				}),
+			}, true)
 		}
 	}
 
 	return nil
 }
 
-func (s *Service) refreshDomainVerification(ctx context.Context, record DomainRecord) (DomainResponse, bool, error) {
+func (s *Service) refreshDomainVerification(ctx context.Context, record DomainRecord) (DomainRecord, bool, error) {
 	if record.Type == "MANAGED" {
-		return s.domainResponse(record), false, nil
+		return record, false, nil
 	}
 
 	if ctx == nil {
@@ -117,9 +131,9 @@ func (s *Service) refreshDomainVerification(ctx context.Context, record DomainRe
 		record.LastVerificationCheckAt = &now
 		record.LastVerificationError = compactPreview(err.Error(), 180)
 		if saveErr := s.db.Save(&record).Error; saveErr != nil {
-			return DomainResponse{}, false, saveErr
+			return DomainRecord{}, false, saveErr
 		}
-		return s.domainResponse(record), false, nil
+		return record, false, nil
 	}
 
 	matched := false
@@ -143,18 +157,22 @@ func (s *Service) refreshDomainVerification(ctx context.Context, record DomainRe
 	}
 
 	if err := s.db.Save(&record).Error; err != nil {
-		return DomainResponse{}, false, err
+		return DomainRecord{}, false, err
 	}
 
-	return s.domainResponse(record), changed, nil
+	return record, changed, nil
 }
 
 func (s *Service) domainResponse(record DomainRecord) DomainResponse {
 	return DomainResponse{
-		Name:        record.Name,
-		Type:        record.Type,
-		Status:      record.Status,
-		ExpectedTXT: record.ExpectedTXT,
-		VerifiedAt:  record.VerifiedAt,
+		Name:                    record.Name,
+		Type:                    record.Type,
+		Status:                  record.Status,
+		ExpectedTXT:             record.ExpectedTXT,
+		VerifiedAt:              record.VerifiedAt,
+		LastVerificationCheckAt: record.LastVerificationCheckAt,
+		LastVerificationError:   record.LastVerificationError,
+		TLSReady:                record.Status == "VERIFIED",
+		TLSMode:                 s.tlsMode(),
 	}
 }

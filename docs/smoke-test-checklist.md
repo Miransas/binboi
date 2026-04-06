@@ -118,7 +118,36 @@ Pass if the control plane logs show:
 
 This makes tomorrow's debugging much easier if any tunnel or proxy step fails.
 
-## 8. Release Decision
+## 8. Custom Domain And TLS Check
+
+Use this if you have real domains pointed at the Binboi proxy.
+
+Repeat the same flow for each domain you want to validate.
+
+1. Create the domain in the dashboard or API.
+2. Publish the TXT value returned in `expected_txt`.
+3. Wait for the background verifier or call the verify endpoint manually.
+4. Confirm the API returns:
+   - `status: VERIFIED`
+   - `tls_ready: true`
+   - `tls_mode: acme` when `BINBOI_PROXY_TLS_ADDR` is enabled
+5. If ACME is enabled, hit the public host over HTTPS and confirm the certificate is issued.
+
+Quick API check:
+
+```bash
+curl -s -H 'Authorization: Bearer <token>' http://127.0.0.1:9080/api/v1/domains
+curl -s -H 'Authorization: Bearer <token>' 'http://127.0.0.1:9080/api/v1/events?action=domain.verify&limit=20'
+```
+
+Pass if:
+
+- all target domains become `VERIFIED`
+- `last_verification_error` is empty after success
+- the audit feed shows `domain.verify`
+- HTTPS works for domains that should terminate TLS in Binboi
+
+## 9. Release Decision
 
 Green-light the backend if all of these are true:
 
@@ -137,4 +166,4 @@ Block release if any of these fail:
 - request feed stays empty after confirmed traffic
 - metrics endpoints fail or return empty counters
 
-_Documentation maintained by Sardor Azimov._
+_Documentation maintained by Sardor Azimov, Miransas._

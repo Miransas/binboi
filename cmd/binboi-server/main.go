@@ -42,11 +42,24 @@ func main() {
 
 	proxyServer := &http.Server{
 		Addr:              cfg.ProxyAddr,
-		Handler:           service.ServeProxy(),
+		Handler:           service.ProxyHTTPHandler(),
 		ReadHeaderTimeout: cfg.ReadHeaderTimeout,
 		ReadTimeout:       cfg.ReadTimeout,
 		WriteTimeout:      cfg.WriteTimeout,
 		IdleTimeout:       cfg.IdleTimeout,
+	}
+
+	var proxyTLSServer *http.Server
+	if service.ProxyTLSConfig() != nil {
+		proxyTLSServer = &http.Server{
+			Addr:              cfg.ProxyTLSAddr,
+			Handler:           service.ServeProxy(),
+			TLSConfig:         service.ProxyTLSConfig(),
+			ReadHeaderTimeout: cfg.ReadHeaderTimeout,
+			ReadTimeout:       cfg.ReadTimeout,
+			WriteTimeout:      cfg.WriteTimeout,
+			IdleTimeout:       cfg.IdleTimeout,
+		}
 	}
 
 	tunnelListener, err := net.Listen("tcp", cfg.TunnelAddr)
@@ -55,12 +68,19 @@ func main() {
 		os.Exit(1)
 	}
 
-	slog.Info("binboi control plane ready", "tunnel_addr", cfg.TunnelAddr, "proxy_addr", cfg.ProxyAddr, "api_addr", cfg.APIAddr)
+	logAttrs := []any{"tunnel_addr", cfg.TunnelAddr, "proxy_addr", cfg.ProxyAddr, "api_addr", cfg.APIAddr}
+	if proxyTLSServer != nil {
+		logAttrs = append(logAttrs, "proxy_tls_addr", cfg.ProxyTLSAddr)
+	}
+	slog.Info("binboi control plane ready", logAttrs...)
 
-	runErrCh := make(chan error, 3)
+	runErrCh := make(chan error, 4)
 
 	go serveTunnelListener(rootCtx, tunnelListener, service, runErrCh)
 	go serveHTTP("proxy", proxyServer, runErrCh)
+	if proxyTLSServer != nil {
+		go serveHTTPS("proxy-tls", proxyTLSServer, runErrCh)
+	}
 	go serveHTTP("api", apiServer, runErrCh)
 
 	var runErr error
@@ -77,7 +97,7 @@ func main() {
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
 	defer cancel()
 
-	if err := shutdownRuntime(shutdownCtx, tunnelListener, apiServer, proxyServer, service); err != nil {
+	if err := shutdownRuntime(shutdownCtx, tunnelListener, apiServer, proxyServer, proxyTLSServer, service); err != nil {
 		slog.Error("shutdown completed with errors", "error", err)
 		if runErr == nil {
 			runErr = err
@@ -92,6 +112,12 @@ func main() {
 
 func serveHTTP(name string, server *http.Server, errCh chan<- error) {
 	if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		errCh <- errors.New(name + " server: " + err.Error())
+	}
+}
+
+func serveHTTPS(name string, server *http.Server, errCh chan<- error) {
+	if err := server.ListenAndServeTLS("", ""); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		errCh <- errors.New(name + " server: " + err.Error())
 	}
 }
@@ -115,6 +141,7 @@ func shutdownRuntime(
 	tunnelListener net.Listener,
 	apiServer *http.Server,
 	proxyServer *http.Server,
+	proxyTLSServer *http.Server,
 	service *controlplane.Service,
 ) error {
 	var shutdownErr error
@@ -127,6 +154,9 @@ func shutdownRuntime(
 	}
 	if proxyServer != nil {
 		shutdownErr = errors.Join(shutdownErr, proxyServer.Shutdown(ctx))
+	}
+	if proxyTLSServer != nil {
+		shutdownErr = errors.Join(shutdownErr, proxyTLSServer.Shutdown(ctx))
 	}
 	if service != nil {
 		shutdownErr = errors.Join(shutdownErr, service.Close(ctx))

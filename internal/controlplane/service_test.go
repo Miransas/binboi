@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -44,6 +45,19 @@ func (s stubAuthProvider) ValidateAccessToken(_ context.Context, raw string) (*A
 		return nil, errors.New("missing token")
 	}
 	return s.identity, nil
+}
+
+func (s stubAuthProvider) LookupUserPlan(_ context.Context, userID string) (string, error) {
+	if !s.enabled {
+		return "", errors.New("auth disabled")
+	}
+	if s.err != nil {
+		return "", s.err
+	}
+	if s.identity != nil && s.identity.UserID == userID {
+		return s.identity.Plan, nil
+	}
+	return "FREE", nil
 }
 
 func (s stubAuthProvider) Close() error {
@@ -126,6 +140,9 @@ func TestLoadConfigFromEnvParsesTimeoutsAndLimits(t *testing.T) {
 	t.Setenv("BINBOI_REQUEST_LIMIT", "250")
 	t.Setenv("BINBOI_STORED_EVENT_LIMIT", "1500")
 	t.Setenv("BINBOI_STORED_REQUEST_LIMIT", "5500")
+	t.Setenv("BINBOI_AUDIT_EXPORT_LIMIT", "9000")
+	t.Setenv("BINBOI_EVENT_RETENTION_MAX_AGE", "72h")
+	t.Setenv("BINBOI_REQUEST_RETENTION_MAX_AGE", "24h")
 	t.Setenv("BINBOI_DOMAIN_VERIFY_INTERVAL", "45s")
 	t.Setenv("BINBOI_DOMAIN_VERIFY_BATCH_SIZE", "19")
 	t.Setenv("BINBOI_DOMAIN_LOOKUP_TIMEOUT", "3s")
@@ -133,6 +150,9 @@ func TestLoadConfigFromEnvParsesTimeoutsAndLimits(t *testing.T) {
 	t.Setenv("BINBOI_API_RATE_BURST", "44")
 	t.Setenv("BINBOI_PROXY_RATE_LIMIT", "980")
 	t.Setenv("BINBOI_PROXY_RATE_BURST", "120")
+	t.Setenv("BINBOI_PROXY_TLS_ADDR", ":8443")
+	t.Setenv("BINBOI_ACME_CACHE_DIR", "./acme-cache")
+	t.Setenv("BINBOI_ACME_EMAIL", "ops@binboi.test")
 
 	cfg := LoadConfigFromEnv()
 
@@ -163,6 +183,15 @@ func TestLoadConfigFromEnvParsesTimeoutsAndLimits(t *testing.T) {
 	if cfg.StoredRequestLimit != 5500 {
 		t.Fatalf("StoredRequestLimit = %d, want 5500", cfg.StoredRequestLimit)
 	}
+	if cfg.AuditExportLimit != 9000 {
+		t.Fatalf("AuditExportLimit = %d, want 9000", cfg.AuditExportLimit)
+	}
+	if cfg.EventRetentionMaxAge != 72*time.Hour {
+		t.Fatalf("EventRetentionMaxAge = %s, want 72h", cfg.EventRetentionMaxAge)
+	}
+	if cfg.RequestRetentionMaxAge != 24*time.Hour {
+		t.Fatalf("RequestRetentionMaxAge = %s, want 24h", cfg.RequestRetentionMaxAge)
+	}
 	if cfg.DomainVerifyInterval != 45*time.Second {
 		t.Fatalf("DomainVerifyInterval = %s, want 45s", cfg.DomainVerifyInterval)
 	}
@@ -183,6 +212,15 @@ func TestLoadConfigFromEnvParsesTimeoutsAndLimits(t *testing.T) {
 	}
 	if cfg.ProxyRateBurst != 120 {
 		t.Fatalf("ProxyRateBurst = %d, want 120", cfg.ProxyRateBurst)
+	}
+	if cfg.ProxyTLSAddr != ":8443" {
+		t.Fatalf("ProxyTLSAddr = %q, want %q", cfg.ProxyTLSAddr, ":8443")
+	}
+	if cfg.ACMECacheDir != "./acme-cache" {
+		t.Fatalf("ACMECacheDir = %q, want %q", cfg.ACMECacheDir, "./acme-cache")
+	}
+	if cfg.ACMEEmail != "ops@binboi.test" {
+		t.Fatalf("ACMEEmail = %q, want %q", cfg.ACMEEmail, "ops@binboi.test")
 	}
 }
 
@@ -776,8 +814,368 @@ func TestDeleteDomainProtectsManagedBaseDomain(t *testing.T) {
 		t.Fatal("createDomain with managed base domain returned nil error")
 	}
 
-	if err := service.deleteDomain(service.cfg.BaseDomain, requestAccess{TrustedLocal: true}); err == nil {
+	if _, err := service.deleteDomain(service.cfg.BaseDomain, requestAccess{TrustedLocal: true}); err == nil {
 		t.Fatal("deleteDomain on managed base domain returned nil error")
+	}
+}
+
+func TestAllowACMEHostAllowsManagedAndVerifiedCustomDomains(t *testing.T) {
+	service := newTestService(t)
+	service.cfg.ProxyTLSAddr = ":8443"
+	service.cfg.ACMECacheDir = t.TempDir()
+	service.configureTLSManager()
+
+	record, err := service.createDomain("docs.example.com", requestAccess{TrustedLocal: true})
+	if err != nil {
+		t.Fatalf("createDomain returned error: %v", err)
+	}
+	now := time.Now().UTC()
+	record.Status = "VERIFIED"
+	record.VerifiedAt = &now
+	record.ExpectedTXT = ""
+	if err := service.db.Save(&record).Error; err != nil {
+		t.Fatalf("save domain: %v", err)
+	}
+
+	if err := service.allowACMEHost(context.Background(), "demo.binboi.localhost"); err != nil {
+		t.Fatalf("allowACMEHost for managed subdomain returned error: %v", err)
+	}
+	if err := service.allowACMEHost(context.Background(), "docs.example.com"); err != nil {
+		t.Fatalf("allowACMEHost for verified custom domain returned error: %v", err)
+	}
+	if err := service.allowACMEHost(context.Background(), "evil.example.com"); err == nil {
+		t.Fatal("allowACMEHost for unknown custom domain returned nil error")
+	}
+}
+
+func TestCreateTunnelRespectsFreePlanLimit(t *testing.T) {
+	service := newTestService(t)
+	service.authProvider = stubAuthProvider{enabled: true}
+
+	access := requestAccess{
+		Identity: &AuthIdentity{
+			UserID:   "user_free",
+			Email:    "free@binboi.test",
+			Plan:     "FREE",
+			AuthMode: "personal-access-token",
+		},
+	}
+
+	if _, err := service.createTunnel("alpha", "3000", "", access); err != nil {
+		t.Fatalf("first createTunnel returned error: %v", err)
+	}
+	if _, err := service.createTunnel("beta", "3001", "", access); err == nil {
+		t.Fatal("second createTunnel returned nil error")
+	} else if !isQuotaError(err) {
+		t.Fatalf("second createTunnel error = %v, want quota error", err)
+	}
+}
+
+func TestCreateDomainRequiresPaidPlan(t *testing.T) {
+	service := newTestService(t)
+	service.authProvider = stubAuthProvider{enabled: true}
+
+	_, err := service.createDomain("docs.example.com", requestAccess{
+		Identity: &AuthIdentity{
+			UserID:   "user_free",
+			Email:    "free@binboi.test",
+			Plan:     "FREE",
+			AuthMode: "personal-access-token",
+		},
+	})
+	if err == nil {
+		t.Fatal("createDomain returned nil error for free plan")
+	}
+	if !isQuotaError(err) {
+		t.Fatalf("createDomain error = %v, want quota error", err)
+	}
+}
+
+func TestEnforceRequestQuotaRejectsFreePlanOverDailyCap(t *testing.T) {
+	service := newTestService(t)
+	service.authProvider = stubAuthProvider{
+		enabled: true,
+		identity: &AuthIdentity{
+			UserID: "user_free",
+			Plan:   "FREE",
+		},
+	}
+
+	tunnel := TunnelRecord{
+		ID:          "tun_free",
+		Subdomain:   "alpha",
+		OwnerUserID: "user_free",
+		OwnerEmail:  "free@binboi.test",
+		AuthMode:    "personal-access-token",
+		Target:      "http://localhost:3000",
+		Status:      "ACTIVE",
+		Region:      "local",
+	}
+	if err := service.db.Create(&tunnel).Error; err != nil {
+		t.Fatalf("insert tunnel: %v", err)
+	}
+
+	for i := 0; i < 100; i++ {
+		if err := service.db.Create(&RequestRecord{
+			ID:              fmt.Sprintf("req_%03d", i),
+			TunnelID:        tunnel.ID,
+			TunnelSubdomain: tunnel.Subdomain,
+			Kind:            "REQUEST",
+			Method:          http.MethodGet,
+			Path:            "/",
+			Status:          http.StatusOK,
+			CreatedAt:       time.Now().UTC(),
+		}).Error; err != nil {
+			t.Fatalf("insert request %d: %v", i, err)
+		}
+	}
+
+	if err := service.enforceRequestQuota(tunnel); err == nil {
+		t.Fatal("enforceRequestQuota returned nil error")
+	} else if !isQuotaError(err) {
+		t.Fatalf("enforceRequestQuota error = %v, want quota error", err)
+	}
+}
+
+func TestHandleExportEventsReturnsNDJSON(t *testing.T) {
+	service := newTestService(t)
+	if err := service.db.Create(&EventRecord{
+		Level:        "info",
+		Message:      "Registered custom domain docs.example.com",
+		Action:       "domain.create",
+		ResourceType: "domain",
+		ResourceID:   "docs.example.com",
+		OwnerEmail:   "owner@binboi.test",
+		AccessScope:  "trusted-local",
+	}).Error; err != nil {
+		t.Fatalf("insert event: %v", err)
+	}
+
+	recorder := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(recorder)
+	ctx.Request = httptest.NewRequest(http.MethodGet, "/api/events/export?format=ndjson&limit=10", nil)
+	ctx.Set("binboi.request_access", requestAccess{TrustedLocal: true})
+
+	service.handleExportEvents(ctx)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("export status = %d, want %d", recorder.Code, http.StatusOK)
+	}
+	if contentType := recorder.Header().Get("Content-Type"); !strings.Contains(contentType, "application/x-ndjson") {
+		t.Fatalf("content type = %q, want ndjson", contentType)
+	}
+	if body := recorder.Body.String(); !strings.Contains(body, "\"action\":\"domain.create\"") {
+		t.Fatalf("export body = %q, want action payload", body)
+	}
+}
+
+func TestDomainResponseIncludesTLSReadiness(t *testing.T) {
+	service := newTestService(t)
+	service.cfg.ProxyTLSAddr = ":8443"
+
+	now := time.Now().UTC()
+	response := service.domainResponse(DomainRecord{
+		Name:                    "docs.example.com",
+		Type:                    "CUSTOM",
+		Status:                  "VERIFIED",
+		VerifiedAt:              &now,
+		LastVerificationCheckAt: &now,
+	})
+
+	if !response.TLSReady {
+		t.Fatal("expected tls_ready to be true")
+	}
+	if response.TLSMode != "acme" {
+		t.Fatalf("tls mode = %q, want %q", response.TLSMode, "acme")
+	}
+	if response.LastVerificationCheckAt == nil {
+		t.Fatal("expected last_verification_check_at to be set")
+	}
+}
+
+func TestInstanceResponseIncludesTLSSummary(t *testing.T) {
+	service := newTestService(t)
+	service.cfg.ProxyTLSAddr = ":8443"
+	service.cfg.AuditExportLimit = 4321
+
+	response := service.instanceResponse()
+
+	if !response.TLSEnabled {
+		t.Fatal("expected tls_enabled to be true")
+	}
+	if response.ProxyTLSAddr != ":8443" {
+		t.Fatalf("proxy tls addr = %q, want %q", response.ProxyTLSAddr, ":8443")
+	}
+	if response.AuditExportLimit != 4321 {
+		t.Fatalf("audit export limit = %d, want %d", response.AuditExportLimit, 4321)
+	}
+}
+
+func TestEmitAuditEventPersistsStructuredFields(t *testing.T) {
+	service := newTestService(t)
+
+	recorder := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(recorder)
+	ctx.Request = httptest.NewRequest(http.MethodPost, "/api/tunnels", nil)
+	ctx.Set("binboi.request_access", requestAccess{
+		Identity: &AuthIdentity{
+			UserID: "user_a",
+			Email:  "owner-a@example.com",
+		},
+	})
+	ctx.Set("binboi.request_id", "req-audit-1")
+
+	service.emitAuditEvent(ctx, auditEventOptions{
+		Level:           "info",
+		Message:         "Reserved tunnel alpha -> http://localhost:3000",
+		Action:          "tunnel.create",
+		ResourceType:    "tunnel",
+		ResourceID:      "tun_alpha",
+		TunnelSubdomain: "alpha",
+		Details: map[string]any{
+			"target": "http://localhost:3000",
+			"region": "local",
+		},
+	}, false)
+
+	var record EventRecord
+	if err := service.db.Order("id desc").First(&record).Error; err != nil {
+		t.Fatalf("load event record: %v", err)
+	}
+
+	if record.OwnerUserID != "user_a" {
+		t.Fatalf("owner user id = %q, want %q", record.OwnerUserID, "user_a")
+	}
+	if record.ActorEmail != "owner-a@example.com" {
+		t.Fatalf("actor email = %q, want %q", record.ActorEmail, "owner-a@example.com")
+	}
+	if record.Action != "tunnel.create" {
+		t.Fatalf("action = %q, want %q", record.Action, "tunnel.create")
+	}
+	if record.RequestID != "req-audit-1" {
+		t.Fatalf("request id = %q, want %q", record.RequestID, "req-audit-1")
+	}
+
+	events, err := service.listEvents(requestAccess{TrustedLocal: true}, eventListOptions{
+		Limit:  10,
+		Action: "tunnel.create",
+	})
+	if err != nil {
+		t.Fatalf("listEvents returned error: %v", err)
+	}
+	if len(events) != 1 {
+		t.Fatalf("event count = %d, want 1", len(events))
+	}
+	if events[0].Details["target"] != "http://localhost:3000" {
+		t.Fatalf("details target = %v, want %q", events[0].Details["target"], "http://localhost:3000")
+	}
+}
+
+func TestListEventsUsesAuditOwnershipAndTunnelFallback(t *testing.T) {
+	service := newTestService(t)
+	service.authProvider = stubAuthProvider{enabled: true}
+
+	now := time.Now().UTC()
+	tunnels := []TunnelRecord{
+		{
+			ID:          "tun_alpha",
+			Subdomain:   "alpha",
+			OwnerUserID: "user_a",
+			OwnerEmail:  "owner-a@example.com",
+			Target:      "http://localhost:3000",
+			Status:      "ACTIVE",
+			Region:      "local",
+			CreatedAt:   now,
+		},
+		{
+			ID:          "tun_beta",
+			Subdomain:   "beta",
+			OwnerUserID: "user_b",
+			OwnerEmail:  "owner-b@example.com",
+			Target:      "http://localhost:4000",
+			Status:      "ACTIVE",
+			Region:      "local",
+			CreatedAt:   now,
+		},
+	}
+	for _, tunnel := range tunnels {
+		if err := service.db.Create(&tunnel).Error; err != nil {
+			t.Fatalf("insert tunnel: %v", err)
+		}
+	}
+
+	events := []EventRecord{
+		{
+			Level:           "info",
+			Message:         "Tunnel alpha connected",
+			TunnelSubdomain: "alpha",
+			CreatedAt:       now,
+		},
+		{
+			Level:        "info",
+			Message:      "Registered custom domain docs.example.com",
+			Action:       "domain.create",
+			ResourceType: "domain",
+			ResourceID:   "docs.example.com",
+			OwnerUserID:  "user_a",
+			OwnerEmail:   "owner-a@example.com",
+			CreatedAt:    now.Add(time.Second),
+		},
+		{
+			Level:           "warn",
+			Message:         "Tunnel beta disconnected",
+			TunnelSubdomain: "beta",
+			CreatedAt:       now.Add(2 * time.Second),
+		},
+		{
+			Level:        "warn",
+			Message:      "Deleted custom domain evil.example.com",
+			Action:       "domain.delete",
+			ResourceType: "domain",
+			ResourceID:   "evil.example.com",
+			OwnerUserID:  "user_b",
+			OwnerEmail:   "owner-b@example.com",
+			CreatedAt:    now.Add(3 * time.Second),
+		},
+	}
+	for _, event := range events {
+		if err := service.db.Create(&event).Error; err != nil {
+			t.Fatalf("insert event: %v", err)
+		}
+	}
+
+	filtered, err := service.listEvents(requestAccess{
+		Identity: &AuthIdentity{UserID: "user_a"},
+	}, eventListOptions{
+		Limit: 10,
+	})
+	if err != nil {
+		t.Fatalf("listEvents returned error: %v", err)
+	}
+	if len(filtered) != 2 {
+		t.Fatalf("event count = %d, want 2", len(filtered))
+	}
+	if filtered[0].Action != "domain.create" {
+		t.Fatalf("latest action = %q, want %q", filtered[0].Action, "domain.create")
+	}
+	if filtered[1].TunnelSubdomain != "alpha" {
+		t.Fatalf("fallback tunnel = %q, want %q", filtered[1].TunnelSubdomain, "alpha")
+	}
+
+	actionFiltered, err := service.listEvents(requestAccess{
+		Identity: &AuthIdentity{UserID: "user_a"},
+	}, eventListOptions{
+		Limit:  10,
+		Action: "domain.create",
+	})
+	if err != nil {
+		t.Fatalf("listEvents with action filter returned error: %v", err)
+	}
+	if len(actionFiltered) != 1 {
+		t.Fatalf("action-filtered count = %d, want 1", len(actionFiltered))
+	}
+	if actionFiltered[0].ResourceID != "docs.example.com" {
+		t.Fatalf("resource id = %q, want %q", actionFiltered[0].ResourceID, "docs.example.com")
 	}
 }
 

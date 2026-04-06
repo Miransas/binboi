@@ -10,6 +10,7 @@ const maxSearchQueryBytes = 120
 type eventListOptions struct {
 	Limit  int
 	Level  string
+	Action string
 	Tunnel string
 	Query  string
 }
@@ -33,6 +34,17 @@ func normalizeEventLevelFilter(raw string) string {
 	default:
 		return ""
 	}
+}
+
+func normalizeEventActionFilter(raw string) string {
+	value := strings.ToLower(strings.TrimSpace(raw))
+	if value == "" {
+		return ""
+	}
+	if len(value) > 80 {
+		value = value[:80]
+	}
+	return value
 }
 
 func normalizeRequestKindFilter(raw string) string {

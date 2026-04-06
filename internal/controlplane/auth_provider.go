@@ -25,6 +25,7 @@ type accessAuthenticator interface {
 	Enabled() bool
 	Mode() string
 	ValidateAccessToken(context.Context, string) (*AuthIdentity, error)
+	LookupUserPlan(context.Context, string) (string, error)
 	Close() error
 }
 
@@ -140,6 +141,37 @@ func (p *authProvider) ValidateAccessToken(ctx context.Context, raw string) (*Au
 	identity.TokenPrefix = prefix
 	identity.AuthMode = p.Mode()
 	return &identity, nil
+}
+
+func (p *authProvider) LookupUserPlan(ctx context.Context, userID string) (string, error) {
+	if !p.Enabled() {
+		return "", errors.New("auth database not configured")
+	}
+
+	userID = strings.TrimSpace(userID)
+	if userID == "" {
+		return "", errors.New("missing user id")
+	}
+
+	var plan string
+	err := p.pool.QueryRow(ctx, `
+		SELECT COALESCE(plan, 'FREE')
+		FROM "user"
+		WHERE id = $1
+		LIMIT 1
+	`, userID).Scan(&plan)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "FREE", nil
+		}
+		return "", fmt.Errorf("query user plan: %w", err)
+	}
+
+	plan = strings.ToUpper(strings.TrimSpace(plan))
+	if plan == "" {
+		plan = "FREE"
+	}
+	return plan, nil
 }
 
 func (p *authProvider) Close() error {

@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net"
 	"net/http"
 	"net/http/httputil"
@@ -27,37 +28,43 @@ import (
 	"github.com/miransas/binboi/internal/auth"
 	"github.com/miransas/binboi/internal/protocol"
 	"github.com/miransas/binboi/internal/utils"
+	"golang.org/x/crypto/acme/autocert"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
 const (
-	defaultAPIAddr               = ":8080"
-	defaultTunnelAddr            = ":8081"
-	defaultProxyAddr             = ":8000"
-	defaultBaseDomain            = "binboi.localhost"
-	defaultDatabase              = "binboi.db"
-	defaultInstance              = "Binboi Self-Hosted"
-	defaultRegion                = "local"
-	defaultReadHeaderTimeout     = 10 * time.Second
-	defaultReadTimeout           = 30 * time.Second
-	defaultWriteTimeout          = 60 * time.Second
-	defaultIdleTimeout           = 90 * time.Second
-	defaultShutdownTimeout       = 10 * time.Second
-	defaultRecentEventLimit      = 50
-	defaultRecentRequestLimit    = 200
-	defaultStoredEventLimit      = 1000
-	defaultStoredRequestLimit    = 5000
-	defaultDomainVerifyInterval  = 90 * time.Second
-	defaultDomainVerifyBatchSize = 25
-	defaultDomainLookupTimeout   = 5 * time.Second
-	defaultAPIRateLimit          = 240
-	defaultAPIRateBurst          = 60
-	defaultProxyRateLimit        = 1200
-	defaultProxyRateBurst        = 240
-	maxLogBacklog                = 100
-	maxHeaderPreviewRows         = 10
-	maxBodyPreviewBytes          = 4096
+	defaultAPIAddr                = ":8080"
+	defaultTunnelAddr             = ":8081"
+	defaultProxyAddr              = ":8000"
+	defaultProxyTLSAddr           = ""
+	defaultBaseDomain             = "binboi.localhost"
+	defaultDatabase               = "binboi.db"
+	defaultInstance               = "Binboi Self-Hosted"
+	defaultRegion                 = "local"
+	defaultACMECacheDir           = "./binboi-acme-cache"
+	defaultReadHeaderTimeout      = 10 * time.Second
+	defaultReadTimeout            = 30 * time.Second
+	defaultWriteTimeout           = 60 * time.Second
+	defaultIdleTimeout            = 90 * time.Second
+	defaultShutdownTimeout        = 10 * time.Second
+	defaultRecentEventLimit       = 50
+	defaultRecentRequestLimit     = 200
+	defaultStoredEventLimit       = 1000
+	defaultStoredRequestLimit     = 5000
+	defaultAuditExportLimit       = 5000
+	defaultDomainVerifyInterval   = 90 * time.Second
+	defaultDomainVerifyBatchSize  = 25
+	defaultDomainLookupTimeout    = 5 * time.Second
+	defaultAPIRateLimit           = 240
+	defaultAPIRateBurst           = 60
+	defaultProxyRateLimit         = 1200
+	defaultProxyRateBurst         = 240
+	defaultEventRetentionMaxAge   = 0
+	defaultRequestRetentionMaxAge = 0
+	maxLogBacklog                 = 100
+	maxHeaderPreviewRows          = 10
+	maxBodyPreviewBytes           = 4096
 )
 
 var (
@@ -68,61 +75,73 @@ var (
 )
 
 type Config struct {
-	APIAddr               string
-	TunnelAddr            string
-	ProxyAddr             string
-	BaseDomain            string
-	PublicScheme          string
-	PublicPort            int
-	DatabasePath          string
-	InstanceName          string
-	DefaultRegion         string
-	AuthDatabaseURL       string
-	ReadHeaderTimeout     time.Duration
-	ReadTimeout           time.Duration
-	WriteTimeout          time.Duration
-	IdleTimeout           time.Duration
-	ShutdownTimeout       time.Duration
-	RecentEventLimit      int
-	RecentRequestLimit    int
-	StoredEventLimit      int
-	StoredRequestLimit    int
-	DomainVerifyInterval  time.Duration
-	DomainVerifyBatchSize int
-	DomainLookupTimeout   time.Duration
-	APIRateLimit          int
-	APIRateBurst          int
-	ProxyRateLimit        int
-	ProxyRateBurst        int
+	APIAddr                string
+	TunnelAddr             string
+	ProxyAddr              string
+	ProxyTLSAddr           string
+	BaseDomain             string
+	PublicScheme           string
+	PublicPort             int
+	DatabasePath           string
+	InstanceName           string
+	DefaultRegion          string
+	AuthDatabaseURL        string
+	ACMECacheDir           string
+	ACMEEmail              string
+	ReadHeaderTimeout      time.Duration
+	ReadTimeout            time.Duration
+	WriteTimeout           time.Duration
+	IdleTimeout            time.Duration
+	ShutdownTimeout        time.Duration
+	RecentEventLimit       int
+	RecentRequestLimit     int
+	StoredEventLimit       int
+	StoredRequestLimit     int
+	AuditExportLimit       int
+	EventRetentionMaxAge   time.Duration
+	RequestRetentionMaxAge time.Duration
+	DomainVerifyInterval   time.Duration
+	DomainVerifyBatchSize  int
+	DomainLookupTimeout    time.Duration
+	APIRateLimit           int
+	APIRateBurst           int
+	ProxyRateLimit         int
+	ProxyRateBurst         int
 }
 
 func LoadConfigFromEnv() Config {
 	cfg := Config{
-		APIAddr:               envOrDefault("BINBOI_API_ADDR", defaultAPIAddr),
-		TunnelAddr:            envOrDefault("BINBOI_TUNNEL_ADDR", defaultTunnelAddr),
-		ProxyAddr:             envOrDefault("BINBOI_PROXY_ADDR", defaultProxyAddr),
-		BaseDomain:            envOrDefault("BINBOI_BASE_DOMAIN", defaultBaseDomain),
-		PublicScheme:          envOrDefault("BINBOI_PUBLIC_SCHEME", "http"),
-		DatabasePath:          envOrDefault("BINBOI_DATABASE_PATH", defaultDatabase),
-		InstanceName:          envOrDefault("BINBOI_INSTANCE_NAME", defaultInstance),
-		DefaultRegion:         envOrDefault("BINBOI_DEFAULT_REGION", defaultRegion),
-		AuthDatabaseURL:       envOrDefault("BINBOI_AUTH_DATABASE_URL", strings.TrimSpace(os.Getenv("DATABASE_URL"))),
-		ReadHeaderTimeout:     durationEnvOrDefault("BINBOI_READ_HEADER_TIMEOUT", defaultReadHeaderTimeout),
-		ReadTimeout:           durationEnvOrDefault("BINBOI_READ_TIMEOUT", defaultReadTimeout),
-		WriteTimeout:          durationEnvOrDefault("BINBOI_WRITE_TIMEOUT", defaultWriteTimeout),
-		IdleTimeout:           durationEnvOrDefault("BINBOI_IDLE_TIMEOUT", defaultIdleTimeout),
-		ShutdownTimeout:       durationEnvOrDefault("BINBOI_SHUTDOWN_TIMEOUT", defaultShutdownTimeout),
-		RecentEventLimit:      intEnvOrDefault("BINBOI_EVENT_LIMIT", defaultRecentEventLimit),
-		RecentRequestLimit:    intEnvOrDefault("BINBOI_REQUEST_LIMIT", defaultRecentRequestLimit),
-		StoredEventLimit:      intEnvOrDefault("BINBOI_STORED_EVENT_LIMIT", defaultStoredEventLimit),
-		StoredRequestLimit:    intEnvOrDefault("BINBOI_STORED_REQUEST_LIMIT", defaultStoredRequestLimit),
-		DomainVerifyInterval:  durationEnvOrDefault("BINBOI_DOMAIN_VERIFY_INTERVAL", defaultDomainVerifyInterval),
-		DomainVerifyBatchSize: intEnvOrDefault("BINBOI_DOMAIN_VERIFY_BATCH_SIZE", defaultDomainVerifyBatchSize),
-		DomainLookupTimeout:   durationEnvOrDefault("BINBOI_DOMAIN_LOOKUP_TIMEOUT", defaultDomainLookupTimeout),
-		APIRateLimit:          nonNegativeIntEnvOrDefault("BINBOI_API_RATE_LIMIT", defaultAPIRateLimit),
-		APIRateBurst:          nonNegativeIntEnvOrDefault("BINBOI_API_RATE_BURST", defaultAPIRateBurst),
-		ProxyRateLimit:        nonNegativeIntEnvOrDefault("BINBOI_PROXY_RATE_LIMIT", defaultProxyRateLimit),
-		ProxyRateBurst:        nonNegativeIntEnvOrDefault("BINBOI_PROXY_RATE_BURST", defaultProxyRateBurst),
+		APIAddr:                envOrDefault("BINBOI_API_ADDR", defaultAPIAddr),
+		TunnelAddr:             envOrDefault("BINBOI_TUNNEL_ADDR", defaultTunnelAddr),
+		ProxyAddr:              envOrDefault("BINBOI_PROXY_ADDR", defaultProxyAddr),
+		ProxyTLSAddr:           envOrDefault("BINBOI_PROXY_TLS_ADDR", defaultProxyTLSAddr),
+		BaseDomain:             envOrDefault("BINBOI_BASE_DOMAIN", defaultBaseDomain),
+		PublicScheme:           envOrDefault("BINBOI_PUBLIC_SCHEME", "http"),
+		DatabasePath:           envOrDefault("BINBOI_DATABASE_PATH", defaultDatabase),
+		InstanceName:           envOrDefault("BINBOI_INSTANCE_NAME", defaultInstance),
+		DefaultRegion:          envOrDefault("BINBOI_DEFAULT_REGION", defaultRegion),
+		AuthDatabaseURL:        envOrDefault("BINBOI_AUTH_DATABASE_URL", strings.TrimSpace(os.Getenv("DATABASE_URL"))),
+		ACMECacheDir:           envOrDefault("BINBOI_ACME_CACHE_DIR", defaultACMECacheDir),
+		ACMEEmail:              strings.TrimSpace(os.Getenv("BINBOI_ACME_EMAIL")),
+		ReadHeaderTimeout:      durationEnvOrDefault("BINBOI_READ_HEADER_TIMEOUT", defaultReadHeaderTimeout),
+		ReadTimeout:            durationEnvOrDefault("BINBOI_READ_TIMEOUT", defaultReadTimeout),
+		WriteTimeout:           durationEnvOrDefault("BINBOI_WRITE_TIMEOUT", defaultWriteTimeout),
+		IdleTimeout:            durationEnvOrDefault("BINBOI_IDLE_TIMEOUT", defaultIdleTimeout),
+		ShutdownTimeout:        durationEnvOrDefault("BINBOI_SHUTDOWN_TIMEOUT", defaultShutdownTimeout),
+		RecentEventLimit:       intEnvOrDefault("BINBOI_EVENT_LIMIT", defaultRecentEventLimit),
+		RecentRequestLimit:     intEnvOrDefault("BINBOI_REQUEST_LIMIT", defaultRecentRequestLimit),
+		StoredEventLimit:       intEnvOrDefault("BINBOI_STORED_EVENT_LIMIT", defaultStoredEventLimit),
+		StoredRequestLimit:     intEnvOrDefault("BINBOI_STORED_REQUEST_LIMIT", defaultStoredRequestLimit),
+		AuditExportLimit:       intEnvOrDefault("BINBOI_AUDIT_EXPORT_LIMIT", defaultAuditExportLimit),
+		EventRetentionMaxAge:   durationEnvOrDefault("BINBOI_EVENT_RETENTION_MAX_AGE", defaultEventRetentionMaxAge),
+		RequestRetentionMaxAge: durationEnvOrDefault("BINBOI_REQUEST_RETENTION_MAX_AGE", defaultRequestRetentionMaxAge),
+		DomainVerifyInterval:   durationEnvOrDefault("BINBOI_DOMAIN_VERIFY_INTERVAL", defaultDomainVerifyInterval),
+		DomainVerifyBatchSize:  intEnvOrDefault("BINBOI_DOMAIN_VERIFY_BATCH_SIZE", defaultDomainVerifyBatchSize),
+		DomainLookupTimeout:    durationEnvOrDefault("BINBOI_DOMAIN_LOOKUP_TIMEOUT", defaultDomainLookupTimeout),
+		APIRateLimit:           nonNegativeIntEnvOrDefault("BINBOI_API_RATE_LIMIT", defaultAPIRateLimit),
+		APIRateBurst:           nonNegativeIntEnvOrDefault("BINBOI_API_RATE_BURST", defaultAPIRateBurst),
+		ProxyRateLimit:         nonNegativeIntEnvOrDefault("BINBOI_PROXY_RATE_LIMIT", defaultProxyRateLimit),
+		ProxyRateBurst:         nonNegativeIntEnvOrDefault("BINBOI_PROXY_RATE_BURST", defaultProxyRateBurst),
 	}
 
 	if port, err := strconv.Atoi(envOrDefault("BINBOI_PUBLIC_PORT", strconv.Itoa(portFromAddr(cfg.ProxyAddr, 8000)))); err == nil {
@@ -238,6 +257,16 @@ type EventRecord struct {
 	Level           string
 	Message         string
 	TunnelSubdomain string
+	OwnerUserID     string `gorm:"index"`
+	OwnerEmail      string
+	ActorUserID     string `gorm:"index"`
+	ActorEmail      string
+	AccessScope     string
+	Action          string `gorm:"index"`
+	ResourceType    string `gorm:"index"`
+	ResourceID      string
+	RequestID       string `gorm:"index"`
+	DetailsJSON     string `gorm:"type:text"`
 	CreatedAt       time.Time
 }
 
@@ -282,6 +311,7 @@ type Service struct {
 	backgroundCancel func()
 	backgroundWG     sync.WaitGroup
 	lookupTXT        func(context.Context, string) ([]string, error)
+	proxyTLSManager  *autocert.Manager
 
 	mu       sync.RWMutex
 	sessions map[string]*activeSession
@@ -315,11 +345,15 @@ type TunnelResponse struct {
 }
 
 type DomainResponse struct {
-	Name        string     `json:"name"`
-	Type        string     `json:"type"`
-	Status      string     `json:"status"`
-	ExpectedTXT string     `json:"expected_txt"`
-	VerifiedAt  *time.Time `json:"verified_at,omitempty"`
+	Name                    string     `json:"name"`
+	Type                    string     `json:"type"`
+	Status                  string     `json:"status"`
+	ExpectedTXT             string     `json:"expected_txt"`
+	VerifiedAt              *time.Time `json:"verified_at,omitempty"`
+	LastVerificationCheckAt *time.Time `json:"last_verification_check_at,omitempty"`
+	LastVerificationError   string     `json:"last_verification_error,omitempty"`
+	TLSReady                bool       `json:"tls_ready"`
+	TLSMode                 string     `json:"tls_mode"`
 }
 
 type NodeResponse struct {
@@ -331,10 +365,18 @@ type NodeResponse struct {
 }
 
 type EventResponse struct {
-	Level           string    `json:"level"`
-	Message         string    `json:"message"`
-	TunnelSubdomain string    `json:"tunnel_subdomain,omitempty"`
-	CreatedAt       time.Time `json:"created_at"`
+	Level           string         `json:"level"`
+	Message         string         `json:"message"`
+	TunnelSubdomain string         `json:"tunnel_subdomain,omitempty"`
+	Action          string         `json:"action,omitempty"`
+	ResourceType    string         `json:"resource_type,omitempty"`
+	ResourceID      string         `json:"resource_id,omitempty"`
+	ActorEmail      string         `json:"actor_email,omitempty"`
+	OwnerEmail      string         `json:"owner_email,omitempty"`
+	AccessScope     string         `json:"access_scope,omitempty"`
+	RequestID       string         `json:"request_id,omitempty"`
+	Details         map[string]any `json:"details,omitempty"`
+	CreatedAt       time.Time      `json:"created_at"`
 }
 
 type RequestResponse struct {
@@ -369,7 +411,11 @@ type InstanceResponse struct {
 	APIAddr          string `json:"api_addr"`
 	TunnelAddr       string `json:"tunnel_addr"`
 	ProxyAddr        string `json:"proxy_addr"`
+	ProxyTLSAddr     string `json:"proxy_tls_addr"`
 	AuthMode         string `json:"auth_mode"`
+	TLSEnabled       bool   `json:"tls_enabled"`
+	TLSMode          string `json:"tls_mode"`
+	AuditExportLimit int    `json:"audit_export_limit"`
 	ActiveTunnels    int    `json:"active_tunnels"`
 	ReservedTunnels  int64  `json:"reserved_tunnels"`
 }
@@ -428,6 +474,7 @@ func NewService(cfg Config) (*Service, error) {
 	if err := service.ensureDefaults(); err != nil {
 		return nil, err
 	}
+	service.configureTLSManager()
 	service.startBackgroundWorkers()
 
 	return service, nil
@@ -554,6 +601,7 @@ func (s *Service) RegisterRoutes(r *gin.Engine) {
 
 	operator := api.Group("/")
 	operator.Use(s.requireControlPlaneAccess())
+	operator.GET("/events/export", s.handleExportEvents)
 	operator.GET("/events", s.handleListEvents)
 	operator.GET("/requests", s.handleListRequests)
 	operator.GET("/tunnels", s.handleListTunnels)
@@ -579,6 +627,7 @@ func (s *Service) RegisterRoutes(r *gin.Engine) {
 	apiV1.GET("/metrics", s.requireControlPlaneAccess(), s.handleV1Metrics)
 	apiV1Operator := apiV1.Group("/")
 	apiV1Operator.Use(s.requireControlPlaneAccess())
+	apiV1Operator.GET("/events/export", s.handleV1ExportEvents)
 	apiV1Operator.GET("/events", s.handleV1ListEvents)
 	apiV1Operator.GET("/requests", s.handleV1ListRequests)
 	apiV1Operator.GET("/tunnels", s.handleV1ListTunnels)
@@ -598,17 +647,10 @@ func (s *Service) apiMeta(access requestAccess) APIMeta {
 	}
 	instanceName := fallbackString(s.cfg.InstanceName, defaultInstance)
 
-	accessScope := "anonymous"
-	if access.Identity != nil {
-		accessScope = "token"
-	} else if access.TrustedLocal {
-		accessScope = "trusted-local"
-	}
-
 	return APIMeta{
 		InstanceName: instanceName,
 		AuthMode:     authMode,
-		AccessScope:  accessScope,
+		AccessScope:  requestAccessScope(access),
 		GeneratedAt:  time.Now().UTC(),
 	}
 }
@@ -741,6 +783,34 @@ func (s *Service) ServeProxy() http.Handler {
 			return
 		}
 		requestSnapshot := captureRequestSnapshot(r)
+		if err := s.enforceRequestQuota(tunnel); err != nil {
+			if isQuotaError(err) {
+				s.broadcastLog("warn", fmt.Sprintf("Rejected request for %s: %v", subdomain, err), subdomain)
+				_ = s.recordObservedRequest(tunnel, requestObservation{
+					Kind:           requestSnapshot.Kind,
+					Provider:       requestSnapshot.Provider,
+					EventType:      requestSnapshot.EventType,
+					Method:         r.Method,
+					Path:           requestSnapshot.Path,
+					Status:         http.StatusTooManyRequests,
+					DurationMs:     0,
+					Source:         requestSnapshot.Source,
+					Target:         tunnel.Target,
+					Destination:    tunnel.Target,
+					ErrorType:      "PLAN_QUOTA_REACHED",
+					RequestHeaders: requestSnapshot.HeaderLines,
+					ResponseHeaders: []string{
+						"content-type: text/plain; charset=utf-8",
+					},
+					RequestPreview:  requestSnapshot.RequestPreview,
+					PayloadPreview:  requestSnapshot.PayloadPreview,
+					ResponsePreview: err.Error(),
+				})
+				http.Error(w, err.Error(), http.StatusTooManyRequests)
+				return
+			}
+			s.logRuntimeEvent(slog.LevelWarn, "request quota check failed", "component", "controlplane", "tunnel_subdomain", subdomain, "error", err)
+		}
 		if active == nil {
 			_ = s.recordObservedRequest(tunnel, requestObservation{
 				Kind:           requestSnapshot.Kind,
@@ -992,6 +1062,7 @@ func (s *Service) handleListEvents(c *gin.Context) {
 	events, err := s.listEvents(currentRequestAccess(c), eventListOptions{
 		Limit:  parsePositiveLimit(c.Query("limit"), s.recentEventLimit(), 500),
 		Level:  c.Query("level"),
+		Action: c.Query("action"),
 		Tunnel: c.Query("tunnel"),
 		Query:  c.Query("q"),
 	})
@@ -1020,6 +1091,7 @@ func (s *Service) handleListRequests(c *gin.Context) {
 }
 
 func (s *Service) handleCreateTunnel(c *gin.Context) {
+	access := currentRequestAccess(c)
 	var req struct {
 		Subdomain string `json:"subdomain"`
 		Target    string `json:"target"`
@@ -1030,17 +1102,33 @@ func (s *Service) handleCreateTunnel(c *gin.Context) {
 		return
 	}
 
-	record, err := s.createTunnel(req.Subdomain, req.Target, req.Region, currentRequestAccess(c))
+	record, err := s.createTunnel(req.Subdomain, req.Target, req.Region, access)
 	if err != nil {
 		status := http.StatusBadRequest
 		if strings.Contains(strings.ToLower(err.Error()), "already reserved") {
 			status = http.StatusConflict
+		} else {
+			status = planQuotaStatus(err, status)
 		}
 		c.JSON(status, gin.H{"error": err.Error()})
 		return
 	}
 
-	s.broadcastLog("info", fmt.Sprintf("Reserved tunnel %s -> %s", record.Subdomain, record.Target), record.Subdomain)
+	s.emitAuditEvent(c, auditEventOptions{
+		Level:           "info",
+		Message:         fmt.Sprintf("Reserved tunnel %s -> %s", record.Subdomain, record.Target),
+		Action:          "tunnel.create",
+		ResourceType:    "tunnel",
+		ResourceID:      record.ID,
+		TunnelSubdomain: record.Subdomain,
+		OwnerUserID:     record.OwnerUserID,
+		OwnerEmail:      record.OwnerEmail,
+		Details: map[string]any{
+			"target":     record.Target,
+			"region":     record.Region,
+			"public_url": s.BuildPublicURL(record.Subdomain),
+		},
+	}, true)
 	c.JSON(http.StatusCreated, s.mapTunnelRecord(record))
 }
 
@@ -1051,7 +1139,8 @@ func (s *Service) handleDeleteTunnel(c *gin.Context) {
 		return
 	}
 
-	if err := s.deleteTunnel(id, currentRequestAccess(c)); err != nil {
+	record, err := s.deleteTunnel(id, currentRequestAccess(c))
+	if err != nil {
 		status := http.StatusInternalServerError
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			status = http.StatusNotFound
@@ -1062,6 +1151,20 @@ func (s *Service) handleDeleteTunnel(c *gin.Context) {
 		return
 	}
 
+	s.emitAuditEvent(c, auditEventOptions{
+		Level:           "warn",
+		Message:         fmt.Sprintf("Deleted tunnel %s", record.Subdomain),
+		Action:          "tunnel.delete",
+		ResourceType:    "tunnel",
+		ResourceID:      record.ID,
+		TunnelSubdomain: record.Subdomain,
+		OwnerUserID:     record.OwnerUserID,
+		OwnerEmail:      record.OwnerEmail,
+		Details: map[string]any{
+			"target": record.Target,
+			"region": record.Region,
+		},
+	}, true)
 	c.JSON(http.StatusOK, gin.H{"status": "deleted"})
 }
 
@@ -1097,7 +1200,16 @@ func (s *Service) handleGenerateToken(c *gin.Context) {
 		return
 	}
 
-	s.broadcastLog("info", "Generated a new preview relay token", "")
+	s.emitAuditEvent(c, auditEventOptions{
+		Level:        "info",
+		Message:      "Generated a new preview relay token",
+		Action:       "token.rotate",
+		ResourceType: "instance_token",
+		ResourceID:   "preview-relay-token",
+		Details: map[string]any{
+			"auth_mode": s.currentAuthMode(),
+		},
+	}, true)
 	c.JSON(http.StatusOK, gin.H{"status": "success", "token": token})
 }
 
@@ -1107,12 +1219,22 @@ func (s *Service) handleRevokeSessions(c *gin.Context) {
 		return
 	}
 
+	activeSessions := s.activeTunnelCount()
 	if err := s.closeAllSessions("token revoke requested from dashboard"); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to revoke sessions"})
 		return
 	}
 
-	s.broadcastLog("warn", "Revoked all active tunnel sessions", "")
+	s.emitAuditEvent(c, auditEventOptions{
+		Level:        "warn",
+		Message:      "Revoked all active tunnel sessions",
+		Action:       "session.revoke_all",
+		ResourceType: "tunnel_session",
+		ResourceID:   "all",
+		Details: map[string]any{
+			"terminated_sessions": activeSessions,
+		},
+	}, true)
 	c.JSON(http.StatusOK, gin.H{"status": "all_sessions_terminated"})
 }
 
@@ -1136,17 +1258,25 @@ func (s *Service) handleCreateDomain(c *gin.Context) {
 
 	record, err := s.createDomain(req.Domain, currentRequestAccess(c))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(planQuotaStatus(err, http.StatusBadRequest), gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusCreated, DomainResponse{
-		Name:        record.Name,
-		Type:        record.Type,
-		Status:      record.Status,
-		ExpectedTXT: record.ExpectedTXT,
-		VerifiedAt:  record.VerifiedAt,
-	})
+	s.emitAuditEvent(c, auditEventOptions{
+		Level:        "info",
+		Message:      fmt.Sprintf("Registered custom domain %s", record.Name),
+		Action:       "domain.create",
+		ResourceType: "domain",
+		ResourceID:   record.Name,
+		OwnerUserID:  record.OwnerUserID,
+		OwnerEmail:   record.OwnerEmail,
+		Details: map[string]any{
+			"status":       record.Status,
+			"expected_txt": record.ExpectedTXT,
+			"type":         record.Type,
+		},
+	}, true)
+	c.JSON(http.StatusCreated, s.domainResponse(record))
 }
 
 func (s *Service) handleDeleteDomain(c *gin.Context) {
@@ -1156,7 +1286,8 @@ func (s *Service) handleDeleteDomain(c *gin.Context) {
 		return
 	}
 
-	if err := s.deleteDomain(name, currentRequestAccess(c)); err != nil {
+	record, err := s.deleteDomain(name, currentRequestAccess(c))
+	if err != nil {
 		status := http.StatusInternalServerError
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			status = http.StatusNotFound
@@ -1171,6 +1302,19 @@ func (s *Service) handleDeleteDomain(c *gin.Context) {
 		return
 	}
 
+	s.emitAuditEvent(c, auditEventOptions{
+		Level:        "warn",
+		Message:      fmt.Sprintf("Deleted custom domain %s", record.Name),
+		Action:       "domain.delete",
+		ResourceType: "domain",
+		ResourceID:   record.Name,
+		OwnerUserID:  record.OwnerUserID,
+		OwnerEmail:   record.OwnerEmail,
+		Details: map[string]any{
+			"type":   record.Type,
+			"status": record.Status,
+		},
+	}, true)
 	c.JSON(http.StatusOK, gin.H{"status": "deleted", "name": name})
 }
 
@@ -1183,18 +1327,32 @@ func (s *Service) handleVerifyDomain(c *gin.Context) {
 		return
 	}
 
-	result, err := s.verifyDomain(req.DomainName, currentRequestAccess(c))
+	record, err := s.verifyDomain(req.DomainName, currentRequestAccess(c))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(planQuotaStatus(err, http.StatusBadRequest), gin.H{"error": err.Error()})
 		return
 	}
 
 	status := http.StatusOK
-	if result.Status != "VERIFIED" {
+	if record.Status != "VERIFIED" {
 		status = http.StatusAccepted
 	}
 
-	c.JSON(status, result)
+	s.emitAuditEvent(c, auditEventOptions{
+		Level:        "info",
+		Message:      fmt.Sprintf("Checked custom domain %s", record.Name),
+		Action:       "domain.verify",
+		ResourceType: "domain",
+		ResourceID:   record.Name,
+		OwnerUserID:  record.OwnerUserID,
+		OwnerEmail:   record.OwnerEmail,
+		Details: map[string]any{
+			"status":       record.Status,
+			"expected_txt": record.ExpectedTXT,
+			"verified_at":  formatTime(record.VerifiedAt),
+		},
+	}, true)
+	c.JSON(status, s.domainResponse(record))
 }
 
 func (s *Service) currentToken() (*InstanceToken, error) {
@@ -1285,6 +1443,13 @@ func (s *Service) recentRequestLimit() int {
 	return defaultRecentRequestLimit
 }
 
+func (s *Service) auditExportLimit() int {
+	if s.cfg.AuditExportLimit > 0 {
+		return s.cfg.AuditExportLimit
+	}
+	return defaultAuditExportLimit
+}
+
 func (s *Service) storedEventLimit() int {
 	if s.cfg.StoredEventLimit > 0 {
 		return s.cfg.StoredEventLimit
@@ -1297,6 +1462,20 @@ func (s *Service) storedRequestLimit() int {
 		return s.cfg.StoredRequestLimit
 	}
 	return defaultStoredRequestLimit
+}
+
+func (s *Service) eventRetentionMaxAge() time.Duration {
+	if s.cfg.EventRetentionMaxAge > 0 {
+		return s.cfg.EventRetentionMaxAge
+	}
+	return 0
+}
+
+func (s *Service) requestRetentionMaxAge() time.Duration {
+	if s.cfg.RequestRetentionMaxAge > 0 {
+		return s.cfg.RequestRetentionMaxAge
+	}
+	return 0
 }
 
 func (s *Service) handleV1ListTunnels(c *gin.Context) {
@@ -1320,6 +1499,7 @@ func (s *Service) handleV1ListEvents(c *gin.Context) {
 	events, err := s.listEvents(access, eventListOptions{
 		Limit:  parsePositiveLimit(c.Query("limit"), s.recentEventLimit(), 500),
 		Level:  c.Query("level"),
+		Action: c.Query("action"),
 		Tunnel: c.Query("tunnel"),
 		Query:  c.Query("q"),
 	})
@@ -1368,12 +1548,28 @@ func (s *Service) handleV1CreateTunnel(c *gin.Context) {
 		status := http.StatusBadRequest
 		if strings.Contains(strings.ToLower(err.Error()), "already reserved") {
 			status = http.StatusConflict
+		} else {
+			status = planQuotaStatus(err, status)
 		}
 		writeV1Error(c, status, meta, "TUNNEL_CREATE_FAILED", err.Error())
 		return
 	}
 
-	s.broadcastLog("info", fmt.Sprintf("Reserved tunnel %s -> %s", record.Subdomain, record.Target), record.Subdomain)
+	s.emitAuditEvent(c, auditEventOptions{
+		Level:           "info",
+		Message:         fmt.Sprintf("Reserved tunnel %s -> %s", record.Subdomain, record.Target),
+		Action:          "tunnel.create",
+		ResourceType:    "tunnel",
+		ResourceID:      record.ID,
+		TunnelSubdomain: record.Subdomain,
+		OwnerUserID:     record.OwnerUserID,
+		OwnerEmail:      record.OwnerEmail,
+		Details: map[string]any{
+			"target":     record.Target,
+			"region":     record.Region,
+			"public_url": s.BuildPublicURL(record.Subdomain),
+		},
+	}, true)
 	writeV1Success(c, http.StatusCreated, meta, s.mapTunnelRecord(record))
 }
 
@@ -1386,7 +1582,8 @@ func (s *Service) handleV1DeleteTunnel(c *gin.Context) {
 		return
 	}
 
-	if err := s.deleteTunnel(id, access); err != nil {
+	record, err := s.deleteTunnel(id, access)
+	if err != nil {
 		status := http.StatusInternalServerError
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			status = http.StatusNotFound
@@ -1397,6 +1594,20 @@ func (s *Service) handleV1DeleteTunnel(c *gin.Context) {
 		return
 	}
 
+	s.emitAuditEvent(c, auditEventOptions{
+		Level:           "warn",
+		Message:         fmt.Sprintf("Deleted tunnel %s", record.Subdomain),
+		Action:          "tunnel.delete",
+		ResourceType:    "tunnel",
+		ResourceID:      record.ID,
+		TunnelSubdomain: record.Subdomain,
+		OwnerUserID:     record.OwnerUserID,
+		OwnerEmail:      record.OwnerEmail,
+		Details: map[string]any{
+			"target": record.Target,
+			"region": record.Region,
+		},
+	}, true)
 	writeV1Success(c, http.StatusOK, meta, gin.H{"status": "deleted", "id": id})
 }
 
@@ -1425,17 +1636,25 @@ func (s *Service) handleV1CreateDomain(c *gin.Context) {
 
 	record, err := s.createDomain(req.Domain, access)
 	if err != nil {
-		writeV1Error(c, http.StatusBadRequest, meta, "DOMAIN_CREATE_FAILED", err.Error())
+		writeV1Error(c, planQuotaStatus(err, http.StatusBadRequest), meta, "DOMAIN_CREATE_FAILED", err.Error())
 		return
 	}
 
-	writeV1Success(c, http.StatusCreated, meta, DomainResponse{
-		Name:        record.Name,
-		Type:        record.Type,
-		Status:      record.Status,
-		ExpectedTXT: record.ExpectedTXT,
-		VerifiedAt:  record.VerifiedAt,
-	})
+	s.emitAuditEvent(c, auditEventOptions{
+		Level:        "info",
+		Message:      fmt.Sprintf("Registered custom domain %s", record.Name),
+		Action:       "domain.create",
+		ResourceType: "domain",
+		ResourceID:   record.Name,
+		OwnerUserID:  record.OwnerUserID,
+		OwnerEmail:   record.OwnerEmail,
+		Details: map[string]any{
+			"status":       record.Status,
+			"expected_txt": record.ExpectedTXT,
+			"type":         record.Type,
+		},
+	}, true)
+	writeV1Success(c, http.StatusCreated, meta, s.domainResponse(record))
 }
 
 func (s *Service) handleV1DeleteDomain(c *gin.Context) {
@@ -1447,7 +1666,8 @@ func (s *Service) handleV1DeleteDomain(c *gin.Context) {
 		return
 	}
 
-	if err := s.deleteDomain(name, access); err != nil {
+	record, err := s.deleteDomain(name, access)
+	if err != nil {
 		status := http.StatusInternalServerError
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			status = http.StatusNotFound
@@ -1462,6 +1682,19 @@ func (s *Service) handleV1DeleteDomain(c *gin.Context) {
 		return
 	}
 
+	s.emitAuditEvent(c, auditEventOptions{
+		Level:        "warn",
+		Message:      fmt.Sprintf("Deleted custom domain %s", record.Name),
+		Action:       "domain.delete",
+		ResourceType: "domain",
+		ResourceID:   record.Name,
+		OwnerUserID:  record.OwnerUserID,
+		OwnerEmail:   record.OwnerEmail,
+		Details: map[string]any{
+			"type":   record.Type,
+			"status": record.Status,
+		},
+	}, true)
 	writeV1Success(c, http.StatusOK, meta, gin.H{"status": "deleted", "name": name})
 }
 
@@ -1477,18 +1710,32 @@ func (s *Service) handleV1VerifyDomain(c *gin.Context) {
 		return
 	}
 
-	result, err := s.verifyDomain(req.DomainName, access)
+	record, err := s.verifyDomain(req.DomainName, access)
 	if err != nil {
-		writeV1Error(c, http.StatusBadRequest, meta, "DOMAIN_VERIFY_FAILED", err.Error())
+		writeV1Error(c, planQuotaStatus(err, http.StatusBadRequest), meta, "DOMAIN_VERIFY_FAILED", err.Error())
 		return
 	}
 
 	status := http.StatusOK
-	if result.Status != "VERIFIED" {
+	if record.Status != "VERIFIED" {
 		status = http.StatusAccepted
 	}
 
-	writeV1Success(c, status, meta, result)
+	s.emitAuditEvent(c, auditEventOptions{
+		Level:        "info",
+		Message:      fmt.Sprintf("Checked custom domain %s", record.Name),
+		Action:       "domain.verify",
+		ResourceType: "domain",
+		ResourceID:   record.Name,
+		OwnerUserID:  record.OwnerUserID,
+		OwnerEmail:   record.OwnerEmail,
+		Details: map[string]any{
+			"status":       record.Status,
+			"expected_txt": record.ExpectedTXT,
+			"verified_at":  formatTime(record.VerifiedAt),
+		},
+	}, true)
+	writeV1Success(c, status, meta, s.domainResponse(record))
 }
 
 func (s *Service) rotateToken() (string, error) {
@@ -1552,6 +1799,10 @@ func (s *Service) mapTunnelRecord(record TunnelRecord) TunnelResponse {
 }
 
 func (s *Service) createTunnel(subdomain, target, region string, access requestAccess) (TunnelRecord, error) {
+	if err := s.enforceTunnelReservationQuota(access); err != nil {
+		return TunnelRecord{}, err
+	}
+
 	normalizedSubdomain, err := normalizeSubdomain(subdomain)
 	if err != nil {
 		return TunnelRecord{}, err
@@ -1587,6 +1838,10 @@ func (s *Service) createTunnel(subdomain, target, region string, access requestA
 }
 
 func (s *Service) upsertTunnelOnConnect(subdomain string, localPort int, identity *AuthIdentity) error {
+	if err := s.enforceActiveTunnelQuota(identity, subdomain); err != nil {
+		return err
+	}
+
 	now := time.Now().UTC()
 	target := fmt.Sprintf("http://localhost:%d", localPort)
 
@@ -1627,13 +1882,13 @@ func (s *Service) upsertTunnelOnConnect(subdomain string, localPort int, identit
 	}).Error
 }
 
-func (s *Service) deleteTunnel(id string, access requestAccess) error {
+func (s *Service) deleteTunnel(id string, access requestAccess) (TunnelRecord, error) {
 	var record TunnelRecord
 	if err := s.db.Where("id = ?", id).First(&record).Error; err != nil {
-		return err
+		return TunnelRecord{}, err
 	}
 	if access.Identity != nil && s.authProvider != nil && s.authProvider.Enabled() && record.OwnerUserID != "" && record.OwnerUserID != access.Identity.UserID {
-		return errors.New("tunnel belongs to another account")
+		return TunnelRecord{}, errors.New("tunnel belongs to another account")
 	}
 
 	s.mu.Lock()
@@ -1643,8 +1898,10 @@ func (s *Service) deleteTunnel(id string, access requestAccess) error {
 	}
 	s.mu.Unlock()
 
-	s.broadcastLog("warn", fmt.Sprintf("Deleted tunnel %s", record.Subdomain), record.Subdomain)
-	return s.db.Delete(&record).Error
+	if err := s.db.Delete(&record).Error; err != nil {
+		return TunnelRecord{}, err
+	}
+	return record, nil
 }
 
 func (s *Service) markTunnelStatus(subdomain, status, lastError string) error {
@@ -1741,6 +1998,10 @@ func (s *Service) listDomains(access requestAccess) ([]DomainResponse, error) {
 }
 
 func (s *Service) createDomain(name string, access requestAccess) (DomainRecord, error) {
+	if err := s.enforceCustomDomainQuota(access); err != nil {
+		return DomainRecord{}, err
+	}
+
 	domain, err := normalizeDomainName(name, s.cfg.BaseDomain)
 	if err != nil {
 		return DomainRecord{}, err
@@ -1769,10 +2030,10 @@ func (s *Service) createDomain(name string, access requestAccess) (DomainRecord,
 	return record, nil
 }
 
-func (s *Service) verifyDomain(name string, access requestAccess) (DomainResponse, error) {
+func (s *Service) verifyDomain(name string, access requestAccess) (DomainRecord, error) {
 	domain, err := normalizeDomainName(name, "")
 	if err != nil {
-		return DomainResponse{}, err
+		return DomainRecord{}, err
 	}
 
 	var record DomainRecord
@@ -1781,23 +2042,20 @@ func (s *Service) verifyDomain(name string, access requestAccess) (DomainRespons
 		query = query.Where("(owner_user_id = ? OR type = ?)", access.Identity.UserID, "MANAGED")
 	}
 	if err := query.First(&record).Error; err != nil {
-		return DomainResponse{}, err
+		return DomainRecord{}, err
 	}
 
-	result, changed, err := s.refreshDomainVerification(context.Background(), record)
+	result, _, err := s.refreshDomainVerification(context.Background(), record)
 	if err != nil {
-		return DomainResponse{}, err
-	}
-	if changed && result.Status == "VERIFIED" {
-		s.broadcastLog("info", fmt.Sprintf("Verified custom domain %s", result.Name), "")
+		return DomainRecord{}, err
 	}
 	return result, nil
 }
 
-func (s *Service) deleteDomain(name string, access requestAccess) error {
+func (s *Service) deleteDomain(name string, access requestAccess) (DomainRecord, error) {
 	domain, err := normalizeDomainName(name, "")
 	if err != nil {
-		return err
+		return DomainRecord{}, err
 	}
 
 	var record DomainRecord
@@ -1806,21 +2064,20 @@ func (s *Service) deleteDomain(name string, access requestAccess) error {
 		query = query.Where("(owner_user_id = ? OR type = ?)", access.Identity.UserID, "MANAGED")
 	}
 	if err := query.First(&record).Error; err != nil {
-		return err
+		return DomainRecord{}, err
 	}
 	if record.Type == "MANAGED" {
-		return errors.New("managed base domain cannot be deleted")
+		return DomainRecord{}, errors.New("managed base domain cannot be deleted")
 	}
 	if access.Identity != nil && s.authProvider != nil && s.authProvider.Enabled() && record.OwnerUserID != "" && record.OwnerUserID != access.Identity.UserID {
-		return errors.New("domain belongs to another account")
+		return DomainRecord{}, errors.New("domain belongs to another account")
 	}
 
 	if err := s.db.Delete(&record).Error; err != nil {
-		return err
+		return DomainRecord{}, err
 	}
 
-	s.broadcastLog("warn", fmt.Sprintf("Deleted custom domain %s", record.Name), "")
-	return nil
+	return record, nil
 }
 
 func (s *Service) listNodes() []NodeResponse {
@@ -1840,38 +2097,14 @@ func (s *Service) listNodes() []NodeResponse {
 }
 
 func (s *Service) listEvents(access requestAccess, options eventListOptions) ([]EventResponse, error) {
-	var records []EventRecord
-	options.Level = normalizeEventLevelFilter(options.Level)
-	options.Tunnel = strings.ToLower(strings.TrimSpace(options.Tunnel))
-	options.Query = normalizeSearchQuery(options.Query)
-
-	query := s.db.Model(&EventRecord{})
-	if access.Identity != nil && s.authProvider != nil && s.authProvider.Enabled() {
-		query = query.Joins("JOIN tunnel_records ON tunnel_records.subdomain = event_records.tunnel_subdomain").
-			Where("tunnel_records.owner_user_id = ?", access.Identity.UserID)
-	}
-	if options.Level != "" {
-		query = query.Where("LOWER(event_records.level) = ?", options.Level)
-	}
-	if options.Tunnel != "" {
-		query = query.Where("LOWER(event_records.tunnel_subdomain) = ?", options.Tunnel)
-	}
-	if options.Query != "" {
-		like := "%" + options.Query + "%"
-		query = query.Where("LOWER(event_records.message) LIKE ?", like)
-	}
-	if err := query.Order("event_records.created_at desc").Limit(options.Limit).Find(&records).Error; err != nil {
+	records, err := s.findEventRecords(access, options)
+	if err != nil {
 		return nil, err
 	}
 
 	response := make([]EventResponse, 0, len(records))
 	for _, record := range records {
-		response = append(response, EventResponse{
-			Level:           record.Level,
-			Message:         record.Message,
-			TunnelSubdomain: record.TunnelSubdomain,
-			CreatedAt:       record.CreatedAt,
-		})
+		response = append(response, s.mapEventRecord(record))
 	}
 	return response, nil
 }
@@ -1883,12 +2116,22 @@ func (s *Service) listRequests(access requestAccess, options requestListOptions)
 	options.Tunnel = strings.ToLower(strings.TrimSpace(options.Tunnel))
 	options.Query = normalizeSearchQuery(options.Query)
 	options.StatusClass = normalizeStatusClassFilter(options.StatusClass)
+	effectiveLimit := options.Limit
+	if access.Identity != nil {
+		if maxHistory := quotaForPlan(access.Identity.Plan).MaxRequestHistory; maxHistory > 0 && (effectiveLimit <= 0 || effectiveLimit > maxHistory) {
+			effectiveLimit = maxHistory
+		}
+	}
+	if effectiveLimit <= 0 {
+		effectiveLimit = s.recentRequestLimit()
+	}
 
 	query := s.db.Model(&RequestRecord{})
 	if access.Identity != nil && s.authProvider != nil && s.authProvider.Enabled() {
 		query = query.Joins("JOIN tunnel_records ON tunnel_records.id = request_records.tunnel_id").
 			Where("tunnel_records.owner_user_id = ?", access.Identity.UserID)
 	}
+	query = s.applyAccessRetentionWindow(query, access, "request_records.created_at", true)
 	if options.Kind != "" {
 		query = query.Where("request_records.kind = ?", options.Kind)
 	}
@@ -1925,7 +2168,7 @@ func (s *Service) listRequests(access requestAccess, options requestListOptions)
 			LOWER(request_records.payload_preview) LIKE ?
 		`, like, like, like, like, like, like, like, like, like)
 	}
-	if err := query.Order("request_records.created_at desc").Limit(options.Limit).Find(&records).Error; err != nil {
+	if err := query.Order("request_records.created_at desc").Limit(effectiveLimit).Find(&records).Error; err != nil {
 		return nil, err
 	}
 
@@ -1978,7 +2221,11 @@ func (s *Service) instanceResponse() InstanceResponse {
 		APIAddr:          s.cfg.APIAddr,
 		TunnelAddr:       s.cfg.TunnelAddr,
 		ProxyAddr:        s.cfg.ProxyAddr,
+		ProxyTLSAddr:     s.cfg.ProxyTLSAddr,
 		AuthMode:         authMode,
+		TLSEnabled:       s.proxyTLSEnabled(),
+		TLSMode:          s.tlsMode(),
+		AuditExportLimit: s.auditExportLimit(),
 		ActiveTunnels:    s.activeTunnelCount(),
 		ReservedTunnels:  total,
 	}
@@ -2043,31 +2290,11 @@ func (s *Service) renderProxyLanding(w http.ResponseWriter) {
 }
 
 func (s *Service) broadcastLog(level, message, subdomain string) {
-	line := fmt.Sprintf("%s [%s] %s", time.Now().UTC().Format(time.RFC3339), strings.ToUpper(level), message)
-
-	s.logMu.Lock()
-	s.backlog = append([]string{line}, s.backlog...)
-	if len(s.backlog) > maxLogBacklog {
-		s.backlog = s.backlog[:maxLogBacklog]
-	}
-
-	for client := range s.clients {
-		if err := client.WriteMessage(websocket.TextMessage, []byte(line)); err != nil {
-			client.Close()
-			delete(s.clients, client)
-		}
-	}
-	s.logMu.Unlock()
-
-	s.logRuntimeEvent(slogLevelFromString(level), message, "component", "controlplane", "tunnel_subdomain", subdomain)
-
-	if err := s.db.Create(&EventRecord{
-		Level:           strings.ToLower(level),
+	s.writeEvent(EventRecord{
+		Level:           level,
 		Message:         message,
 		TunnelSubdomain: subdomain,
-	}).Error; err == nil {
-		_ = s.pruneEventRecords(s.storedEventLimit())
-	}
+	}, true)
 }
 
 func (s *Service) writeHandshakeError(conn net.Conn, message string) {
@@ -2465,6 +2692,11 @@ func (s *Service) recordObservedRequest(tunnel TunnelRecord, observed requestObs
 }
 
 func (s *Service) pruneEventRecords(limit int) error {
+	if maxAge := s.eventRetentionMaxAge(); maxAge > 0 {
+		if err := s.db.Where("created_at < ?", time.Now().UTC().Add(-maxAge)).Delete(&EventRecord{}).Error; err != nil {
+			return err
+		}
+	}
 	if limit <= 0 {
 		return nil
 	}
@@ -2479,6 +2711,11 @@ func (s *Service) pruneEventRecords(limit int) error {
 }
 
 func (s *Service) pruneRequestRecords(limit int) error {
+	if maxAge := s.requestRetentionMaxAge(); maxAge > 0 {
+		if err := s.db.Where("created_at < ?", time.Now().UTC().Add(-maxAge)).Delete(&RequestRecord{}).Error; err != nil {
+			return err
+		}
+	}
 	if limit <= 0 {
 		return nil
 	}

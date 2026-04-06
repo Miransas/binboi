@@ -4,6 +4,8 @@ This document is the final operator-facing checklist for taking Binboi from loca
 
 For the backend-first go/no-go view, see [launch-blockers.md](/Users/sardorazimov/binboi/docs/launch-blockers.md).
 
+For real-domain rollout, use [production-domain-checklist.md](/Users/sardorazimov/binboi/docs/production-domain-checklist.md).
+
 It is intentionally focused on the current shipping surface:
 
 - Go control plane
@@ -24,7 +26,7 @@ Before a serious deployment, confirm all of the following:
 - the Next.js app can reach the Go control plane through `BINBOI_API_BASE`
 - browser traffic uses the Next.js `/api/controlplane/*` proxy instead of talking to Go directly
 - your public base domain resolves to the Binboi proxy service
-- TLS termination happens at your ingress, edge, or reverse proxy
+- TLS termination happens either at your ingress/edge or through Binboi ACME with `BINBOI_PROXY_TLS_ADDR`
 
 Optional but recommended before launch:
 
@@ -69,6 +71,8 @@ Expected posture:
 
 - preview mode disabled
 - Postgres-backed auth enabled
+- DNS for the base domain and any custom domains points at the proxy
+- either external edge TLS is configured or `BINBOI_PROXY_TLS_ADDR` + ACME storage is configured
 - real email delivery configured
 - OAuth configured if exposed in the UI
 - billing configured if pricing/checkout is live
@@ -178,7 +182,25 @@ The core preview smoke path was re-run successfully on `2026-04-06` with this re
 - `http://demo.binboi.localhost:9082` returned the expected upstream HTML
 - `GET /api/v1/requests?limit=5&kind=REQUEST` recorded the forwarded request
 
-## 7. Known launch dependencies
+## 7. Custom domain test pass
+
+If you have multiple real domains available, run the same readiness pass for each one.
+
+Recommended sequence:
+
+1. Register the custom domain in Binboi.
+2. Publish the requested TXT verification record.
+3. Wait for the background verifier or call the verify endpoint.
+4. Confirm `/api/v1/domains` returns:
+   - `status: VERIFIED`
+   - `tls_ready: true`
+   - `tls_mode: acme` if Binboi terminates TLS itself
+5. Confirm `/api/v1/events?action=domain.verify` shows an audit entry.
+6. If ACME is enabled, hit `https://your-domain` and confirm certificate issuance and proxy routing.
+
+If you have three domains, test all three before public launch so wildcard/base-domain assumptions do not mask per-domain DNS mistakes.
+
+## 8. Known launch dependencies
 
 These are still external deployment dependencies, not code blockers:
 
@@ -190,4 +212,4 @@ These are still external deployment dependencies, not code blockers:
 - `PADDLE_*`
 - production email delivery provider
 
-_Documentation maintained by Sardor Azimov._
+_Documentation maintained by Sardor Azimov, Miransas._
