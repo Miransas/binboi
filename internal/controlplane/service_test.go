@@ -1,10 +1,15 @@
 package controlplane
 
 import (
+	"bufio"
+	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -13,6 +18,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"github.com/hashicorp/yamux"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
@@ -79,7 +85,7 @@ func newTestService(t *testing.T) *Service {
 	if err != nil {
 		t.Fatalf("open sqlite database: %v", err)
 	}
-	if err := db.AutoMigrate(&InstanceToken{}, &TunnelRecord{}, &DomainRecord{}, &EventRecord{}, &RequestRecord{}); err != nil {
+	if err := db.AutoMigrate(&InstanceToken{}, &TunnelRecord{}, &DomainRecord{}, &EventRecord{}, &RequestRecord{}, &RequestArchiveRecord{}); err != nil {
 		t.Fatalf("auto migrate: %v", err)
 	}
 
@@ -92,6 +98,7 @@ func newTestService(t *testing.T) *Service {
 			DomainVerifyInterval:  defaultDomainVerifyInterval,
 			DomainVerifyBatchSize: defaultDomainVerifyBatchSize,
 			DomainLookupTimeout:   defaultDomainLookupTimeout,
+			RequestReplayLimit:    defaultRequestReplayLimit,
 			APIRateLimit:          defaultAPIRateLimit,
 			APIRateBurst:          defaultAPIRateBurst,
 			ProxyRateLimit:        defaultProxyRateLimit,
@@ -149,11 +156,14 @@ func TestLoadConfigFromEnvParsesTimeoutsAndLimits(t *testing.T) {
 	t.Setenv("BINBOI_STORED_EVENT_LIMIT", "1500")
 	t.Setenv("BINBOI_STORED_REQUEST_LIMIT", "5500")
 	t.Setenv("BINBOI_AUDIT_EXPORT_LIMIT", "9000")
+	t.Setenv("BINBOI_EXPORT_MAX_BYTES", "1048576")
 	t.Setenv("BINBOI_EVENT_RETENTION_MAX_AGE", "72h")
 	t.Setenv("BINBOI_REQUEST_RETENTION_MAX_AGE", "24h")
+	t.Setenv("BINBOI_CAPTURE_BODY_LIMIT", "65536")
 	t.Setenv("BINBOI_DOMAIN_VERIFY_INTERVAL", "45s")
 	t.Setenv("BINBOI_DOMAIN_VERIFY_BATCH_SIZE", "19")
 	t.Setenv("BINBOI_DOMAIN_LOOKUP_TIMEOUT", "3s")
+	t.Setenv("BINBOI_REQUEST_REPLAY_LIMIT", "4")
 	t.Setenv("BINBOI_API_RATE_LIMIT", "320")
 	t.Setenv("BINBOI_API_RATE_BURST", "44")
 	t.Setenv("BINBOI_PROXY_RATE_LIMIT", "980")
@@ -194,11 +204,17 @@ func TestLoadConfigFromEnvParsesTimeoutsAndLimits(t *testing.T) {
 	if cfg.AuditExportLimit != 9000 {
 		t.Fatalf("AuditExportLimit = %d, want 9000", cfg.AuditExportLimit)
 	}
+	if cfg.ExportMaxBytes != 1048576 {
+		t.Fatalf("ExportMaxBytes = %d, want 1048576", cfg.ExportMaxBytes)
+	}
 	if cfg.EventRetentionMaxAge != 72*time.Hour {
 		t.Fatalf("EventRetentionMaxAge = %s, want 72h", cfg.EventRetentionMaxAge)
 	}
 	if cfg.RequestRetentionMaxAge != 24*time.Hour {
 		t.Fatalf("RequestRetentionMaxAge = %s, want 24h", cfg.RequestRetentionMaxAge)
+	}
+	if cfg.CaptureBodyLimit != 65536 {
+		t.Fatalf("CaptureBodyLimit = %d, want 65536", cfg.CaptureBodyLimit)
 	}
 	if cfg.DomainVerifyInterval != 45*time.Second {
 		t.Fatalf("DomainVerifyInterval = %s, want 45s", cfg.DomainVerifyInterval)
@@ -208,6 +224,9 @@ func TestLoadConfigFromEnvParsesTimeoutsAndLimits(t *testing.T) {
 	}
 	if cfg.DomainLookupTimeout != 3*time.Second {
 		t.Fatalf("DomainLookupTimeout = %s, want 3s", cfg.DomainLookupTimeout)
+	}
+	if cfg.RequestReplayLimit != 4 {
+		t.Fatalf("RequestReplayLimit = %d, want 4", cfg.RequestReplayLimit)
 	}
 	if cfg.APIRateLimit != 320 {
 		t.Fatalf("APIRateLimit = %d, want 320", cfg.APIRateLimit)
@@ -458,6 +477,9 @@ func TestV1LimitsRouteReturnsQuotaEnvelope(t *testing.T) {
 	if payload.Data.ActiveTunnels.Used != 1 {
 		t.Fatalf("active tunnels used = %d, want 1", payload.Data.ActiveTunnels.Used)
 	}
+	if payload.Data.ReplaysPerHour.Used != 0 {
+		t.Fatalf("replays per hour used = %d, want 0", payload.Data.ReplaysPerHour.Used)
+	}
 	if recorder.Header().Get("X-Binboi-Plan") != "PREVIEW" {
 		t.Fatalf("X-Binboi-Plan = %q, want PREVIEW", recorder.Header().Get("X-Binboi-Plan"))
 	}
@@ -483,6 +505,9 @@ func TestTunnelListIncludesQuotaHeaders(t *testing.T) {
 	}
 	if recorder.Header().Get("X-Binboi-Quota-Reserved-Tunnels-Limit") == "" {
 		t.Fatal("expected reserved tunnel quota header to be populated")
+	}
+	if recorder.Header().Get("X-Binboi-Quota-Replays-Per-Hour-Limit") == "" {
+		t.Fatal("expected replay quota header to be populated")
 	}
 }
 
@@ -613,6 +638,15 @@ func TestV1MetricsRouteReturnsEnvelope(t *testing.T) {
 	}
 	if payload.Data.ProxyRateLimitedTotal != 0 {
 		t.Fatalf("proxy_rate_limited_total = %d, want 0", payload.Data.ProxyRateLimitedTotal)
+	}
+	if payload.Data.RequestReplaysTotal != 0 {
+		t.Fatalf("request_replays_total = %d, want 0", payload.Data.RequestReplaysTotal)
+	}
+	if payload.Data.RequestReplayFailedTotal != 0 {
+		t.Fatalf("request_replay_failed_total = %d, want 0", payload.Data.RequestReplayFailedTotal)
+	}
+	if payload.Data.RequestReplayBlockedTotal != 0 {
+		t.Fatalf("request_replay_blocked_total = %d, want 0", payload.Data.RequestReplayBlockedTotal)
 	}
 	if payload.Data.TunnelConnectionsTotal != 1 {
 		t.Fatalf("tunnel_connections_total = %d, want 1", payload.Data.TunnelConnectionsTotal)
@@ -892,6 +926,8 @@ func TestListRequestsSupportsProviderStatusAndQueryFilters(t *testing.T) {
 			TunnelSubdomain: tunnel.Subdomain,
 			Kind:            "WEBHOOK",
 			Provider:        "Stripe",
+			EventType:       "payment_intent.created",
+			DeliveryID:      "stripe-delivery-1",
 			Method:          http.MethodPost,
 			Path:            "/webhooks/stripe",
 			Status:          http.StatusBadRequest,
@@ -921,6 +957,8 @@ func TestListRequestsSupportsProviderStatusAndQueryFilters(t *testing.T) {
 	filtered, err := service.listRequests(requestAccess{TrustedLocal: true}, requestListOptions{
 		Limit:       20,
 		Provider:    "stripe",
+		EventType:   "payment_intent.created",
+		DeliveryID:  "stripe-delivery-1",
 		StatusClass: "error",
 		Query:       "signature",
 	})
@@ -933,6 +971,44 @@ func TestListRequestsSupportsProviderStatusAndQueryFilters(t *testing.T) {
 	if filtered[0].Provider != "Stripe" {
 		t.Fatalf("filtered provider = %q, want %q", filtered[0].Provider, "Stripe")
 	}
+	if filtered[0].EventType != "payment_intent.created" {
+		t.Fatalf("filtered event_type = %q, want %q", filtered[0].EventType, "payment_intent.created")
+	}
+	if filtered[0].DeliveryID != "stripe-delivery-1" {
+		t.Fatalf("filtered delivery_id = %q, want %q", filtered[0].DeliveryID, "stripe-delivery-1")
+	}
+}
+
+func TestCaptureRequestSnapshotInfersWebhookMetadata(t *testing.T) {
+	service := newTestService(t)
+
+	request := httptest.NewRequest(http.MethodPost, "https://alpha.binboi.localhost/webhooks/github", strings.NewReader(`{"id":"evt_123","action":"opened"}`))
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("User-Agent", "GitHub-Hookshot/test")
+	request.Header.Set("X-GitHub-Delivery", "gh-delivery-1")
+	request.Header.Set("X-GitHub-Event", "issues")
+	request.Header.Set("X-Hub-Signature-256", "sha256=abc")
+
+	snapshot := service.captureRequestSnapshot(request)
+	if snapshot.Provider != "GitHub" {
+		t.Fatalf("provider = %q, want %q", snapshot.Provider, "GitHub")
+	}
+	if snapshot.EventType != "issues" {
+		t.Fatalf("event type = %q, want %q", snapshot.EventType, "issues")
+	}
+	if snapshot.DeliveryID != "gh-delivery-1" {
+		t.Fatalf("delivery id = %q, want %q", snapshot.DeliveryID, "gh-delivery-1")
+	}
+	metadata := unmarshalRequestMetadata(snapshot.MetadataJSON)
+	if metadata["delivery_id"] != "gh-delivery-1" {
+		t.Fatalf("metadata delivery_id = %v, want %q", metadata["delivery_id"], "gh-delivery-1")
+	}
+	if metadata["event_type"] != "issues" {
+		t.Fatalf("metadata event_type = %v, want %q", metadata["event_type"], "issues")
+	}
+	if metadata["signature_present"] != true {
+		t.Fatalf("metadata signature_present = %v, want true", metadata["signature_present"])
+	}
 }
 
 func TestListEventsSupportsLevelTunnelAndQueryFilters(t *testing.T) {
@@ -940,8 +1016,8 @@ func TestListEventsSupportsLevelTunnelAndQueryFilters(t *testing.T) {
 
 	now := time.Now().UTC()
 	events := []EventRecord{
-		{Level: "info", Message: "Tunnel alpha connected", TunnelSubdomain: "alpha", CreatedAt: now},
-		{Level: "error", Message: "Proxy error for beta", TunnelSubdomain: "beta", CreatedAt: now.Add(time.Second)},
+		{Level: "info", Message: "Tunnel alpha connected", TunnelSubdomain: "alpha", Action: "tunnel.connect", ResourceType: "tunnel", ResourceID: "alpha", RequestID: "req-alpha", CreatedAt: now},
+		{Level: "error", Message: "Proxy error for beta", TunnelSubdomain: "beta", Action: "request.replay.failed", ResourceType: "request", ResourceID: "req_beta", RequestID: "req-beta", CreatedAt: now.Add(time.Second)},
 	}
 	for _, record := range events {
 		if err := service.db.Create(&record).Error; err != nil {
@@ -950,10 +1026,13 @@ func TestListEventsSupportsLevelTunnelAndQueryFilters(t *testing.T) {
 	}
 
 	filtered, err := service.listEvents(requestAccess{TrustedLocal: true}, eventListOptions{
-		Limit:  20,
-		Level:  "error",
-		Tunnel: "beta",
-		Query:  "proxy",
+		Limit:        20,
+		Level:        "error",
+		Tunnel:       "beta",
+		ResourceType: "request",
+		ResourceID:   "req_beta",
+		RequestID:    "req-beta",
+		Query:        "proxy",
 	})
 	if err != nil {
 		t.Fatalf("listEvents with filters returned error: %v", err)
@@ -963,6 +1042,9 @@ func TestListEventsSupportsLevelTunnelAndQueryFilters(t *testing.T) {
 	}
 	if filtered[0].TunnelSubdomain != "beta" {
 		t.Fatalf("filtered tunnel = %q, want %q", filtered[0].TunnelSubdomain, "beta")
+	}
+	if filtered[0].ResourceID != "req_beta" {
+		t.Fatalf("filtered resource_id = %q, want %q", filtered[0].ResourceID, "req_beta")
 	}
 }
 
@@ -1096,6 +1178,56 @@ func TestEnforceRequestQuotaRejectsFreePlanOverDailyCap(t *testing.T) {
 	}
 }
 
+func TestEnforceReplayQuotaRejectsFreePlanOverHourlyCap(t *testing.T) {
+	service := newTestService(t)
+	service.authProvider = stubAuthProvider{enabled: true}
+
+	access := requestAccess{
+		Identity: &AuthIdentity{
+			UserID:   "user_free",
+			Email:    "free@binboi.test",
+			Plan:     "FREE",
+			AuthMode: "personal-access-token",
+		},
+	}
+
+	tunnel := TunnelRecord{
+		ID:          "tun_replay_quota",
+		Subdomain:   "quota-replay",
+		OwnerUserID: "user_free",
+		OwnerEmail:  "free@binboi.test",
+		AuthMode:    "personal-access-token",
+		Target:      "http://localhost:3000",
+		Status:      "ACTIVE",
+		Region:      "local",
+	}
+	if err := service.db.Create(&tunnel).Error; err != nil {
+		t.Fatalf("insert tunnel: %v", err)
+	}
+
+	for i := 0; i < quotaForPlan("FREE").MaxReplaysPerHour; i++ {
+		if err := service.db.Create(&RequestRecord{
+			ID:                fmt.Sprintf("req_replay_%03d", i),
+			TunnelID:          tunnel.ID,
+			TunnelSubdomain:   tunnel.Subdomain,
+			ReplayOfRequestID: "req_original",
+			Kind:              "WEBHOOK",
+			Method:            http.MethodPost,
+			Path:              "/hooks/github",
+			Status:            http.StatusOK,
+			CreatedAt:         time.Now().UTC(),
+		}).Error; err != nil {
+			t.Fatalf("insert replay %d: %v", i, err)
+		}
+	}
+
+	if err := service.enforceReplayQuota(context.Background(), access); err == nil {
+		t.Fatal("enforceReplayQuota returned nil error")
+	} else if !isQuotaError(err) {
+		t.Fatalf("enforceReplayQuota error = %v, want quota error", err)
+	}
+}
+
 func TestHandleExportEventsReturnsNDJSON(t *testing.T) {
 	service := newTestService(t)
 	if err := service.db.Create(&EventRecord{
@@ -1104,6 +1236,7 @@ func TestHandleExportEventsReturnsNDJSON(t *testing.T) {
 		Action:       "domain.create",
 		ResourceType: "domain",
 		ResourceID:   "docs.example.com",
+		RequestID:    "req-domain-create",
 		OwnerEmail:   "owner@binboi.test",
 		AccessScope:  "trusted-local",
 	}).Error; err != nil {
@@ -1112,8 +1245,9 @@ func TestHandleExportEventsReturnsNDJSON(t *testing.T) {
 
 	recorder := httptest.NewRecorder()
 	ctx, _ := gin.CreateTestContext(recorder)
-	ctx.Request = httptest.NewRequest(http.MethodGet, "/api/events/export?format=ndjson&limit=10", nil)
+	ctx.Request = httptest.NewRequest(http.MethodGet, "/api/events/export?format=ndjson&limit=10&resource_type=domain&request_id=req-domain-create", nil)
 	ctx.Set("binboi.request_access", requestAccess{TrustedLocal: true})
+	ctx.Set("binboi.request_id", "req-domain-create")
 
 	service.handleExportEvents(ctx)
 
@@ -1125,6 +1259,41 @@ func TestHandleExportEventsReturnsNDJSON(t *testing.T) {
 	}
 	if body := recorder.Body.String(); !strings.Contains(body, "\"action\":\"domain.create\"") {
 		t.Fatalf("export body = %q, want action payload", body)
+	}
+	if body := recorder.Body.String(); !strings.Contains(body, "\"request_id\":\"req-domain-create\"") {
+		t.Fatalf("export body = %q, want request_id payload", body)
+	}
+}
+
+func TestHandleExportEventsSupportsGzip(t *testing.T) {
+	service := newTestService(t)
+	if err := service.db.Create(&EventRecord{
+		Level:       "info",
+		Message:     "Domain verified",
+		Action:      "domain.verify",
+		ResourceID:  "docs.example.com",
+		AccessScope: "trusted-local",
+	}).Error; err != nil {
+		t.Fatalf("insert event: %v", err)
+	}
+
+	recorder := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(recorder)
+	ctx.Request = httptest.NewRequest(http.MethodGet, "/api/events/export?format=json", nil)
+	ctx.Request.Header.Set("Accept-Encoding", "gzip")
+	ctx.Set("binboi.request_access", requestAccess{TrustedLocal: true})
+
+	service.handleExportEvents(ctx)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("export status = %d, want %d", recorder.Code, http.StatusOK)
+	}
+	if recorder.Header().Get("Content-Encoding") != "gzip" {
+		t.Fatalf("content encoding = %q, want gzip", recorder.Header().Get("Content-Encoding"))
+	}
+	body := decodeGzipTestBody(t, recorder.Body.Bytes())
+	if !strings.Contains(body, "\"action\":\"domain.verify\"") {
+		t.Fatalf("gzip export body = %q, want domain.verify payload", body)
 	}
 }
 
@@ -1413,4 +1582,615 @@ func TestRecordObservedRequestPrunesOldRows(t *testing.T) {
 	if count != defaultStoredRequestLimit {
 		t.Fatalf("stored request count = %d, want %d", count, defaultStoredRequestLimit)
 	}
+}
+
+func TestReplayRecordedRequestCreatesReplayRecord(t *testing.T) {
+	service := newTestService(t)
+
+	tunnel := TunnelRecord{
+		ID:         "tunnel_replay",
+		Subdomain:  "alpha",
+		Target:     "http://localhost:3000",
+		TargetPort: 3000,
+		Status:     "ACTIVE",
+		Region:     "local",
+	}
+	if err := service.db.Create(&tunnel).Error; err != nil {
+		t.Fatalf("insert tunnel: %v", err)
+	}
+
+	clientConn, serverConn := net.Pipe()
+	clientSession, err := yamux.Client(clientConn, nil)
+	if err != nil {
+		t.Fatalf("create yamux client: %v", err)
+	}
+	serverSession, err := yamux.Server(serverConn, nil)
+	if err != nil {
+		t.Fatalf("create yamux server: %v", err)
+	}
+	defer clientSession.Close()
+	defer serverSession.Close()
+
+	service.attachSession(tunnel.Subdomain, clientSession, "test-remote")
+	defer service.detachSession(tunnel.Subdomain)
+
+	errCh := make(chan error, 1)
+	go func() {
+		stream, err := serverSession.Accept()
+		if err != nil {
+			errCh <- err
+			return
+		}
+		defer stream.Close()
+
+		req, err := http.ReadRequest(bufio.NewReader(stream))
+		if err != nil {
+			errCh <- err
+			return
+		}
+
+		body, err := io.ReadAll(req.Body)
+		if err != nil {
+			errCh <- err
+			return
+		}
+		if req.Method != http.MethodPost {
+			errCh <- fmt.Errorf("method = %s, want POST", req.Method)
+			return
+		}
+		if req.URL.RequestURI() != "/hooks/stripe?foo=bar" {
+			errCh <- fmt.Errorf("path = %s, want /hooks/stripe?foo=bar", req.URL.RequestURI())
+			return
+		}
+		if req.Header.Get("X-Test-Header") != "binboi" {
+			errCh <- fmt.Errorf("X-Test-Header = %q, want binboi", req.Header.Get("X-Test-Header"))
+			return
+		}
+		if req.Header.Get("X-Binboi-Redelivery") != "true" {
+			errCh <- fmt.Errorf("X-Binboi-Redelivery = %q, want true", req.Header.Get("X-Binboi-Redelivery"))
+			return
+		}
+		if req.Header.Get("X-Binboi-Redelivery-Attempt") != "1" {
+			errCh <- fmt.Errorf("X-Binboi-Redelivery-Attempt = %q, want 1", req.Header.Get("X-Binboi-Redelivery-Attempt"))
+			return
+		}
+		if req.Header.Get("X-Binboi-Redelivery-Mode") != "manual-header-replay" {
+			errCh <- fmt.Errorf("X-Binboi-Redelivery-Mode = %q, want manual-header-replay", req.Header.Get("X-Binboi-Redelivery-Mode"))
+			return
+		}
+		if req.Header.Get("X-Binboi-Signature-Present") != "true" {
+			errCh <- fmt.Errorf("X-Binboi-Signature-Present = %q, want true", req.Header.Get("X-Binboi-Signature-Present"))
+			return
+		}
+		if req.Header.Get("X-Binboi-Original-Provider") != "GitHub" {
+			errCh <- fmt.Errorf("X-Binboi-Original-Provider = %q, want GitHub", req.Header.Get("X-Binboi-Original-Provider"))
+			return
+		}
+		if req.Header.Get("X-Binboi-Original-Event-Type") != "push" {
+			errCh <- fmt.Errorf("X-Binboi-Original-Event-Type = %q, want push", req.Header.Get("X-Binboi-Original-Event-Type"))
+			return
+		}
+		if req.Header.Get("X-Binboi-Original-Delivery-ID") != "gh-delivery-1" {
+			errCh <- fmt.Errorf("X-Binboi-Original-Delivery-ID = %q, want gh-delivery-1", req.Header.Get("X-Binboi-Original-Delivery-ID"))
+			return
+		}
+		if req.Header.Get("X-Binboi-Redelivery-Key") != "gh-delivery-1" {
+			errCh <- fmt.Errorf("X-Binboi-Redelivery-Key = %q, want gh-delivery-1", req.Header.Get("X-Binboi-Redelivery-Key"))
+			return
+		}
+		if string(body) != `{"ok":true}` {
+			errCh <- fmt.Errorf("body = %q, want %q", string(body), `{"ok":true}`)
+			return
+		}
+
+		_, err = io.WriteString(stream, "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 17\r\n\r\n{\"replayed\":true}")
+		errCh <- err
+	}()
+
+	if err := service.recordObservedRequest(tunnel, requestObservation{
+		Kind:         "WEBHOOK",
+		Provider:     "GitHub",
+		EventType:    "push",
+		DeliveryID:   "gh-delivery-1",
+		MetadataJSON: marshalRequestMetadata(map[string]any{"delivery_id": "gh-delivery-1", "event_type": "push"}),
+		Method:       http.MethodPost,
+		Path:         "/hooks/stripe?foo=bar",
+		Status:       http.StatusOK,
+		RequestHeaders: []string{
+			"x-test-header: binboi",
+			"content-type: application/json",
+			"x-github-delivery: gh-delivery-1",
+			"x-github-event: push",
+			"x-hub-signature-256: sha256=test",
+		},
+		RequestHeadersJSON: headersToJSON(http.Header{
+			"X-Test-Header":       []string{"binboi"},
+			"Content-Type":        []string{"application/json"},
+			"X-GitHub-Delivery":   []string{"gh-delivery-1"},
+			"X-GitHub-Event":      []string{"push"},
+			"X-Hub-Signature-256": []string{"sha256=test"},
+		}),
+		RequestBody:     []byte(`{"ok":true}`),
+		RequestPreview:  "POST /hooks/stripe?foo=bar",
+		PayloadPreview:  `{"ok":true}`,
+		ResponsePreview: `{"ok":true}`,
+	}); err != nil {
+		t.Fatalf("recordObservedRequest returned error: %v", err)
+	}
+
+	var original RequestRecord
+	if err := service.db.Order("created_at desc").First(&original).Error; err != nil {
+		t.Fatalf("load original request: %v", err)
+	}
+
+	result, err := service.replayRecordedRequest(context.Background(), original.ID, requestAccess{TrustedLocal: true})
+	if err != nil {
+		t.Fatalf("replayRecordedRequest returned error: %v", err)
+	}
+	if err := <-errCh; err != nil {
+		t.Fatalf("relay server returned error: %v", err)
+	}
+	if result.ProxyStatus != http.StatusOK {
+		t.Fatalf("proxy status = %d, want %d", result.ProxyStatus, http.StatusOK)
+	}
+	if result.ReplayAttempt != 1 {
+		t.Fatalf("replay attempt = %d, want 1", result.ReplayAttempt)
+	}
+	if result.ReplayedRequestID == "" {
+		t.Fatal("expected replayed request id to be populated")
+	}
+	if result.ReplayPolicy == nil {
+		t.Fatal("expected replay policy to be populated")
+	}
+	if result.ReplayPolicy.Provider != "GitHub" {
+		t.Fatalf("replay policy provider = %q, want %q", result.ReplayPolicy.Provider, "GitHub")
+	}
+	if result.ReplayPolicy.DeliveryID != "gh-delivery-1" {
+		t.Fatalf("replay policy delivery_id = %q, want %q", result.ReplayPolicy.DeliveryID, "gh-delivery-1")
+	}
+	if result.ReplayPolicy.DedupeKey != "gh-delivery-1" {
+		t.Fatalf("replay policy dedupe_key = %q, want %q", result.ReplayPolicy.DedupeKey, "gh-delivery-1")
+	}
+	if result.ReplayPolicy.SignaturePresent != true {
+		t.Fatalf("replay policy signature_present = %v, want true", result.ReplayPolicy.SignaturePresent)
+	}
+
+	var replayed RequestRecord
+	if err := service.db.Where("id = ?", result.ReplayedRequestID).First(&replayed).Error; err != nil {
+		t.Fatalf("load replayed request: %v", err)
+	}
+	if replayed.ReplayOfRequestID != original.ID {
+		t.Fatalf("replay_of_request_id = %q, want %q", replayed.ReplayOfRequestID, original.ID)
+	}
+	if replayed.DeliveryID != "gh-delivery-1" {
+		t.Fatalf("delivery_id = %q, want %q", replayed.DeliveryID, "gh-delivery-1")
+	}
+}
+
+func TestReplayRecordedRequestRejectsNestedReplay(t *testing.T) {
+	service := newTestService(t)
+
+	tunnel := TunnelRecord{
+		ID:         "tunnel_nested_replay",
+		Subdomain:  "nested",
+		Target:     "http://localhost:3000",
+		TargetPort: 3000,
+		Status:     "ACTIVE",
+		Region:     "local",
+	}
+	if err := service.db.Create(&tunnel).Error; err != nil {
+		t.Fatalf("insert tunnel: %v", err)
+	}
+
+	record := RequestRecord{
+		ID:                "req_replayed",
+		TunnelID:          tunnel.ID,
+		TunnelSubdomain:   tunnel.Subdomain,
+		ReplayOfRequestID: "req_original",
+		Method:            http.MethodPost,
+		Path:              "/webhooks/stripe",
+		Status:            http.StatusAccepted,
+	}
+	if err := service.db.Create(&record).Error; err != nil {
+		t.Fatalf("insert request record: %v", err)
+	}
+	if err := service.db.Create(&RequestArchiveRecord{
+		RequestID:          record.ID,
+		RequestHeadersJSON: headersToJSON(http.Header{"Content-Type": []string{"application/json"}}),
+		RequestBody:        []byte(`{"replayed":true}`),
+	}).Error; err != nil {
+		t.Fatalf("insert request archive: %v", err)
+	}
+
+	_, err := service.replayRecordedRequest(context.Background(), record.ID, requestAccess{TrustedLocal: true})
+	if !errors.Is(err, errRequestReplayNested) {
+		t.Fatalf("replayRecordedRequest error = %v, want %v", err, errRequestReplayNested)
+	}
+}
+
+func TestReplayRecordedRequestRejectsReplayLimit(t *testing.T) {
+	service := newTestService(t)
+	service.cfg.RequestReplayLimit = 1
+
+	tunnel := TunnelRecord{
+		ID:         "tunnel_replay_limit",
+		Subdomain:  "limit",
+		Target:     "http://localhost:3000",
+		TargetPort: 3000,
+		Status:     "ACTIVE",
+		Region:     "local",
+	}
+	if err := service.db.Create(&tunnel).Error; err != nil {
+		t.Fatalf("insert tunnel: %v", err)
+	}
+
+	original := RequestRecord{
+		ID:              "req_original_limit",
+		TunnelID:        tunnel.ID,
+		TunnelSubdomain: tunnel.Subdomain,
+		Method:          http.MethodPost,
+		Path:            "/webhooks/github",
+		Status:          http.StatusAccepted,
+	}
+	if err := service.db.Create(&original).Error; err != nil {
+		t.Fatalf("insert original request: %v", err)
+	}
+	if err := service.db.Create(&RequestArchiveRecord{
+		RequestID:          original.ID,
+		RequestHeadersJSON: headersToJSON(http.Header{"Content-Type": []string{"application/json"}}),
+		RequestBody:        []byte(`{"ok":true}`),
+	}).Error; err != nil {
+		t.Fatalf("insert original archive: %v", err)
+	}
+	if err := service.db.Create(&RequestRecord{
+		ID:                "req_existing_replay",
+		TunnelID:          tunnel.ID,
+		TunnelSubdomain:   tunnel.Subdomain,
+		ReplayOfRequestID: original.ID,
+		Method:            http.MethodPost,
+		Path:              "/webhooks/github",
+		Status:            http.StatusAccepted,
+	}).Error; err != nil {
+		t.Fatalf("insert existing replay: %v", err)
+	}
+
+	_, err := service.replayRecordedRequest(context.Background(), original.ID, requestAccess{TrustedLocal: true})
+	if !errors.Is(err, errRequestReplayLimitReached) {
+		t.Fatalf("replayRecordedRequest error = %v, want %v", err, errRequestReplayLimitReached)
+	}
+}
+
+func TestV1ReplayRouteAuditsBlockedReplay(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	service := newTestService(t)
+	tunnel := TunnelRecord{
+		ID:         "tunnel_replay_audit",
+		Subdomain:  "audit",
+		Target:     "http://localhost:3000",
+		TargetPort: 3000,
+		Status:     "ACTIVE",
+		Region:     "local",
+	}
+	if err := service.db.Create(&tunnel).Error; err != nil {
+		t.Fatalf("insert tunnel: %v", err)
+	}
+
+	record := RequestRecord{
+		ID:                "req_blocked_replay",
+		TunnelID:          tunnel.ID,
+		TunnelSubdomain:   tunnel.Subdomain,
+		ReplayOfRequestID: "req_parent",
+		Method:            http.MethodPost,
+		Path:              "/hooks/stripe",
+		Status:            http.StatusAccepted,
+	}
+	if err := service.db.Create(&record).Error; err != nil {
+		t.Fatalf("insert request record: %v", err)
+	}
+	if err := service.db.Create(&RequestArchiveRecord{
+		RequestID:          record.ID,
+		RequestHeadersJSON: headersToJSON(http.Header{"Content-Type": []string{"application/json"}}),
+		RequestBody:        []byte(`{"payload":true}`),
+	}).Error; err != nil {
+		t.Fatalf("insert request archive: %v", err)
+	}
+
+	router := gin.New()
+	service.RegisterRoutes(router)
+
+	request := httptest.NewRequest(http.MethodPost, "/api/v1/requests/"+record.ID+"/replay", nil)
+	request.RemoteAddr = "127.0.0.1:4040"
+	recorder := httptest.NewRecorder()
+	router.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusConflict {
+		t.Fatalf("/api/v1/requests/:id/replay = %d, want %d", recorder.Code, http.StatusConflict)
+	}
+
+	var event EventRecord
+	if err := service.db.Order("created_at desc").First(&event).Error; err != nil {
+		t.Fatalf("load latest event: %v", err)
+	}
+	if event.Action != "request.replay.blocked" {
+		t.Fatalf("event action = %q, want %q", event.Action, "request.replay.blocked")
+	}
+	if event.ResourceID != record.ID {
+		t.Fatalf("event resource_id = %q, want %q", event.ResourceID, record.ID)
+	}
+}
+
+func TestV1RequestArchiveRouteReturnsCapturedBodies(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	service := newTestService(t)
+	tunnel := TunnelRecord{
+		ID:         "tunnel_archive",
+		Subdomain:  "archive",
+		Target:     "http://localhost:3000",
+		TargetPort: 3000,
+		Status:     "ACTIVE",
+		Region:     "local",
+	}
+	if err := service.db.Create(&tunnel).Error; err != nil {
+		t.Fatalf("insert tunnel: %v", err)
+	}
+
+	if err := service.recordObservedRequest(tunnel, requestObservation{
+		Kind:                "WEBHOOK",
+		Provider:            "GitHub",
+		EventType:           "push",
+		DeliveryID:          "gh-delivery-archive",
+		MetadataJSON:        marshalRequestMetadata(map[string]any{"delivery_id": "gh-delivery-archive", "event_type": "push", "signature_present": true}),
+		Method:              http.MethodPost,
+		Path:                "/webhooks/github",
+		Status:              http.StatusAccepted,
+		RequestHeaders:      []string{"x-test-header: archive"},
+		RequestHeadersJSON:  headersToJSON(http.Header{"X-Test-Header": []string{"archive"}}),
+		ResponseHeaders:     []string{"content-type: application/json"},
+		ResponseHeadersJSON: headersToJSON(http.Header{"Content-Type": []string{"application/json"}}),
+		RequestBody:         []byte(`{"hello":"world"}`),
+		ResponseBody:        []byte(`{"accepted":true}`),
+		RequestPreview:      "POST /webhooks/github",
+		PayloadPreview:      `{"hello":"world"}`,
+		ResponsePreview:     `{"accepted":true}`,
+	}); err != nil {
+		t.Fatalf("recordObservedRequest returned error: %v", err)
+	}
+
+	var record RequestRecord
+	if err := service.db.Order("created_at desc").First(&record).Error; err != nil {
+		t.Fatalf("load request record: %v", err)
+	}
+
+	router := gin.New()
+	service.RegisterRoutes(router)
+
+	request := httptest.NewRequest(http.MethodGet, "/api/v1/requests/"+record.ID+"/archive", nil)
+	request.RemoteAddr = "127.0.0.1:4040"
+	recorder := httptest.NewRecorder()
+	router.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("/api/v1/requests/:id/archive = %d, want %d", recorder.Code, http.StatusOK)
+	}
+
+	var payload struct {
+		Data RequestArchiveResponse `json:"data"`
+		Meta APIMeta                `json:"meta"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode archive response: %v", err)
+	}
+
+	if payload.Data.RequestBodyText != `{"hello":"world"}` {
+		t.Fatalf("request body text = %q, want %q", payload.Data.RequestBodyText, `{"hello":"world"}`)
+	}
+	if payload.Data.ResponseBodyText != `{"accepted":true}` {
+		t.Fatalf("response body text = %q, want %q", payload.Data.ResponseBodyText, `{"accepted":true}`)
+	}
+	if payload.Data.DeliveryID != "gh-delivery-archive" {
+		t.Fatalf("delivery id = %q, want %q", payload.Data.DeliveryID, "gh-delivery-archive")
+	}
+	if payload.Data.Provider != "GitHub" {
+		t.Fatalf("provider = %q, want %q", payload.Data.Provider, "GitHub")
+	}
+	if payload.Data.EventType != "push" {
+		t.Fatalf("event type = %q, want %q", payload.Data.EventType, "push")
+	}
+	if payload.Data.Metadata["signature_present"] != true {
+		t.Fatalf("metadata signature_present = %v, want true", payload.Data.Metadata["signature_present"])
+	}
+	if payload.Data.ReplayPolicy == nil {
+		t.Fatal("expected replay policy in archive response")
+	}
+	if payload.Data.ReplayPolicy.DedupeKey != "gh-delivery-archive" {
+		t.Fatalf("archive replay policy dedupe_key = %q, want %q", payload.Data.ReplayPolicy.DedupeKey, "gh-delivery-archive")
+	}
+}
+
+func TestRequestExportRouteReturnsJSON(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	service := newTestService(t)
+	tunnel := TunnelRecord{
+		ID:         "tunnel_export",
+		Subdomain:  "export",
+		Target:     "http://localhost:3000",
+		TargetPort: 3000,
+		Status:     "ACTIVE",
+		Region:     "local",
+	}
+	if err := service.db.Create(&tunnel).Error; err != nil {
+		t.Fatalf("insert tunnel: %v", err)
+	}
+
+	if err := service.recordObservedRequest(tunnel, requestObservation{
+		Kind:           "WEBHOOK",
+		Provider:       "GitHub",
+		EventType:      "push",
+		DeliveryID:     "gh-delivery-export",
+		MetadataJSON:   marshalRequestMetadata(map[string]any{"delivery_id": "gh-delivery-export", "event_type": "push"}),
+		Method:         http.MethodPost,
+		Path:           "/hook",
+		Status:         http.StatusOK,
+		RequestPreview: "POST /hook",
+		PayloadPreview: `{"event":"test"}`,
+	}); err != nil {
+		t.Fatalf("recordObservedRequest returned error: %v", err)
+	}
+
+	router := gin.New()
+	service.RegisterRoutes(router)
+
+	request := httptest.NewRequest(http.MethodGet, "/api/requests/export?format=json", nil)
+	request.RemoteAddr = "127.0.0.1:4040"
+	recorder := httptest.NewRecorder()
+	router.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("/api/requests/export = %d, want %d", recorder.Code, http.StatusOK)
+	}
+	if contentType := recorder.Header().Get("Content-Type"); !strings.Contains(contentType, "application/json") {
+		t.Fatalf("content type = %q, want application/json", contentType)
+	}
+
+	var payload []RequestResponse
+	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode request export: %v", err)
+	}
+	if len(payload) != 1 {
+		t.Fatalf("exported request count = %d, want 1", len(payload))
+	}
+	if payload[0].Path != "/hook" {
+		t.Fatalf("exported path = %q, want /hook", payload[0].Path)
+	}
+	if payload[0].DeliveryID != "gh-delivery-export" {
+		t.Fatalf("exported delivery id = %q, want %q", payload[0].DeliveryID, "gh-delivery-export")
+	}
+	if payload[0].Metadata["event_type"] != "push" {
+		t.Fatalf("exported metadata event_type = %v, want %q", payload[0].Metadata["event_type"], "push")
+	}
+}
+
+func TestRequestExportRouteSupportsGzip(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	service := newTestService(t)
+	tunnel := TunnelRecord{
+		ID:         "tunnel_export_gzip",
+		Subdomain:  "export-gzip",
+		Target:     "http://localhost:3000",
+		TargetPort: 3000,
+		Status:     "ACTIVE",
+		Region:     "local",
+	}
+	if err := service.db.Create(&tunnel).Error; err != nil {
+		t.Fatalf("insert tunnel: %v", err)
+	}
+
+	if err := service.recordObservedRequest(tunnel, requestObservation{
+		Kind:           "WEBHOOK",
+		Provider:       "Stripe",
+		EventType:      "payment_intent.succeeded",
+		DeliveryID:     "evt_123",
+		MetadataJSON:   marshalRequestMetadata(map[string]any{"delivery_id": "evt_123", "event_type": "payment_intent.succeeded"}),
+		Method:         http.MethodPost,
+		Path:           "/stripe/webhook",
+		Status:         http.StatusOK,
+		RequestPreview: "POST /stripe/webhook",
+		PayloadPreview: `{"id":"evt_123"}`,
+	}); err != nil {
+		t.Fatalf("recordObservedRequest returned error: %v", err)
+	}
+
+	router := gin.New()
+	service.RegisterRoutes(router)
+
+	request := httptest.NewRequest(http.MethodGet, "/api/requests/export?format=json", nil)
+	request.RemoteAddr = "127.0.0.1:4040"
+	request.Header.Set("Accept-Encoding", "gzip")
+	recorder := httptest.NewRecorder()
+	router.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("/api/requests/export = %d, want %d", recorder.Code, http.StatusOK)
+	}
+	if recorder.Header().Get("Content-Encoding") != "gzip" {
+		t.Fatalf("content encoding = %q, want gzip", recorder.Header().Get("Content-Encoding"))
+	}
+	if recorder.Header().Get("X-Binboi-Export-Bytes") == "" {
+		t.Fatal("expected X-Binboi-Export-Bytes header to be populated")
+	}
+
+	var payload []RequestResponse
+	if err := json.Unmarshal([]byte(decodeGzipTestBody(t, recorder.Body.Bytes())), &payload); err != nil {
+		t.Fatalf("decode gzip request export: %v", err)
+	}
+	if len(payload) != 1 {
+		t.Fatalf("exported request count = %d, want 1", len(payload))
+	}
+	if payload[0].DeliveryID != "evt_123" {
+		t.Fatalf("exported delivery id = %q, want %q", payload[0].DeliveryID, "evt_123")
+	}
+}
+
+func TestRequestExportRouteRejectsOversizedPayload(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	service := newTestService(t)
+	service.cfg.ExportMaxBytes = 128
+	tunnel := TunnelRecord{
+		ID:         "tunnel_export_limit",
+		Subdomain:  "export-limit",
+		Target:     "http://localhost:3000",
+		TargetPort: 3000,
+		Status:     "ACTIVE",
+		Region:     "local",
+	}
+	if err := service.db.Create(&tunnel).Error; err != nil {
+		t.Fatalf("insert tunnel: %v", err)
+	}
+
+	if err := service.recordObservedRequest(tunnel, requestObservation{
+		Kind:           "REQUEST",
+		Method:         http.MethodPost,
+		Path:           "/oversized",
+		Status:         http.StatusAccepted,
+		RequestPreview: strings.Repeat("preview-", 20),
+		PayloadPreview: strings.Repeat("payload-", 20),
+	}); err != nil {
+		t.Fatalf("recordObservedRequest returned error: %v", err)
+	}
+
+	router := gin.New()
+	service.RegisterRoutes(router)
+
+	request := httptest.NewRequest(http.MethodGet, "/api/requests/export?format=json", nil)
+	request.RemoteAddr = "127.0.0.1:4040"
+	recorder := httptest.NewRecorder()
+	router.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusRequestEntityTooLarge {
+		t.Fatalf("/api/requests/export = %d, want %d", recorder.Code, http.StatusRequestEntityTooLarge)
+	}
+	if !strings.Contains(recorder.Body.String(), "reduce limit or narrow filters") {
+		t.Fatalf("error body = %q, want suggestion", recorder.Body.String())
+	}
+}
+
+func decodeGzipTestBody(t *testing.T, compressed []byte) string {
+	t.Helper()
+
+	reader, err := gzip.NewReader(bytes.NewReader(compressed))
+	if err != nil {
+		t.Fatalf("create gzip reader: %v", err)
+	}
+	defer reader.Close()
+
+	body, err := io.ReadAll(reader)
+	if err != nil {
+		t.Fatalf("read gzip body: %v", err)
+	}
+	return string(body)
 }

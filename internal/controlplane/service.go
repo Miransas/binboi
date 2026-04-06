@@ -53,9 +53,11 @@ const (
 	defaultStoredEventLimit       = 1000
 	defaultStoredRequestLimit     = 5000
 	defaultAuditExportLimit       = 5000
+	defaultExportMaxBytes         = 4 * 1024 * 1024
 	defaultDomainVerifyInterval   = 90 * time.Second
 	defaultDomainVerifyBatchSize  = 25
 	defaultDomainLookupTimeout    = 5 * time.Second
+	defaultRequestReplayLimit     = 3
 	defaultAPIRateLimit           = 240
 	defaultAPIRateBurst           = 60
 	defaultProxyRateLimit         = 1200
@@ -99,12 +101,14 @@ type Config struct {
 	StoredEventLimit       int
 	StoredRequestLimit     int
 	AuditExportLimit       int
+	ExportMaxBytes         int
 	EventRetentionMaxAge   time.Duration
 	RequestRetentionMaxAge time.Duration
 	CaptureBodyLimit       int
 	DomainVerifyInterval   time.Duration
 	DomainVerifyBatchSize  int
 	DomainLookupTimeout    time.Duration
+	RequestReplayLimit     int
 	APIRateLimit           int
 	APIRateBurst           int
 	ProxyRateLimit         int
@@ -135,12 +139,14 @@ func LoadConfigFromEnv() Config {
 		StoredEventLimit:       intEnvOrDefault("BINBOI_STORED_EVENT_LIMIT", defaultStoredEventLimit),
 		StoredRequestLimit:     intEnvOrDefault("BINBOI_STORED_REQUEST_LIMIT", defaultStoredRequestLimit),
 		AuditExportLimit:       intEnvOrDefault("BINBOI_AUDIT_EXPORT_LIMIT", defaultAuditExportLimit),
+		ExportMaxBytes:         nonNegativeIntEnvOrDefault("BINBOI_EXPORT_MAX_BYTES", defaultExportMaxBytes),
 		EventRetentionMaxAge:   durationEnvOrDefault("BINBOI_EVENT_RETENTION_MAX_AGE", defaultEventRetentionMaxAge),
 		RequestRetentionMaxAge: durationEnvOrDefault("BINBOI_REQUEST_RETENTION_MAX_AGE", defaultRequestRetentionMaxAge),
 		CaptureBodyLimit:       nonNegativeIntEnvOrDefault("BINBOI_CAPTURE_BODY_LIMIT", defaultCaptureBodyLimit),
 		DomainVerifyInterval:   durationEnvOrDefault("BINBOI_DOMAIN_VERIFY_INTERVAL", defaultDomainVerifyInterval),
 		DomainVerifyBatchSize:  intEnvOrDefault("BINBOI_DOMAIN_VERIFY_BATCH_SIZE", defaultDomainVerifyBatchSize),
 		DomainLookupTimeout:    durationEnvOrDefault("BINBOI_DOMAIN_LOOKUP_TIMEOUT", defaultDomainLookupTimeout),
+		RequestReplayLimit:     nonNegativeIntEnvOrDefault("BINBOI_REQUEST_REPLAY_LIMIT", defaultRequestReplayLimit),
 		APIRateLimit:           nonNegativeIntEnvOrDefault("BINBOI_API_RATE_LIMIT", defaultAPIRateLimit),
 		APIRateBurst:           nonNegativeIntEnvOrDefault("BINBOI_API_RATE_BURST", defaultAPIRateBurst),
 		ProxyRateLimit:         nonNegativeIntEnvOrDefault("BINBOI_PROXY_RATE_LIMIT", defaultProxyRateLimit),
@@ -274,28 +280,30 @@ type EventRecord struct {
 }
 
 type RequestRecord struct {
-	ID              string `gorm:"primaryKey"`
-	TunnelID        string `gorm:"index"`
-	TunnelSubdomain string `gorm:"index"`
+	ID                string `gorm:"primaryKey"`
+	TunnelID          string `gorm:"index"`
+	TunnelSubdomain   string `gorm:"index"`
 	ReplayOfRequestID string `gorm:"index"`
-	Kind            string
-	Provider        string
-	EventType       string
-	Method          string
-	Path            string
-	Status          int
-	DurationMs      int64
-	Source          string
-	Target          string
-	Destination     string
-	ErrorType       string
-	RequestHeaders  string `gorm:"type:text"`
-	ResponseHeaders string `gorm:"type:text"`
-	RequestPreview  string `gorm:"type:text"`
-	PayloadPreview  string `gorm:"type:text"`
-	ResponsePreview string `gorm:"type:text"`
-	CreatedAt       time.Time
-	UpdatedAt       time.Time
+	DeliveryID        string `gorm:"index"`
+	Kind              string
+	Provider          string
+	EventType         string
+	Method            string
+	Path              string
+	Status            int
+	DurationMs        int64
+	Source            string
+	Target            string
+	Destination       string
+	ErrorType         string
+	RequestHeaders    string `gorm:"type:text"`
+	ResponseHeaders   string `gorm:"type:text"`
+	MetadataJSON      string `gorm:"type:text"`
+	RequestPreview    string `gorm:"type:text"`
+	PayloadPreview    string `gorm:"type:text"`
+	ResponsePreview   string `gorm:"type:text"`
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
 }
 
 type activeSession struct {
@@ -387,26 +395,29 @@ type EventResponse struct {
 }
 
 type RequestResponse struct {
-	ID              string    `json:"id"`
-	TunnelID        string    `json:"tunnel_id"`
-	TunnelSubdomain string    `json:"tunnel_subdomain"`
-	Kind            string    `json:"kind"`
-	Provider        string    `json:"provider,omitempty"`
-	EventType       string    `json:"event_type,omitempty"`
-	Method          string    `json:"method"`
-	Path            string    `json:"path"`
-	Status          int       `json:"status"`
-	DurationMs      int64     `json:"duration_ms"`
-	Source          string    `json:"source,omitempty"`
-	Target          string    `json:"target,omitempty"`
-	Destination     string    `json:"destination,omitempty"`
-	ErrorType       string    `json:"error_type,omitempty"`
-	RequestHeaders  []string  `json:"request_headers,omitempty"`
-	ResponseHeaders []string  `json:"response_headers,omitempty"`
-	RequestPreview  string    `json:"request_preview,omitempty"`
-	PayloadPreview  string    `json:"payload_preview,omitempty"`
-	ResponsePreview string    `json:"response_preview,omitempty"`
-	CreatedAt       time.Time `json:"created_at"`
+	ID                string         `json:"id"`
+	TunnelID          string         `json:"tunnel_id"`
+	TunnelSubdomain   string         `json:"tunnel_subdomain"`
+	ReplayOfRequestID string         `json:"replay_of_request_id,omitempty"`
+	DeliveryID        string         `json:"delivery_id,omitempty"`
+	Kind              string         `json:"kind"`
+	Provider          string         `json:"provider,omitempty"`
+	EventType         string         `json:"event_type,omitempty"`
+	Method            string         `json:"method"`
+	Path              string         `json:"path"`
+	Status            int            `json:"status"`
+	DurationMs        int64          `json:"duration_ms"`
+	Source            string         `json:"source,omitempty"`
+	Target            string         `json:"target,omitempty"`
+	Destination       string         `json:"destination,omitempty"`
+	ErrorType         string         `json:"error_type,omitempty"`
+	RequestHeaders    []string       `json:"request_headers,omitempty"`
+	ResponseHeaders   []string       `json:"response_headers,omitempty"`
+	Metadata          map[string]any `json:"metadata,omitempty"`
+	RequestPreview    string         `json:"request_preview,omitempty"`
+	PayloadPreview    string         `json:"payload_preview,omitempty"`
+	ResponsePreview   string         `json:"response_preview,omitempty"`
+	CreatedAt         time.Time      `json:"created_at"`
 }
 
 type InstanceResponse struct {
@@ -612,8 +623,11 @@ func (s *Service) RegisterRoutes(r *gin.Engine) {
 	operator.Use(s.quotaHeadersMiddleware())
 	operator.GET("/limits", s.handleQuotaLimits)
 	operator.GET("/events/export", s.handleExportEvents)
+	operator.GET("/requests/export", s.handleExportRequests)
 	operator.GET("/events", s.handleListEvents)
 	operator.GET("/requests", s.handleListRequests)
+	operator.GET("/requests/:id/archive", s.handleGetRequestArchive)
+	operator.POST("/requests/:id/replay", s.handleReplayRequest)
 	operator.GET("/tunnels", s.handleListTunnels)
 	operator.GET("/tunnels/:scope", s.handleListTunnels)
 	operator.POST("/tunnels", s.handleCreateTunnel)
@@ -641,8 +655,11 @@ func (s *Service) RegisterRoutes(r *gin.Engine) {
 	apiV1Operator.Use(s.quotaHeadersMiddleware())
 	apiV1Operator.GET("/limits", s.handleV1QuotaLimits)
 	apiV1Operator.GET("/events/export", s.handleV1ExportEvents)
+	apiV1Operator.GET("/requests/export", s.handleV1ExportRequests)
 	apiV1Operator.GET("/events", s.handleV1ListEvents)
 	apiV1Operator.GET("/requests", s.handleV1ListRequests)
+	apiV1Operator.GET("/requests/:id/archive", s.handleV1GetRequestArchive)
+	apiV1Operator.POST("/requests/:id/replay", s.handleV1ReplayRequest)
 	apiV1Operator.GET("/tunnels", s.handleV1ListTunnels)
 	apiV1Operator.POST("/tunnels", s.handleV1CreateTunnel)
 	apiV1Operator.DELETE("/tunnels/:id", s.handleV1DeleteTunnel)
@@ -805,29 +822,39 @@ func (s *Service) ServeProxy() http.Handler {
 			http.Error(w, "Tunnel not found", http.StatusNotFound)
 			return
 		}
-		requestSnapshot := captureRequestSnapshot(r)
+		requestSnapshot := s.captureRequestSnapshot(r)
 		if err := s.enforceRequestQuota(tunnel); err != nil {
 			if isQuotaError(err) {
 				s.broadcastLog("warn", fmt.Sprintf("Rejected request for %s: %v", subdomain, err), subdomain)
 				_ = s.recordObservedRequest(tunnel, requestObservation{
-					Kind:           requestSnapshot.Kind,
-					Provider:       requestSnapshot.Provider,
-					EventType:      requestSnapshot.EventType,
-					Method:         r.Method,
-					Path:           requestSnapshot.Path,
-					Status:         http.StatusTooManyRequests,
-					DurationMs:     0,
-					Source:         requestSnapshot.Source,
-					Target:         tunnel.Target,
-					Destination:    tunnel.Target,
-					ErrorType:      "PLAN_QUOTA_REACHED",
-					RequestHeaders: requestSnapshot.HeaderLines,
+					Kind:               requestSnapshot.Kind,
+					Provider:           requestSnapshot.Provider,
+					EventType:          requestSnapshot.EventType,
+					DeliveryID:         requestSnapshot.DeliveryID,
+					MetadataJSON:       requestSnapshot.MetadataJSON,
+					Method:             r.Method,
+					Path:               requestSnapshot.Path,
+					Status:             http.StatusTooManyRequests,
+					DurationMs:         0,
+					Source:             requestSnapshot.Source,
+					Target:             tunnel.Target,
+					Destination:        tunnel.Target,
+					ErrorType:          "PLAN_QUOTA_REACHED",
+					RequestHeaders:     requestSnapshot.HeaderLines,
+					RequestHeadersJSON: requestSnapshot.HeadersJSON,
 					ResponseHeaders: []string{
 						"content-type: text/plain; charset=utf-8",
 					},
-					RequestPreview:  requestSnapshot.RequestPreview,
-					PayloadPreview:  requestSnapshot.PayloadPreview,
-					ResponsePreview: err.Error(),
+					ResponseHeadersJSON: headersToJSON(http.Header{
+						"Content-Type": []string{"text/plain; charset=utf-8"},
+					}),
+					RequestBody:          requestSnapshot.RequestBody,
+					RequestBodyTruncated: requestSnapshot.RequestBodyTruncated,
+					RequestPreview:       requestSnapshot.RequestPreview,
+					PayloadPreview:       requestSnapshot.PayloadPreview,
+					ResponsePreview:      err.Error(),
+					ResponseBody:         []byte(err.Error()),
+					ReplayOfRequestID:    requestSnapshot.ReplayOfRequestID,
 				})
 				http.Error(w, err.Error(), http.StatusTooManyRequests)
 				return
@@ -836,24 +863,34 @@ func (s *Service) ServeProxy() http.Handler {
 		}
 		if active == nil {
 			_ = s.recordObservedRequest(tunnel, requestObservation{
-				Kind:           requestSnapshot.Kind,
-				Provider:       requestSnapshot.Provider,
-				EventType:      requestSnapshot.EventType,
-				Method:         r.Method,
-				Path:           requestSnapshot.Path,
-				Status:         http.StatusBadGateway,
-				DurationMs:     0,
-				Source:         requestSnapshot.Source,
-				Target:         tunnel.Target,
-				Destination:    tunnel.Target,
-				ErrorType:      "TUNNEL_OFFLINE",
-				RequestHeaders: requestSnapshot.HeaderLines,
+				Kind:               requestSnapshot.Kind,
+				Provider:           requestSnapshot.Provider,
+				EventType:          requestSnapshot.EventType,
+				DeliveryID:         requestSnapshot.DeliveryID,
+				MetadataJSON:       requestSnapshot.MetadataJSON,
+				Method:             r.Method,
+				Path:               requestSnapshot.Path,
+				Status:             http.StatusBadGateway,
+				DurationMs:         0,
+				Source:             requestSnapshot.Source,
+				Target:             tunnel.Target,
+				Destination:        tunnel.Target,
+				ErrorType:          "TUNNEL_OFFLINE",
+				RequestHeaders:     requestSnapshot.HeaderLines,
+				RequestHeadersJSON: requestSnapshot.HeadersJSON,
 				ResponseHeaders: []string{
 					"content-type: text/plain; charset=utf-8",
 				},
-				RequestPreview:  requestSnapshot.RequestPreview,
-				PayloadPreview:  requestSnapshot.PayloadPreview,
-				ResponsePreview: "Tunnel is currently offline.",
+				ResponseHeadersJSON: headersToJSON(http.Header{
+					"Content-Type": []string{"text/plain; charset=utf-8"},
+				}),
+				RequestBody:          requestSnapshot.RequestBody,
+				RequestBodyTruncated: requestSnapshot.RequestBodyTruncated,
+				RequestPreview:       requestSnapshot.RequestPreview,
+				PayloadPreview:       requestSnapshot.PayloadPreview,
+				ResponsePreview:      "Tunnel is currently offline.",
+				ResponseBody:         []byte("Tunnel is currently offline."),
+				ReplayOfRequestID:    requestSnapshot.ReplayOfRequestID,
 			})
 			http.Error(w, "Tunnel is currently offline", http.StatusBadGateway)
 			return
@@ -863,24 +900,34 @@ func (s *Service) ServeProxy() http.Handler {
 		if err != nil {
 			s.broadcastLog("error", fmt.Sprintf("Could not open stream for %s: %v", subdomain, err), subdomain)
 			_ = s.recordObservedRequest(tunnel, requestObservation{
-				Kind:           requestSnapshot.Kind,
-				Provider:       requestSnapshot.Provider,
-				EventType:      requestSnapshot.EventType,
-				Method:         r.Method,
-				Path:           requestSnapshot.Path,
-				Status:         http.StatusServiceUnavailable,
-				DurationMs:     0,
-				Source:         requestSnapshot.Source,
-				Target:         tunnel.Target,
-				Destination:    tunnel.Target,
-				ErrorType:      "STREAM_UNAVAILABLE",
-				RequestHeaders: requestSnapshot.HeaderLines,
+				Kind:               requestSnapshot.Kind,
+				Provider:           requestSnapshot.Provider,
+				EventType:          requestSnapshot.EventType,
+				DeliveryID:         requestSnapshot.DeliveryID,
+				MetadataJSON:       requestSnapshot.MetadataJSON,
+				Method:             r.Method,
+				Path:               requestSnapshot.Path,
+				Status:             http.StatusServiceUnavailable,
+				DurationMs:         0,
+				Source:             requestSnapshot.Source,
+				Target:             tunnel.Target,
+				Destination:        tunnel.Target,
+				ErrorType:          "STREAM_UNAVAILABLE",
+				RequestHeaders:     requestSnapshot.HeaderLines,
+				RequestHeadersJSON: requestSnapshot.HeadersJSON,
 				ResponseHeaders: []string{
 					"content-type: text/plain; charset=utf-8",
 				},
-				RequestPreview:  requestSnapshot.RequestPreview,
-				PayloadPreview:  requestSnapshot.PayloadPreview,
-				ResponsePreview: "Tunnel stream unavailable.",
+				ResponseHeadersJSON: headersToJSON(http.Header{
+					"Content-Type": []string{"text/plain; charset=utf-8"},
+				}),
+				RequestBody:          requestSnapshot.RequestBody,
+				RequestBodyTruncated: requestSnapshot.RequestBodyTruncated,
+				RequestPreview:       requestSnapshot.RequestPreview,
+				PayloadPreview:       requestSnapshot.PayloadPreview,
+				ResponsePreview:      "Tunnel stream unavailable.",
+				ResponseBody:         []byte("Tunnel stream unavailable."),
+				ReplayOfRequestID:    requestSnapshot.ReplayOfRequestID,
 			})
 			http.Error(w, "Tunnel stream unavailable", http.StatusServiceUnavailable)
 			return
@@ -891,6 +938,7 @@ func (s *Service) ServeProxy() http.Handler {
 		})
 
 		captureWriter := newStatusCapturingResponseWriter(w)
+		captureWriter.bodyLimit = s.captureBodyLimit()
 		proxy := &httputil.ReverseProxy{
 			Director: func(req *http.Request) {
 				req.URL.Scheme = "http"
@@ -919,22 +967,31 @@ func (s *Service) ServeProxy() http.Handler {
 
 		durationMs := time.Since(startedAt).Milliseconds()
 		_ = s.recordObservedRequest(tunnel, requestObservation{
-			Kind:            requestSnapshot.Kind,
-			Provider:        requestSnapshot.Provider,
-			EventType:       requestSnapshot.EventType,
-			Method:          r.Method,
-			Path:            requestSnapshot.Path,
-			Status:          captureWriter.Status(),
-			DurationMs:      durationMs,
-			Source:          requestSnapshot.Source,
-			Target:          tunnel.Target,
-			Destination:     tunnel.Target,
-			ErrorType:       classifyRequestError(captureWriter.Status(), requestSnapshot.Kind, captureWriter.BodyPreview(), requestSnapshot.ResponsePreviewHint),
-			RequestHeaders:  requestSnapshot.HeaderLines,
-			ResponseHeaders: formatHeadersForPreview(captureWriter.Header()),
-			RequestPreview:  requestSnapshot.RequestPreview,
-			PayloadPreview:  requestSnapshot.PayloadPreview,
-			ResponsePreview: fallbackString(captureWriter.BodyPreview(), requestSnapshot.ResponsePreviewHint),
+			Kind:                  requestSnapshot.Kind,
+			Provider:              requestSnapshot.Provider,
+			EventType:             requestSnapshot.EventType,
+			DeliveryID:            requestSnapshot.DeliveryID,
+			MetadataJSON:          requestSnapshot.MetadataJSON,
+			Method:                r.Method,
+			Path:                  requestSnapshot.Path,
+			Status:                captureWriter.Status(),
+			DurationMs:            durationMs,
+			Source:                requestSnapshot.Source,
+			Target:                tunnel.Target,
+			Destination:           tunnel.Target,
+			ErrorType:             classifyRequestError(captureWriter.Status(), requestSnapshot.Kind, captureWriter.BodyPreview(), requestSnapshot.ResponsePreviewHint),
+			RequestHeaders:        requestSnapshot.HeaderLines,
+			RequestHeadersJSON:    requestSnapshot.HeadersJSON,
+			ResponseHeaders:       formatHeadersForPreview(captureWriter.Header()),
+			ResponseHeadersJSON:   captureWriter.HeadersJSON(),
+			RequestBody:           requestSnapshot.RequestBody,
+			RequestBodyTruncated:  requestSnapshot.RequestBodyTruncated,
+			RequestPreview:        requestSnapshot.RequestPreview,
+			PayloadPreview:        requestSnapshot.PayloadPreview,
+			ResponseBody:          captureWriter.BodyBytes(),
+			ResponseBodyTruncated: captureWriter.BodyTruncated(),
+			ResponsePreview:       fallbackString(captureWriter.BodyPreview(), requestSnapshot.ResponsePreviewHint),
+			ReplayOfRequestID:     requestSnapshot.ReplayOfRequestID,
 		})
 	})))
 }
@@ -1082,12 +1139,22 @@ func (s *Service) handleListTunnels(c *gin.Context) {
 }
 
 func (s *Service) handleListEvents(c *gin.Context) {
+	since, until, err := parseTimeWindowFilters(c.Query("since"), c.Query("until"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 	events, err := s.listEvents(currentRequestAccess(c), eventListOptions{
-		Limit:  parsePositiveLimit(c.Query("limit"), s.recentEventLimit(), 500),
-		Level:  c.Query("level"),
-		Action: c.Query("action"),
-		Tunnel: c.Query("tunnel"),
-		Query:  c.Query("q"),
+		Limit:        parsePositiveLimit(c.Query("limit"), s.recentEventLimit(), 500),
+		Level:        c.Query("level"),
+		Action:       c.Query("action"),
+		Tunnel:       c.Query("tunnel"),
+		ResourceType: c.Query("resource_type"),
+		ResourceID:   c.Query("resource_id"),
+		RequestID:    c.Query("request_id"),
+		Since:        since,
+		Until:        until,
+		Query:        c.Query("q"),
 	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load events"})
@@ -1107,11 +1174,20 @@ func (s *Service) handleQuotaLimits(c *gin.Context) {
 }
 
 func (s *Service) handleListRequests(c *gin.Context) {
+	since, until, err := parseTimeWindowFilters(c.Query("since"), c.Query("until"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 	requests, err := s.listRequests(currentRequestAccess(c), requestListOptions{
 		Limit:       parsePositiveLimit(c.Query("limit"), s.recentRequestLimit(), 500),
 		Kind:        c.Query("kind"),
 		Tunnel:      c.Query("tunnel"),
 		Provider:    c.Query("provider"),
+		EventType:   c.Query("event_type"),
+		DeliveryID:  c.Query("delivery_id"),
+		Since:       since,
+		Until:       until,
 		Query:       c.Query("q"),
 		StatusClass: c.Query("status"),
 		ErrorOnly:   parseBoolQuery(c.Query("error_only")),
@@ -1494,6 +1570,13 @@ func (s *Service) auditExportLimit() int {
 	return defaultAuditExportLimit
 }
 
+func (s *Service) exportMaxBytes() int {
+	if s.cfg.ExportMaxBytes > 0 {
+		return s.cfg.ExportMaxBytes
+	}
+	return defaultExportMaxBytes
+}
+
 func (s *Service) storedEventLimit() int {
 	if s.cfg.StoredEventLimit > 0 {
 		return s.cfg.StoredEventLimit
@@ -1520,6 +1603,13 @@ func (s *Service) requestRetentionMaxAge() time.Duration {
 		return s.cfg.RequestRetentionMaxAge
 	}
 	return 0
+}
+
+func (s *Service) captureBodyLimit() int {
+	if s.cfg.CaptureBodyLimit > 0 {
+		return s.cfg.CaptureBodyLimit
+	}
+	return defaultCaptureBodyLimit
 }
 
 func (s *Service) handleV1QuotaLimits(c *gin.Context) {
@@ -1552,12 +1642,22 @@ func (s *Service) handleV1ListTunnels(c *gin.Context) {
 func (s *Service) handleV1ListEvents(c *gin.Context) {
 	access := currentRequestAccess(c)
 	meta := s.apiMeta(access)
+	since, until, err := parseTimeWindowFilters(c.Query("since"), c.Query("until"))
+	if err != nil {
+		writeV1Error(c, http.StatusBadRequest, meta, "INVALID_TIME_FILTER", err.Error())
+		return
+	}
 	events, err := s.listEvents(access, eventListOptions{
-		Limit:  parsePositiveLimit(c.Query("limit"), s.recentEventLimit(), 500),
-		Level:  c.Query("level"),
-		Action: c.Query("action"),
-		Tunnel: c.Query("tunnel"),
-		Query:  c.Query("q"),
+		Limit:        parsePositiveLimit(c.Query("limit"), s.recentEventLimit(), 500),
+		Level:        c.Query("level"),
+		Action:       c.Query("action"),
+		Tunnel:       c.Query("tunnel"),
+		ResourceType: c.Query("resource_type"),
+		ResourceID:   c.Query("resource_id"),
+		RequestID:    c.Query("request_id"),
+		Since:        since,
+		Until:        until,
+		Query:        c.Query("q"),
 	})
 	if err != nil {
 		writeV1Error(c, http.StatusInternalServerError, meta, "EVENTS_LIST_FAILED", "failed to load events")
@@ -1569,11 +1669,20 @@ func (s *Service) handleV1ListEvents(c *gin.Context) {
 func (s *Service) handleV1ListRequests(c *gin.Context) {
 	access := currentRequestAccess(c)
 	meta := s.apiMeta(access)
+	since, until, err := parseTimeWindowFilters(c.Query("since"), c.Query("until"))
+	if err != nil {
+		writeV1Error(c, http.StatusBadRequest, meta, "INVALID_TIME_FILTER", err.Error())
+		return
+	}
 	requests, err := s.listRequests(access, requestListOptions{
 		Limit:       parsePositiveLimit(c.Query("limit"), s.recentRequestLimit(), 500),
 		Kind:        c.Query("kind"),
 		Tunnel:      c.Query("tunnel"),
 		Provider:    c.Query("provider"),
+		EventType:   c.Query("event_type"),
+		DeliveryID:  c.Query("delivery_id"),
+		Since:       since,
+		Until:       until,
 		Query:       c.Query("q"),
 		StatusClass: c.Query("status"),
 		ErrorOnly:   parseBoolQuery(c.Query("error_only")),
@@ -2178,8 +2287,10 @@ func (s *Service) listEvents(access requestAccess, options eventListOptions) ([]
 func (s *Service) listRequests(access requestAccess, options requestListOptions) ([]RequestResponse, error) {
 	var records []RequestRecord
 	options.Kind = normalizeRequestKindFilter(options.Kind)
-	options.Provider = strings.ToLower(strings.TrimSpace(options.Provider))
-	options.Tunnel = strings.ToLower(strings.TrimSpace(options.Tunnel))
+	options.Provider = normalizeFilterValue(options.Provider, 120)
+	options.EventType = normalizeFilterValue(options.EventType, 160)
+	options.DeliveryID = normalizeFilterValue(options.DeliveryID, 160)
+	options.Tunnel = normalizeFilterValue(options.Tunnel, 120)
 	options.Query = normalizeSearchQuery(options.Query)
 	options.StatusClass = normalizeStatusClassFilter(options.StatusClass)
 	effectiveLimit := options.Limit
@@ -2198,6 +2309,12 @@ func (s *Service) listRequests(access requestAccess, options requestListOptions)
 			Where("tunnel_records.owner_user_id = ?", access.Identity.UserID)
 	}
 	query = s.applyAccessRetentionWindow(query, access, "request_records.created_at", true)
+	if options.Since != nil {
+		query = query.Where("request_records.created_at >= ?", options.Since.UTC())
+	}
+	if options.Until != nil {
+		query = query.Where("request_records.created_at <= ?", options.Until.UTC())
+	}
 	if options.Kind != "" {
 		query = query.Where("request_records.kind = ?", options.Kind)
 	}
@@ -2206,6 +2323,12 @@ func (s *Service) listRequests(access requestAccess, options requestListOptions)
 	}
 	if options.Provider != "" {
 		query = query.Where("LOWER(request_records.provider) = ?", options.Provider)
+	}
+	if options.EventType != "" {
+		query = query.Where("LOWER(request_records.event_type) = ?", options.EventType)
+	}
+	if options.DeliveryID != "" {
+		query = query.Where("LOWER(request_records.delivery_id) = ?", options.DeliveryID)
 	}
 	if options.ErrorOnly {
 		query = query.Where("request_records.status >= ?", http.StatusBadRequest)
@@ -2227,12 +2350,14 @@ func (s *Service) listRequests(access requestAccess, options requestListOptions)
 			LOWER(request_records.path) LIKE ? OR
 			LOWER(request_records.provider) LIKE ? OR
 			LOWER(request_records.event_type) LIKE ? OR
+			LOWER(request_records.delivery_id) LIKE ? OR
+			LOWER(request_records.metadata_json) LIKE ? OR
 			LOWER(request_records.error_type) LIKE ? OR
 			LOWER(request_records.destination) LIKE ? OR
 			LOWER(request_records.request_preview) LIKE ? OR
 			LOWER(request_records.response_preview) LIKE ? OR
 			LOWER(request_records.payload_preview) LIKE ?
-		`, like, like, like, like, like, like, like, like, like)
+		`, like, like, like, like, like, like, like, like, like, like, like)
 	}
 	if err := query.Order("request_records.created_at desc").Limit(effectiveLimit).Find(&records).Error; err != nil {
 		return nil, err
@@ -2241,26 +2366,29 @@ func (s *Service) listRequests(access requestAccess, options requestListOptions)
 	response := make([]RequestResponse, 0, len(records))
 	for _, record := range records {
 		response = append(response, RequestResponse{
-			ID:              record.ID,
-			TunnelID:        record.TunnelID,
-			TunnelSubdomain: record.TunnelSubdomain,
-			Kind:            record.Kind,
-			Provider:        record.Provider,
-			EventType:       record.EventType,
-			Method:          record.Method,
-			Path:            record.Path,
-			Status:          record.Status,
-			DurationMs:      record.DurationMs,
-			Source:          record.Source,
-			Target:          record.Target,
-			Destination:     record.Destination,
-			ErrorType:       record.ErrorType,
-			RequestHeaders:  splitPreviewLines(record.RequestHeaders),
-			ResponseHeaders: splitPreviewLines(record.ResponseHeaders),
-			RequestPreview:  record.RequestPreview,
-			PayloadPreview:  record.PayloadPreview,
-			ResponsePreview: record.ResponsePreview,
-			CreatedAt:       record.CreatedAt,
+			ID:                record.ID,
+			TunnelID:          record.TunnelID,
+			TunnelSubdomain:   record.TunnelSubdomain,
+			ReplayOfRequestID: record.ReplayOfRequestID,
+			DeliveryID:        record.DeliveryID,
+			Kind:              record.Kind,
+			Provider:          record.Provider,
+			EventType:         record.EventType,
+			Method:            record.Method,
+			Path:              record.Path,
+			Status:            record.Status,
+			DurationMs:        record.DurationMs,
+			Source:            record.Source,
+			Target:            record.Target,
+			Destination:       record.Destination,
+			ErrorType:         record.ErrorType,
+			RequestHeaders:    splitPreviewLines(record.RequestHeaders),
+			ResponseHeaders:   splitPreviewLines(record.ResponseHeaders),
+			Metadata:          unmarshalRequestMetadata(record.MetadataJSON),
+			RequestPreview:    record.RequestPreview,
+			PayloadPreview:    record.PayloadPreview,
+			ResponsePreview:   record.ResponsePreview,
+			CreatedAt:         record.CreatedAt,
 		})
 	}
 
@@ -2490,42 +2618,58 @@ func fallbackString(value, fallback string) string {
 }
 
 type requestSnapshot struct {
-	Path                string
-	Kind                string
-	Provider            string
-	EventType           string
-	Source              string
-	HeaderLines         []string
-	RequestPreview      string
-	PayloadPreview      string
-	ResponsePreviewHint string
+	Path                 string
+	Kind                 string
+	Provider             string
+	EventType            string
+	DeliveryID           string
+	MetadataJSON         string
+	Source               string
+	HeaderLines          []string
+	HeadersJSON          string
+	RequestBody          []byte
+	RequestBodyTruncated bool
+	RequestPreview       string
+	PayloadPreview       string
+	ResponsePreviewHint  string
+	ReplayOfRequestID    string
 }
 
 type requestObservation struct {
-	Kind            string
-	Provider        string
-	EventType       string
-	Method          string
-	Path            string
-	Status          int
-	DurationMs      int64
-	Source          string
-	Target          string
-	Destination     string
-	ErrorType       string
-	RequestHeaders  []string
-	ResponseHeaders []string
-	RequestPreview  string
-	PayloadPreview  string
-	ResponsePreview string
+	Kind                  string
+	Provider              string
+	EventType             string
+	DeliveryID            string
+	MetadataJSON          string
+	Method                string
+	Path                  string
+	Status                int
+	DurationMs            int64
+	Source                string
+	Target                string
+	Destination           string
+	ErrorType             string
+	RequestHeaders        []string
+	RequestHeadersJSON    string
+	ResponseHeaders       []string
+	ResponseHeadersJSON   string
+	RequestBody           []byte
+	RequestBodyTruncated  bool
+	RequestPreview        string
+	PayloadPreview        string
+	ResponseBody          []byte
+	ResponseBodyTruncated bool
+	ResponsePreview       string
+	ReplayOfRequestID     string
 }
 
-func captureRequestSnapshot(r *http.Request) requestSnapshot {
+func (s *Service) captureRequestSnapshot(r *http.Request) requestSnapshot {
 	path := r.URL.RequestURI()
 	headerLines := formatHeadersForPreview(r.Header)
-	payloadPreview := captureRequestBodyPreview(r)
+	requestBody, bodyTruncated, payloadPreview := captureRequestBody(r, s.captureBodyLimit())
 	kind, provider := inferTrafficKind(path, r.Header)
 	eventType := inferEventType(r.Header, payloadPreview)
+	deliveryID, metadataJSON := inferRequestMetadata(r.Header, payloadPreview, provider, eventType)
 	requestPreview := strings.TrimSpace(strings.Join([]string{
 		fmt.Sprintf("%s %s", r.Method, path),
 		joinPreviewSegments(headerLines[:min(len(headerLines), 3)]),
@@ -2537,33 +2681,52 @@ func captureRequestSnapshot(r *http.Request) requestSnapshot {
 	}
 
 	return requestSnapshot{
-		Path:                path,
-		Kind:                kind,
-		Provider:            provider,
-		EventType:           eventType,
-		Source:              formatSource(r.RemoteAddr),
-		HeaderLines:         headerLines,
-		RequestPreview:      requestPreview,
-		PayloadPreview:      payloadPreview,
-		ResponsePreviewHint: responseHint,
+		Path:                 path,
+		Kind:                 kind,
+		Provider:             provider,
+		EventType:            eventType,
+		DeliveryID:           deliveryID,
+		MetadataJSON:         metadataJSON,
+		Source:               formatSource(r.RemoteAddr),
+		HeaderLines:          headerLines,
+		HeadersJSON:          headersToJSON(r.Header),
+		RequestBody:          requestBody,
+		RequestBodyTruncated: bodyTruncated,
+		RequestPreview:       requestPreview,
+		PayloadPreview:       payloadPreview,
+		ResponsePreviewHint:  responseHint,
+		ReplayOfRequestID:    strings.TrimSpace(r.Header.Get("X-Binboi-Replay-Of")),
 	}
 }
 
-func captureRequestBodyPreview(r *http.Request) string {
+func captureRequestBody(r *http.Request, limit int) ([]byte, bool, string) {
 	if r.Body == nil {
-		return ""
-	}
-	if r.ContentLength < 0 || r.ContentLength > maxBodyPreviewBytes {
-		return ""
+		return nil, false, ""
 	}
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		return ""
+		return nil, false, ""
 	}
 	r.Body = io.NopCloser(bytes.NewReader(body))
 
-	return compactPreview(string(body), maxBodyPreviewBytes)
+	if len(body) == 0 {
+		return nil, false, ""
+	}
+
+	if limit <= 0 {
+		limit = defaultCaptureBodyLimit
+	}
+
+	truncated := len(body) > limit
+	captured := body
+	if truncated {
+		captured = append([]byte(nil), body[:limit]...)
+	} else {
+		captured = append([]byte(nil), body...)
+	}
+
+	return captured, truncated, compactPreview(string(captured), maxBodyPreviewBytes)
 }
 
 func inferTrafficKind(path string, headers http.Header) (string, string) {
@@ -2730,28 +2893,35 @@ func classifyRequestError(status int, kind, responsePreview, fallback string) st
 
 func (s *Service) recordObservedRequest(tunnel TunnelRecord, observed requestObservation) error {
 	record := RequestRecord{
-		ID:              uuid.NewString(),
-		TunnelID:        tunnel.ID,
-		TunnelSubdomain: tunnel.Subdomain,
-		Kind:            fallbackString(observed.Kind, "REQUEST"),
-		Provider:        observed.Provider,
-		EventType:       observed.EventType,
-		Method:          observed.Method,
-		Path:            observed.Path,
-		Status:          observed.Status,
-		DurationMs:      observed.DurationMs,
-		Source:          observed.Source,
-		Target:          observed.Target,
-		Destination:     observed.Destination,
-		ErrorType:       observed.ErrorType,
-		RequestHeaders:  strings.Join(observed.RequestHeaders, "\n"),
-		ResponseHeaders: strings.Join(observed.ResponseHeaders, "\n"),
-		RequestPreview:  observed.RequestPreview,
-		PayloadPreview:  observed.PayloadPreview,
-		ResponsePreview: observed.ResponsePreview,
+		ID:                uuid.NewString(),
+		TunnelID:          tunnel.ID,
+		TunnelSubdomain:   tunnel.Subdomain,
+		ReplayOfRequestID: strings.TrimSpace(observed.ReplayOfRequestID),
+		DeliveryID:        strings.TrimSpace(observed.DeliveryID),
+		Kind:              fallbackString(observed.Kind, "REQUEST"),
+		Provider:          observed.Provider,
+		EventType:         observed.EventType,
+		Method:            observed.Method,
+		Path:              observed.Path,
+		Status:            observed.Status,
+		DurationMs:        observed.DurationMs,
+		Source:            observed.Source,
+		Target:            observed.Target,
+		Destination:       observed.Destination,
+		ErrorType:         observed.ErrorType,
+		RequestHeaders:    strings.Join(observed.RequestHeaders, "\n"),
+		ResponseHeaders:   strings.Join(observed.ResponseHeaders, "\n"),
+		MetadataJSON:      strings.TrimSpace(observed.MetadataJSON),
+		RequestPreview:    observed.RequestPreview,
+		PayloadPreview:    observed.PayloadPreview,
+		ResponsePreview:   observed.ResponsePreview,
 	}
 
 	if err := s.db.Create(&record).Error; err != nil {
+		return err
+	}
+
+	if err := s.upsertRequestArchive(record.ID, observed); err != nil {
 		return err
 	}
 	return s.pruneRequestRecords(s.storedRequestLimit())
@@ -2778,6 +2948,14 @@ func (s *Service) pruneEventRecords(limit int) error {
 
 func (s *Service) pruneRequestRecords(limit int) error {
 	if maxAge := s.requestRetentionMaxAge(); maxAge > 0 {
+		archiveQuery := s.db.Model(&RequestRecord{}).
+			Select("id").
+			Where("created_at < ?", time.Now().UTC().Add(-maxAge))
+		if err := s.db.Where("request_id IN (?)", archiveQuery).Delete(&RequestArchiveRecord{}).Error; err != nil {
+			return err
+		}
+	}
+	if maxAge := s.requestRetentionMaxAge(); maxAge > 0 {
 		if err := s.db.Where("created_at < ?", time.Now().UTC().Add(-maxAge)).Delete(&RequestRecord{}).Error; err != nil {
 			return err
 		}
@@ -2792,19 +2970,25 @@ func (s *Service) pruneRequestRecords(limit int) error {
 		Limit(-1).
 		Offset(limit)
 
+	if err := s.db.Where("request_id IN (?)", subQuery).Delete(&RequestArchiveRecord{}).Error; err != nil {
+		return err
+	}
 	return s.db.Where("id IN (?)", subQuery).Delete(&RequestRecord{}).Error
 }
 
 type statusCapturingResponseWriter struct {
 	http.ResponseWriter
-	status int
-	body   bytes.Buffer
+	status        int
+	body          bytes.Buffer
+	bodyLimit     int
+	bodyTruncated bool
 }
 
 func newStatusCapturingResponseWriter(inner http.ResponseWriter) *statusCapturingResponseWriter {
 	return &statusCapturingResponseWriter{
 		ResponseWriter: inner,
 		status:         http.StatusOK,
+		bodyLimit:      defaultCaptureBodyLimit,
 	}
 }
 
@@ -2814,12 +2998,15 @@ func (w *statusCapturingResponseWriter) WriteHeader(status int) {
 }
 
 func (w *statusCapturingResponseWriter) Write(p []byte) (int, error) {
-	if remaining := maxBodyPreviewBytes - w.body.Len(); remaining > 0 {
+	if remaining := w.bodyLimit - w.body.Len(); remaining > 0 {
 		if len(p) > remaining {
 			w.body.Write(p[:remaining])
+			w.bodyTruncated = true
 		} else {
 			w.body.Write(p)
 		}
+	} else if len(p) > 0 {
+		w.bodyTruncated = true
 	}
 	return w.ResponseWriter.Write(p)
 }
@@ -2830,6 +3017,21 @@ func (w *statusCapturingResponseWriter) Status() int {
 
 func (w *statusCapturingResponseWriter) BodyPreview() string {
 	return compactPreview(w.body.String(), maxBodyPreviewBytes)
+}
+
+func (w *statusCapturingResponseWriter) BodyBytes() []byte {
+	return append([]byte(nil), w.body.Bytes()...)
+}
+
+func (w *statusCapturingResponseWriter) BodyTruncated() bool {
+	return w.bodyTruncated
+}
+
+func (w *statusCapturingResponseWriter) HeadersJSON() string {
+	if header := w.Header(); header != nil {
+		return headersToJSON(header)
+	}
+	return ""
 }
 
 func (w *statusCapturingResponseWriter) Flush() {

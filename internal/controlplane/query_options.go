@@ -3,16 +3,22 @@ package controlplane
 import (
 	"errors"
 	"strings"
+	"time"
 )
 
 const maxSearchQueryBytes = 120
 
 type eventListOptions struct {
-	Limit  int
-	Level  string
-	Action string
-	Tunnel string
-	Query  string
+	Limit        int
+	Level        string
+	Action       string
+	Tunnel       string
+	ResourceType string
+	ResourceID   string
+	RequestID    string
+	Since        *time.Time
+	Until        *time.Time
+	Query        string
 }
 
 type requestListOptions struct {
@@ -20,6 +26,10 @@ type requestListOptions struct {
 	Kind        string
 	Tunnel      string
 	Provider    string
+	EventType   string
+	DeliveryID  string
+	Since       *time.Time
+	Until       *time.Time
 	Query       string
 	StatusClass string
 	ErrorOnly   bool
@@ -81,6 +91,17 @@ func normalizeSearchQuery(raw string) string {
 	return strings.ToLower(query)
 }
 
+func normalizeFilterValue(raw string, max int) string {
+	value := strings.ToLower(strings.TrimSpace(raw))
+	if value == "" {
+		return ""
+	}
+	if max > 0 && len(value) > max {
+		value = value[:max]
+	}
+	return value
+}
+
 func parseBoolQuery(raw string) bool {
 	switch strings.ToLower(strings.TrimSpace(raw)) {
 	case "1", "true", "yes", "on":
@@ -88,6 +109,34 @@ func parseBoolQuery(raw string) bool {
 	default:
 		return false
 	}
+}
+
+func parseTimeWindowFilters(sinceRaw, untilRaw string) (*time.Time, *time.Time, error) {
+	since, err := parseTimestampFilter(sinceRaw)
+	if err != nil {
+		return nil, nil, err
+	}
+	until, err := parseTimestampFilter(untilRaw)
+	if err != nil {
+		return nil, nil, err
+	}
+	if since != nil && until != nil && since.After(*until) {
+		return nil, nil, errors.New("since must be earlier than or equal to until")
+	}
+	return since, until, nil
+}
+
+func parseTimestampFilter(raw string) (*time.Time, error) {
+	value := strings.TrimSpace(raw)
+	if value == "" {
+		return nil, nil
+	}
+	parsed, err := time.Parse(time.RFC3339, value)
+	if err != nil {
+		return nil, errors.New("timestamp filters must use RFC3339")
+	}
+	utc := parsed.UTC()
+	return &utc, nil
 }
 
 func normalizeDomainName(raw, baseDomain string) (string, error) {

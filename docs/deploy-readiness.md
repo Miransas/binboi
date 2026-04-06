@@ -6,6 +6,8 @@ For the backend-first go/no-go view, see [launch-blockers.md](/Users/sardorazimo
 
 For real-domain rollout, use [production-domain-checklist.md](/Users/sardorazimov/binboi/docs/production-domain-checklist.md).
 
+For request inspection and replay operations, use [request-archive-replay-runbook.md](/Users/sardorazimov/binboi/docs/request-archive-replay-runbook.md).
+
 It is intentionally focused on the current shipping surface:
 
 - Go control plane

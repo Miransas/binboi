@@ -17,6 +17,7 @@ type planQuota struct {
 	MaxActiveTunnels   int
 	MaxCustomDomains   int
 	MaxRequestsPerDay  int
+	MaxReplaysPerHour  int
 	MaxRequestHistory  int
 	RequestRetention   time.Duration
 	EventRetention     time.Duration
@@ -42,6 +43,7 @@ func quotaForPlan(plan string) planQuota {
 			MaxActiveTunnels:   100,
 			MaxCustomDomains:   100,
 			MaxRequestsPerDay:  0,
+			MaxReplaysPerHour:  0,
 			MaxRequestHistory:  0,
 			RequestRetention:   90 * 24 * time.Hour,
 			EventRetention:     90 * 24 * time.Hour,
@@ -53,6 +55,7 @@ func quotaForPlan(plan string) planQuota {
 			MaxActiveTunnels:   25,
 			MaxCustomDomains:   25,
 			MaxRequestsPerDay:  10000,
+			MaxReplaysPerHour:  120,
 			MaxRequestHistory:  0,
 			RequestRetention:   30 * 24 * time.Hour,
 			EventRetention:     30 * 24 * time.Hour,
@@ -64,6 +67,7 @@ func quotaForPlan(plan string) planQuota {
 			MaxActiveTunnels:   1,
 			MaxCustomDomains:   0,
 			MaxRequestsPerDay:  100,
+			MaxReplaysPerHour:  10,
 			MaxRequestHistory:  50,
 			RequestRetention:   time.Hour,
 			EventRetention:     time.Hour,
@@ -78,6 +82,7 @@ func previewQuota() planQuota {
 		MaxActiveTunnels:   3,
 		MaxCustomDomains:   3,
 		MaxRequestsPerDay:  1000,
+		MaxReplaysPerHour:  30,
 		MaxRequestHistory:  200,
 		RequestRetention:   24 * time.Hour,
 		EventRetention:     24 * time.Hour,
@@ -215,6 +220,36 @@ func (s *Service) enforceRequestQuota(tunnel TunnelRecord) error {
 	}
 	if count >= int64(quota.MaxRequestsPerDay) {
 		return quotaError("%s plan limit reached: up to %d requests per day are allowed", quota.Plan, quota.MaxRequestsPerDay)
+	}
+	return nil
+}
+
+func (s *Service) enforceReplayQuota(ctx context.Context, access requestAccess) error {
+	quota := quotaForAccess(access)
+	if quota.MaxReplaysPerHour <= 0 {
+		return nil
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	since := time.Now().UTC().Add(-time.Hour)
+	query := s.db.WithContext(ctx).
+		Model(&RequestRecord{}).
+		Where("request_records.replay_of_request_id <> ''").
+		Where("request_records.created_at >= ?", since)
+
+	if access.Identity != nil && s.authProvider != nil && s.authProvider.Enabled() && access.Identity.AuthMode != "instance-token-preview" {
+		query = query.Joins("JOIN tunnel_records ON tunnel_records.id = request_records.tunnel_id").
+			Where("tunnel_records.owner_user_id = ?", access.Identity.UserID)
+	}
+
+	var count int64
+	if err := query.Count(&count).Error; err != nil {
+		return err
+	}
+	if count >= int64(quota.MaxReplaysPerHour) {
+		return quotaError("%s plan limit reached: up to %d request replays per hour are allowed", quota.Plan, quota.MaxReplaysPerHour)
 	}
 	return nil
 }

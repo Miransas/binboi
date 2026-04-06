@@ -5,37 +5,26 @@ import { AuthRouteError, verifyEmailToken } from "@/lib/auth-system";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-export async function POST(request: Request) {
-  const body = (await request.json().catch(() => ({}))) as {
-    token?: string;
-    callbackUrl?: string;
-  };
+// verify-email/route.ts (Eğer doğrudan yönlendirme istiyorsan)
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const token = searchParams.get("token");
+  const callbackUrlParam = searchParams.get("callbackUrl");
 
   try {
-    const result = await verifyEmailToken(String(body.token ?? ""));
-    const callbackUrl = sanitizeRedirectTarget(body.callbackUrl, "/dashboard");
+    const result = await verifyEmailToken(String(token ?? ""));
+    const callbackUrl = sanitizeRedirectTarget(callbackUrlParam, "/dashboard");
 
-    return NextResponse.json({
-      ok: true,
-      message: "Email verified successfully.",
-      redirectTo: buildPathWithQuery("/login", {
-        verified: "success",
-        callbackUrl,
-      }),
-      email: result.email,
-    });
+    // JSON dönmek yerine direkt kullanıcıyı uçuruyoruz:
+    const targetUrl = new URL(buildPathWithQuery("/login", {
+      verified: "success",
+      callbackUrl,
+    }), request.url);
+
+    return NextResponse.redirect(targetUrl);
+    
   } catch (error) {
-    if (error instanceof AuthRouteError) {
-      return NextResponse.json(
-        { error: error.message, code: error.code },
-        { status: error.status },
-      );
-    }
-
-    return NextResponse.json(
-      { error: "Could not verify this email address." },
-      { status: 500 },
-    );
+    // Hata durumunda hata sayfasına yönlendir veya JSON dön
+    return NextResponse.redirect(new URL("/login?error=invalid-token", request.url));
   }
 }

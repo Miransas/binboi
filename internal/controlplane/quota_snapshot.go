@@ -23,6 +23,7 @@ type QuotaSnapshot struct {
 	ActiveTunnels           QuotaUsage `json:"active_tunnels"`
 	CustomDomains           QuotaUsage `json:"custom_domains"`
 	RequestsPerDay          QuotaUsage `json:"requests_per_day"`
+	ReplaysPerHour          QuotaUsage `json:"replays_per_hour"`
 	RequestHistoryLimit     int        `json:"request_history_limit"`
 	RequestRetentionSeconds int64      `json:"request_retention_seconds"`
 	EventRetentionSeconds   int64      `json:"event_retention_seconds"`
@@ -68,6 +69,10 @@ func (s *Service) quotaSnapshot(ctx context.Context, access requestAccess) (Quot
 	if err != nil {
 		return QuotaSnapshot{}, err
 	}
+	replaysLastHour, err := s.countReplaysLastHourForAccess(ctx, access)
+	if err != nil {
+		return QuotaSnapshot{}, err
+	}
 
 	return QuotaSnapshot{
 		Plan:                    quota.Plan,
@@ -76,6 +81,7 @@ func (s *Service) quotaSnapshot(ctx context.Context, access requestAccess) (Quot
 		ActiveTunnels:           quotaUsage(quota.MaxActiveTunnels, active),
 		CustomDomains:           quotaUsage(quota.MaxCustomDomains, domains),
 		RequestsPerDay:          quotaUsage(quota.MaxRequestsPerDay, requestsToday),
+		ReplaysPerHour:          quotaUsage(quota.MaxReplaysPerHour, replaysLastHour),
 		RequestHistoryLimit:     quota.MaxRequestHistory,
 		RequestRetentionSeconds: int64(quota.RequestRetention.Seconds()),
 		EventRetentionSeconds:   int64(quota.EventRetention.Seconds()),
@@ -137,6 +143,25 @@ func (s *Service) countRequestsTodayForAccess(ctx context.Context, access reques
 	return count, nil
 }
 
+func (s *Service) countReplaysLastHourForAccess(ctx context.Context, access requestAccess) (int64, error) {
+	since := time.Now().UTC().Add(-time.Hour)
+	query := s.db.WithContext(ctx).
+		Model(&RequestRecord{}).
+		Where("request_records.replay_of_request_id <> ''").
+		Where("request_records.created_at >= ?", since)
+
+	if access.Identity != nil && s.authProvider != nil && s.authProvider.Enabled() && access.Identity.AuthMode != "instance-token-preview" {
+		query = query.Joins("JOIN tunnel_records ON tunnel_records.id = request_records.tunnel_id").
+			Where("tunnel_records.owner_user_id = ?", access.Identity.UserID)
+	}
+
+	var count int64
+	if err := query.Count(&count).Error; err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
 func applyQuotaHeaders(c *gin.Context, snapshot QuotaSnapshot) {
 	c.Header("X-Binboi-Plan", snapshot.Plan)
 	c.Header("X-Binboi-Quota-Scope", snapshot.AccessScope)
@@ -159,6 +184,11 @@ func applyQuotaHeaders(c *gin.Context, snapshot QuotaSnapshot) {
 	c.Header("X-Binboi-Quota-Requests-Per-Day-Used", strconv.FormatInt(snapshot.RequestsPerDay.Used, 10))
 	if snapshot.RequestsPerDay.Remaining != nil {
 		c.Header("X-Binboi-Quota-Requests-Per-Day-Remaining", strconv.FormatInt(*snapshot.RequestsPerDay.Remaining, 10))
+	}
+	c.Header("X-Binboi-Quota-Replays-Per-Hour-Limit", strconv.Itoa(snapshot.ReplaysPerHour.Limit))
+	c.Header("X-Binboi-Quota-Replays-Per-Hour-Used", strconv.FormatInt(snapshot.ReplaysPerHour.Used, 10))
+	if snapshot.ReplaysPerHour.Remaining != nil {
+		c.Header("X-Binboi-Quota-Replays-Per-Hour-Remaining", strconv.FormatInt(*snapshot.ReplaysPerHour.Remaining, 10))
 	}
 	c.Header("X-Binboi-Quota-Request-History-Limit", strconv.Itoa(snapshot.RequestHistoryLimit))
 }

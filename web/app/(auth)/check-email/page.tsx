@@ -1,20 +1,27 @@
-import { Suspense } from "react";
 
-import { CheckEmailView } from "../_components/auth-forms";
-import { AuthLoadingCard } from "../_components/auth-primitives";
 import { authDatabaseEnabled, previewAuthEnabled } from "@/lib/auth-system";
+import { CheckEmailView } from "../_components/check-email-view";
 
-export default function CheckEmailPage() {
+export default async function CheckEmailPage({
+  searchParams,
+}: {
+  searchParams: Promise<{
+    email?: string;
+    flow?: string;
+    previewUrl?: string;
+    callbackUrl?: string;
+  }>;
+}) {
+  const resolvedSearchParams = await searchParams;
+
   return (
-    <Suspense
-      fallback={
-        <AuthLoadingCard
-          title="Preparing the email step"
-          description="Loading the email verification details."
-        />
-      }
-    >
-      <CheckEmailView authConfigured={authDatabaseEnabled} previewEnabled={previewAuthEnabled} />
-    </Suspense>
+    <CheckEmailView
+      authConfigured={authDatabaseEnabled}
+      previewEnabled={previewAuthEnabled}
+      email={resolvedSearchParams.email}
+      flow={resolvedSearchParams.flow}
+      previewUrl={resolvedSearchParams.previewUrl}
+      callbackUrl={resolvedSearchParams.callbackUrl}
+    />
   );
 }

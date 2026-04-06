@@ -13,7 +13,7 @@ export default function Home() {
         <LandingSaas />
         <SaaSPage />
         {/* <AdvancedHero/> */}
-        <AnimatedHero/>
+        {/* <AnimatedHero/> */}
         <Footer/>
       </SmoothScroll>
     </main>

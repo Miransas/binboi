@@ -1,6 +1,7 @@
 package controlplane
 
 import (
+	"bytes"
 	"encoding/csv"
 	"encoding/json"
 	"net/http"
@@ -25,7 +26,10 @@ func (s *Service) findEventRecords(access requestAccess, options eventListOption
 	var records []EventRecord
 	options.Level = normalizeEventLevelFilter(options.Level)
 	options.Action = normalizeEventActionFilter(options.Action)
-	options.Tunnel = strings.ToLower(strings.TrimSpace(options.Tunnel))
+	options.Tunnel = normalizeFilterValue(options.Tunnel, 120)
+	options.ResourceType = normalizeFilterValue(options.ResourceType, 80)
+	options.ResourceID = normalizeFilterValue(options.ResourceID, 160)
+	options.RequestID = normalizeFilterValue(options.RequestID, 160)
 	options.Query = normalizeSearchQuery(options.Query)
 
 	query := s.db.Model(&EventRecord{})
@@ -40,6 +44,12 @@ func (s *Service) findEventRecords(access requestAccess, options eventListOption
 		)
 	}
 	query = s.applyAccessRetentionWindow(query, access, "event_records.created_at", false)
+	if options.Since != nil {
+		query = query.Where("event_records.created_at >= ?", options.Since.UTC())
+	}
+	if options.Until != nil {
+		query = query.Where("event_records.created_at <= ?", options.Until.UTC())
+	}
 	if options.Level != "" {
 		query = query.Where("LOWER(event_records.level) = ?", options.Level)
 	}
@@ -48,6 +58,15 @@ func (s *Service) findEventRecords(access requestAccess, options eventListOption
 	}
 	if options.Tunnel != "" {
 		query = query.Where("LOWER(event_records.tunnel_subdomain) = ?", options.Tunnel)
+	}
+	if options.ResourceType != "" {
+		query = query.Where("LOWER(event_records.resource_type) = ?", options.ResourceType)
+	}
+	if options.ResourceID != "" {
+		query = query.Where("LOWER(event_records.resource_id) = ?", options.ResourceID)
+	}
+	if options.RequestID != "" {
+		query = query.Where("LOWER(event_records.request_id) = ?", options.RequestID)
 	}
 	if options.Query != "" {
 		like := "%" + options.Query + "%"
@@ -75,12 +94,22 @@ func (s *Service) handleV1ExportEvents(c *gin.Context) {
 }
 
 func (s *Service) exportEvents(c *gin.Context, access requestAccess) {
+	since, until, err := parseTimeWindowFilters(c.Query("since"), c.Query("until"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 	records, err := s.findEventRecords(access, eventListOptions{
-		Limit:  parsePositiveLimit(c.Query("limit"), min(1000, s.auditExportLimit()), s.auditExportLimit()),
-		Level:  c.Query("level"),
-		Action: c.Query("action"),
-		Tunnel: c.Query("tunnel"),
-		Query:  c.Query("q"),
+		Limit:        parsePositiveLimit(c.Query("limit"), min(1000, s.auditExportLimit()), s.auditExportLimit()),
+		Level:        c.Query("level"),
+		Action:       c.Query("action"),
+		Tunnel:       c.Query("tunnel"),
+		ResourceType: c.Query("resource_type"),
+		ResourceID:   c.Query("resource_id"),
+		RequestID:    c.Query("request_id"),
+		Since:        since,
+		Until:        until,
+		Query:        c.Query("q"),
 	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to export events"})
@@ -89,22 +118,32 @@ func (s *Service) exportEvents(c *gin.Context, access requestAccess) {
 
 	format := normalizeAuditExportFormat(c.Query("format"))
 	filename := "binboi-audit-" + time.Now().UTC().Format("20060102T150405Z")
+	contentType := "application/x-ndjson; charset=utf-8"
 	switch format {
 	case "csv":
 		filename += ".csv"
-		c.Header("Content-Type", "text/csv; charset=utf-8")
+		contentType = "text/csv; charset=utf-8"
 	case "json":
 		filename += ".json"
-		c.Header("Content-Type", "application/json; charset=utf-8")
+		contentType = "application/json; charset=utf-8"
 	default:
 		filename += ".ndjson"
-		c.Header("Content-Type", "application/x-ndjson; charset=utf-8")
 	}
-	c.Header("Content-Disposition", `attachment; filename="`+filename+`"`)
 
+	body, err := s.marshalEventExportPayload(records, format)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to build event export"})
+		return
+	}
+
+	s.writeExportResponse(c, contentType, filename, body)
+}
+
+func (s *Service) marshalEventExportPayload(records []EventRecord, format string) ([]byte, error) {
+	var buffer bytes.Buffer
 	switch format {
 	case "csv":
-		writer := csv.NewWriter(c.Writer)
+		writer := csv.NewWriter(&buffer)
 		_ = writer.Write([]string{
 			"created_at",
 			"level",
@@ -136,18 +175,26 @@ func (s *Service) exportEvents(c *gin.Context, access requestAccess) {
 			})
 		}
 		writer.Flush()
-		return
+		if err := writer.Error(); err != nil {
+			return nil, err
+		}
+		return buffer.Bytes(), nil
 	case "json":
 		payload := make([]EventResponse, 0, len(records))
 		for _, record := range records {
 			payload = append(payload, s.mapEventRecord(record))
 		}
-		_ = json.NewEncoder(c.Writer).Encode(payload)
-		return
-	default:
-		encoder := json.NewEncoder(c.Writer)
-		for _, record := range records {
-			_ = encoder.Encode(s.mapEventRecord(record))
+		if err := json.NewEncoder(&buffer).Encode(payload); err != nil {
+			return nil, err
 		}
+		return buffer.Bytes(), nil
+	default:
+		encoder := json.NewEncoder(&buffer)
+		for _, record := range records {
+			if err := encoder.Encode(s.mapEventRecord(record)); err != nil {
+				return nil, err
+			}
+		}
+		return buffer.Bytes(), nil
 	}
 }

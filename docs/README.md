@@ -13,6 +13,7 @@ Key files:
 - `install-channel-matrix.md`: what each install channel delivers today
 - `launch-blockers.md`: backend-focused release blocker list
 - `production-domain-checklist.md`: real-domain rollout and TLS verification checklist
+- `request-archive-replay-runbook.md`: request inspection, export, and replay operations guide
 - `releasing-cli.md`: release and Homebrew notes
 - `smoke-test-checklist.md`: short release-day backend smoke checklist
 - `staging-runbook.md`: practical staging bring-up order and verification commands

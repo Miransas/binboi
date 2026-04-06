@@ -1,20 +1,21 @@
-import { Suspense } from "react";
 
-import { ResetPasswordForm } from "../_components/auth-forms";
-import { AuthLoadingCard } from "../_components/auth-primitives";
 import { authDatabaseEnabled, previewAuthEnabled } from "@/lib/auth-system";
+import { ResetPasswordForm } from "../_components/register-form";
 
-export default function ResetPasswordPage() {
+export default async function ResetPasswordPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ token?: string; email?: string; callbackUrl?: string }>;
+}) {
+  const resolvedSearchParams = await searchParams;
+
   return (
-    <Suspense
-      fallback={
-        <AuthLoadingCard
-          title="Preparing reset flow"
-          description="Loading the password reset token and state."
-        />
-      }
-    >
-      <ResetPasswordForm authConfigured={authDatabaseEnabled} previewEnabled={previewAuthEnabled} />
-    </Suspense>
+    <ResetPasswordForm
+      authConfigured={authDatabaseEnabled}
+      previewEnabled={previewAuthEnabled}
+      token={resolvedSearchParams.token}
+      email={resolvedSearchParams.email}
+      callbackUrl={resolvedSearchParams.callbackUrl}
+    />
   );
 }

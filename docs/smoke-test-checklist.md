@@ -89,6 +89,8 @@ Pass if:
 - the public URL returns the upstream HTML
 - the request feed shows the forwarded request
 
+If you want to inspect bodies, archive metadata, or replay the captured request, continue with [request-archive-replay-runbook.md](/Users/sardorazimov/binboi/docs/request-archive-replay-runbook.md).
+
 ## 6. Validate Observability
 
 Run:

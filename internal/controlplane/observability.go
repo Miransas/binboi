@@ -17,36 +17,42 @@ import (
 const requestIDHeader = "X-Request-ID"
 
 type runtimeMetrics struct {
-	apiRequestsTotal        atomic.Uint64
-	apiRequestErrorsTotal   atomic.Uint64
-	apiRateLimitedTotal     atomic.Uint64
-	proxyRequestsTotal      atomic.Uint64
-	proxyRequestErrorsTotal atomic.Uint64
-	proxyRateLimitedTotal   atomic.Uint64
-	tunnelConnectionsTotal  atomic.Uint64
-	tunnelRejectionsTotal   atomic.Uint64
+	apiRequestsTotal          atomic.Uint64
+	apiRequestErrorsTotal     atomic.Uint64
+	apiRateLimitedTotal       atomic.Uint64
+	proxyRequestsTotal        atomic.Uint64
+	proxyRequestErrorsTotal   atomic.Uint64
+	proxyRateLimitedTotal     atomic.Uint64
+	requestReplaysTotal       atomic.Uint64
+	requestReplayFailedTotal  atomic.Uint64
+	requestReplayBlockedTotal atomic.Uint64
+	tunnelConnectionsTotal    atomic.Uint64
+	tunnelRejectionsTotal     atomic.Uint64
 }
 
 type MetricsSnapshot struct {
-	InstanceName            string `json:"instance_name"`
-	ManagedDomain           string `json:"managed_domain"`
-	AuthMode                string `json:"auth_mode"`
-	UptimeSeconds           int64  `json:"uptime_seconds"`
-	ReservedTunnels         int64  `json:"reserved_tunnels"`
-	ActiveTunnelSessions    int    `json:"active_tunnel_sessions"`
-	DomainsTotal            int64  `json:"domains_total"`
-	PendingDomainsTotal     int64  `json:"pending_domains_total"`
-	StoredEventsTotal       int64  `json:"stored_events_total"`
-	StoredRequestsTotal     int64  `json:"stored_requests_total"`
-	LogSubscribers          int    `json:"log_subscribers"`
-	APIRequestsTotal        uint64 `json:"api_requests_total"`
-	APIRequestErrorsTotal   uint64 `json:"api_request_errors_total"`
-	APIRateLimitedTotal     uint64 `json:"api_rate_limited_total"`
-	ProxyRequestsTotal      uint64 `json:"proxy_requests_total"`
-	ProxyRequestErrorsTotal uint64 `json:"proxy_request_errors_total"`
-	ProxyRateLimitedTotal   uint64 `json:"proxy_rate_limited_total"`
-	TunnelConnectionsTotal  uint64 `json:"tunnel_connections_total"`
-	TunnelRejectionsTotal   uint64 `json:"tunnel_rejections_total"`
+	InstanceName              string `json:"instance_name"`
+	ManagedDomain             string `json:"managed_domain"`
+	AuthMode                  string `json:"auth_mode"`
+	UptimeSeconds             int64  `json:"uptime_seconds"`
+	ReservedTunnels           int64  `json:"reserved_tunnels"`
+	ActiveTunnelSessions      int    `json:"active_tunnel_sessions"`
+	DomainsTotal              int64  `json:"domains_total"`
+	PendingDomainsTotal       int64  `json:"pending_domains_total"`
+	StoredEventsTotal         int64  `json:"stored_events_total"`
+	StoredRequestsTotal       int64  `json:"stored_requests_total"`
+	LogSubscribers            int    `json:"log_subscribers"`
+	APIRequestsTotal          uint64 `json:"api_requests_total"`
+	APIRequestErrorsTotal     uint64 `json:"api_request_errors_total"`
+	APIRateLimitedTotal       uint64 `json:"api_rate_limited_total"`
+	ProxyRequestsTotal        uint64 `json:"proxy_requests_total"`
+	ProxyRequestErrorsTotal   uint64 `json:"proxy_request_errors_total"`
+	ProxyRateLimitedTotal     uint64 `json:"proxy_rate_limited_total"`
+	RequestReplaysTotal       uint64 `json:"request_replays_total"`
+	RequestReplayFailedTotal  uint64 `json:"request_replay_failed_total"`
+	RequestReplayBlockedTotal uint64 `json:"request_replay_blocked_total"`
+	TunnelConnectionsTotal    uint64 `json:"tunnel_connections_total"`
+	TunnelRejectionsTotal     uint64 `json:"tunnel_rejections_total"`
 }
 
 func (s *Service) requestContext() gin.HandlerFunc {
@@ -133,6 +139,9 @@ func (s *Service) metricsSnapshot() (MetricsSnapshot, error) {
 	snapshot.ProxyRequestsTotal = s.metrics.proxyRequestsTotal.Load()
 	snapshot.ProxyRequestErrorsTotal = s.metrics.proxyRequestErrorsTotal.Load()
 	snapshot.ProxyRateLimitedTotal = s.metrics.proxyRateLimitedTotal.Load()
+	snapshot.RequestReplaysTotal = s.metrics.requestReplaysTotal.Load()
+	snapshot.RequestReplayFailedTotal = s.metrics.requestReplayFailedTotal.Load()
+	snapshot.RequestReplayBlockedTotal = s.metrics.requestReplayBlockedTotal.Load()
 	snapshot.TunnelConnectionsTotal = s.metrics.tunnelConnectionsTotal.Load()
 	snapshot.TunnelRejectionsTotal = s.metrics.tunnelRejectionsTotal.Load()
 
@@ -179,6 +188,18 @@ func (s *Service) recordProxyRequest(status int) {
 
 func (s *Service) recordProxyRateLimited() {
 	s.metrics.proxyRateLimitedTotal.Add(1)
+}
+
+func (s *Service) recordRequestReplaySuccess() {
+	s.metrics.requestReplaysTotal.Add(1)
+}
+
+func (s *Service) recordRequestReplayFailed() {
+	s.metrics.requestReplayFailedTotal.Add(1)
+}
+
+func (s *Service) recordRequestReplayBlocked() {
+	s.metrics.requestReplayBlockedTotal.Add(1)
 }
 
 func (s *Service) recordTunnelConnectionAccepted() {
@@ -249,6 +270,9 @@ func renderPrometheusMetrics(snapshot MetricsSnapshot) string {
 	writeMetric("binboi_proxy_requests_total", "counter", "Total number of public proxy requests.", snapshot.ProxyRequestsTotal)
 	writeMetric("binboi_proxy_request_errors_total", "counter", "Total number of public proxy requests ending with 4xx or 5xx.", snapshot.ProxyRequestErrorsTotal)
 	writeMetric("binboi_proxy_rate_limited_total", "counter", "Total number of public proxy requests rejected by rate limiting.", snapshot.ProxyRateLimitedTotal)
+	writeMetric("binboi_request_replays_total", "counter", "Total number of successful request replay operations.", snapshot.RequestReplaysTotal)
+	writeMetric("binboi_request_replay_failed_total", "counter", "Total number of request replay operations that failed after dispatch.", snapshot.RequestReplayFailedTotal)
+	writeMetric("binboi_request_replay_blocked_total", "counter", "Total number of request replay operations blocked by replay policy.", snapshot.RequestReplayBlockedTotal)
 	writeMetric("binboi_tunnel_connections_total", "counter", "Total number of accepted tunnel connections.", snapshot.TunnelConnectionsTotal)
 	writeMetric("binboi_tunnel_rejections_total", "counter", "Total number of rejected tunnel handshakes.", snapshot.TunnelRejectionsTotal)
 

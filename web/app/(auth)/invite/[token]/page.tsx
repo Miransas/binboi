@@ -1,5 +1,6 @@
-import { AcceptInviteForm } from "../../_components/auth-forms";
+
 import { authDatabaseEnabled, AuthRouteError, getInviteLookup, previewAuthEnabled } from "@/lib/auth-system";
+import { AcceptInviteForm } from "../../_components/accept-invite-email";
 
 export default async function InviteTokenPage({
   params,

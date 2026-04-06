@@ -1,20 +1,21 @@
-import { Suspense } from "react";
 
-import { VerifyEmailForm } from "../_components/auth-forms";
-import { AuthLoadingCard } from "../_components/auth-primitives";
 import { authDatabaseEnabled, previewAuthEnabled } from "@/lib/auth-system";
+import { VerifyEmailForm } from "../_components/verify-email-form";
 
-export default function VerifyEmailPage() {
+export default async function VerifyEmailPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ token?: string; email?: string; callbackUrl?: string }>;
+}) {
+  const resolvedSearchParams = await searchParams;
+
   return (
-    <Suspense
-      fallback={
-        <AuthLoadingCard
-          title="Preparing verification"
-          description="Loading the verification token and account state."
-        />
-      }
-    >
-      <VerifyEmailForm authConfigured={authDatabaseEnabled} previewEnabled={previewAuthEnabled} />
-    </Suspense>
+    <VerifyEmailForm
+      authConfigured={authDatabaseEnabled}
+      previewEnabled={previewAuthEnabled}
+      token={resolvedSearchParams.token}
+      email={resolvedSearchParams.email}
+      callbackUrl={resolvedSearchParams.callbackUrl}
+    />
   );
 }
