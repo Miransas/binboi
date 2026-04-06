@@ -5,11 +5,16 @@ import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import { buildLoginHref } from "@/lib/auth-routing";
+import { cn } from "@/lib/utils";
 
 export function BillingCancelButton({
   onCanceled,
+  callbackPath = "/dashboard/billing",
+  className,
 }: {
   onCanceled?: () => void;
+  callbackPath?: string;
+  className?: string;
 }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -33,7 +38,7 @@ export function BillingCancelButton({
       const body = (await response.json().catch(() => ({}))) as { error?: string };
 
       if (response.status === 401) {
-        router.push(buildLoginHref("/dashboard/billing"));
+        router.push(buildLoginHref(callbackPath));
         return;
       }
 
@@ -59,7 +64,10 @@ export function BillingCancelButton({
         type="button"
         onClick={() => void cancelSubscription()}
         disabled={loading}
-        className="inline-flex items-center justify-center rounded-full border border-red-400/20 bg-red-500/10 px-4 py-2.5 text-sm font-semibold text-red-200 transition hover:bg-red-500/15 disabled:cursor-not-allowed disabled:opacity-70"
+        className={cn(
+          "inline-flex items-center justify-center rounded-full border border-red-400/20 bg-red-500/10 px-4 py-2.5 text-sm font-semibold text-red-200 transition hover:bg-red-500/15 disabled:cursor-not-allowed disabled:opacity-70",
+          className,
+        )}
       >
         {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Cancel subscription"}
       </button>

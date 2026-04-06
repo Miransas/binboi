@@ -13,11 +13,13 @@ export function BillingCheckoutButton({
   label,
   className,
   variant = "primary",
+  callbackPath = "/dashboard/billing",
 }: {
   plan: Exclude<BillingPlan, "FREE">;
   label: string;
   className?: string;
   variant?: "primary" | "secondary";
+  callbackPath?: string;
 }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -42,7 +44,7 @@ export function BillingCheckoutButton({
       };
 
       if (response.status === 401) {
-        router.push(buildLoginHref("/dashboard/billing"));
+        router.push(buildLoginHref(callbackPath));
         return;
       }
 

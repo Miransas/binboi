@@ -7,6 +7,7 @@ import {
   FiLink,
   FiSliders,
   FiCreditCard,
+  FiUser,
 } from "react-icons/fi"
 import { MdOutlineSettingsInputComposite } from "react-icons/md";
 
@@ -30,6 +31,7 @@ export const DASHBOARD_LINKS = [
       { label: "Setup & Installation", href: "/dashboard/setup", icon: MdOutlineSettingsInputComposite },
       { label: "Access Tokens", href: "/dashboard/access-tokens", icon: FiKey },
       { label: "Billing", href: "/dashboard/billing", icon: FiCreditCard },
+      { label: "User Management", href: "/dashboard/user-management", icon: FiUser },
       { label: "Tunnel", href: "/dashboard/tunnel", icon: FiSliders },
     ],
   },
@@ -108,4 +110,3 @@ export const footerSocialLinks = [
   { name: "Support", icon: LifeBuoy, href: "/support" },
   { name: "Pricing", icon: ArrowUpRight, href: "/pricing" },
 ];
-

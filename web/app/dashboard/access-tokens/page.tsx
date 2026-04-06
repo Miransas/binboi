@@ -1,27 +1,22 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, Check, Copy, KeyRound, Plus, RefreshCcw, Trash2 } from "lucide-react";
+import React, { useEffect, useMemo, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { 
+  AlertTriangle, 
+  Check, 
+  Copy, 
+  KeyRound, 
+  Plus, 
+  RefreshCcw, 
+  Trash2,
+  ShieldCheck,
+  Zap,
+  Activity
+} from "lucide-react";
 
-import { PremiumDashboardShell } from "../_components/premium-dashboard-shell";
-import {
-  dashboardBadgeClass,
-  dashboardDangerButtonClass,
-  dashboardFieldLabelClass,
-  dashboardGhostButtonClass,
-  dashboardIconTileClass,
-  dashboardInputClass,
-  dashboardInsetPanelClass,
-  dashboardMutedTextClass,
-  dashboardPanelClass,
-  dashboardPrimaryButtonClass,
-  dashboardTableCellClass,
-  dashboardTableHeaderClass,
-  dashboardTableMutedCellClass,
-  dashboardTableRowClass,
-  dashboardTableShellClass,
-} from "../_components/dashboard-ui";
-
+// --- Types ---
 type AccessTokenRecord = {
   id: string;
   name: string;
@@ -34,35 +29,28 @@ type AccessTokenRecord = {
 
 type AccessTokenResponse = {
   auth_mode: "account" | "preview";
-  user: {
-    id: string;
-    name: string;
-    email: string;
-    plan: "FREE" | "PRO" | "SCALE";
-  };
-  limits: {
-    plan: "FREE" | "PRO" | "SCALE";
-    max_tokens: number;
-    max_tunnels: number;
-    tokens_used: number;
-    active_tunnels: number | null;
-  };
+  user: { id: string; name: string; email: string; plan: "FREE" | "PRO" | "SCALE"; };
+  limits: { plan: "FREE" | "PRO" | "SCALE"; max_tokens: number; max_tunnels: number; tokens_used: number; active_tunnels: number | null; };
   tokens: AccessTokenRecord[];
 };
 
-type AccessTokenCreateResponse = AccessTokenResponse & {
-  token: string;
-  record: AccessTokenRecord;
+type AccessTokenCreateResponse = AccessTokenResponse & { token: string; record: AccessTokenRecord; };
+
+// --- Animation Variants ---
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { staggerChildren: 0.05 } }
+};
+
+const itemVariants = {
+  hidden: { y: 15, opacity: 0 },
+  visible: { y: 0, opacity: 1, transition: { duration: 0.4 } }
 };
 
 function formatDate(value: string | null) {
   if (!value) return "Never";
   return new Date(value).toLocaleString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
+    month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
   });
 }
 
@@ -77,68 +65,22 @@ export default function AccessTokensPage() {
   const [newToken, setNewToken] = useState<AccessTokenCreateResponse | null>(null);
 
   const load = async (background = false) => {
-    if (background) {
-      setRefreshing(true);
-    } else {
-      setLoading(true);
-    }
-
+    if (background) setRefreshing(true); else setLoading(true);
     try {
       const response = await fetch("/api/v1/tokens", { cache: "no-store" });
-      const body = (await response.json()) as AccessTokenResponse & { error?: string };
-      if (!response.ok) {
-        throw new Error(body.error || "Could not load access tokens.");
-      }
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error || "Load failed");
       setData(body);
       setError(null);
-    } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : "Could not load access tokens.");
+    } catch (err: any) {
+      setError(err.message);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   };
 
-  useEffect(() => {
-    load();
-  }, []);
-
-  const highlights = useMemo(() => {
-    const plan = data?.limits.plan || "FREE";
-    const tokenUsage = data ? `${data.limits.tokens_used}/${data.limits.max_tokens}` : "0/0";
-    const tunnelAllowance = data
-      ? `${data.limits.active_tunnels ?? 0}/${data.limits.max_tunnels}`
-      : "0/0";
-
-    return [
-      {
-        label: "Plan",
-        value: plan,
-        note:
-          plan === "SCALE"
-            ? "Scale keeps the token surface wide open for heavier teams and future API-heavy workflows."
-            : plan === "PRO"
-              ? "Pro foundations are wired in for higher token and tunnel limits."
-              : "Free plan foundations are active with conservative default limits.",
-      },
-      {
-        label: "Access tokens",
-        value: tokenUsage,
-        note: error || "Create, rotate, and revoke CLI credentials without storing raw tokens in the database.",
-      },
-      {
-        label: "Tunnel allowance",
-        value: tunnelAllowance,
-        note: "Usage numbers are ready for real metering later. The plan-aware limit surface is in place now.",
-      },
-    ];
-  }, [data, error]);
-
-  const copyText = async (value: string, key: string) => {
-    await navigator.clipboard.writeText(value);
-    setCopyState(key);
-    window.setTimeout(() => setCopyState(null), 1500);
-  };
+  useEffect(() => { load(); }, []);
 
   const createToken = async () => {
     setCreating(true);
@@ -148,227 +90,192 @@ export default function AccessTokensPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: tokenName }),
       });
-      const body = (await response.json()) as AccessTokenCreateResponse & { error?: string };
-      if (!response.ok) {
-        throw new Error(body.error || "Could not create access token.");
-      }
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error || "Create failed");
       setNewToken(body);
       setData(body);
       setError(null);
-    } catch (createError) {
-      setError(createError instanceof Error ? createError.message : "Could not create access token.");
+    } catch (err: any) {
+      setError(err.message);
     } finally {
       setCreating(false);
     }
   };
 
   const revokeToken = async (tokenId: string) => {
-    const confirmed = window.confirm("Revoke this access token? The CLI will stop authenticating with it immediately.");
-    if (!confirmed) return;
-
+    if (!window.confirm("Revoke this token?")) return;
     try {
       const response = await fetch(`/api/v1/tokens/${tokenId}`, { method: "DELETE" });
-      const body = (await response.json()) as AccessTokenResponse & { error?: string };
-      if (!response.ok) {
-        throw new Error(body.error || "Could not revoke access token.");
-      }
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error || "Revoke failed");
       setData(body);
-      setError(null);
-    } catch (revokeError) {
-      setError(revokeError instanceof Error ? revokeError.message : "Could not revoke access token.");
+    } catch (err: any) {
+      setError(err.message);
     }
   };
 
+  const copyText = async (value: string, key: string) => {
+    await navigator.clipboard.writeText(value);
+    setCopyState(key);
+    setTimeout(() => setCopyState(null), 2000);
+  };
+
   return (
-    <PremiumDashboardShell
-      eyebrow="Authentication"
-      title="Access tokens for the Binboi CLI"
-      description="Create personal access tokens for `binboi login`, review when they were created or last used, and revoke them without ever storing the raw token in the database."
-      highlights={highlights}
-      panels={[
-        {
-          title: "How the CLI flow works",
-          description:
-            "Create a token here, copy it once, then run `binboi login --token <token>` on the machine that should open tunnels. After that, `binboi whoami` verifies the account and plan attached to the saved token.",
-        },
-        {
-          title: "What the product stores",
-          description:
-            "Binboi stores a token prefix, secure hash, timestamps, and status. The full token is returned only once at creation time, just like a real hosted tunnel product should behave.",
-        },
-      ]}
+    <motion.main 
+      initial="hidden" animate="visible" variants={containerVariants}
+      className="relative min-h-screen bg-[#050506] px-4 py-12 text-zinc-300 sm:px-6 lg:px-12"
     >
-      <section className="grid gap-6 xl:grid-cols-[0.92fr_1.08fr]">
-        <section className={dashboardPanelClass("neutral", "p-6")}>
-          <div className="flex items-center gap-3">
-            <div className={dashboardIconTileClass("blue")}>
-              <KeyRound className="h-5 w-5" />
-            </div>
-            <div>
-              <h2 className="text-xl font-semibold tracking-[-0.02em] text-white">
-                Create a new token
-              </h2>
-              <p className="mt-1 text-sm text-[rgba(194,203,219,0.7)]">
-                Name each machine so rotation stays effortless later.
-              </p>
-            </div>
-          </div>
+      {/* Background Decor */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute top-0 left-1/4 h-[500px] w-[500px] rounded-full bg-violet-500/5 blur-[120px]" />
+      </div>
 
-          <p className={`mt-5 ${dashboardMutedTextClass}`}>
-            Give each machine or workflow its own name so revoking old access stays simple.
+      <div className="relative mx-auto max-w-7xl">
+        {/* Header */}
+        <motion.section variants={itemVariants} className="mb-12">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-violet-500/20 bg-violet-500/5 mb-6">
+            <ShieldCheck className="h-3 w-3 text-violet-400" />
+            <span className="text-[10px] font-bold uppercase tracking-widest text-violet-400">Security & Auth</span>
+          </div>
+          <h1 className="text-4xl font-bold tracking-tight text-white sm:text-5xl">Access Tokens</h1>
+          <p className="mt-4 text-zinc-500 max-w-2xl text-lg leading-relaxed">
+            Create personal access tokens for <code className="text-zinc-300">binboi login</code>. We store only hashes; full tokens are shown only once.
           </p>
+        </motion.section>
 
-          <label className={`mt-6 ${dashboardFieldLabelClass}`}>
-            Token name
-          </label>
-          <input
-            value={tokenName}
-            onChange={(event) => setTokenName(event.target.value)}
-            className={`mt-3 ${dashboardInputClass}`}
-            placeholder="Production MacBook"
-          />
-
-          <button
-            onClick={createToken}
-            disabled={creating}
-            className={`mt-5 w-full ${dashboardPrimaryButtonClass}`}
-          >
-            {creating ? <RefreshCcw className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-            {creating
-              ? "Creating token..."
-              : data?.auth_mode === "preview"
-                ? "Rotate preview token"
-                : "Create access token"}
-          </button>
-
-          <div
-            className={dashboardInsetPanelClass(
-              "orange",
-              "mt-6 text-sm leading-7 text-[#f8ddc3]",
-            )}
-          >
-            <div className="flex items-start gap-3">
-              <AlertTriangle className="mt-1 h-4 w-4 shrink-0 text-[#f7a15d]" />
-              <p>The full token is visible only once. Copy it now and save it into `binboi login --token &lt;token&gt;`.</p>
+        {/* Highlights */}
+        <motion.section variants={itemVariants} className="grid gap-4 md:grid-cols-3 mb-12">
+          {[
+            { label: "Current Plan", value: data?.limits.plan || "...", icon: Zap, color: "text-amber-400" },
+            { label: "Token Usage", value: `${data?.limits.tokens_used || 0} / ${data?.limits.max_tokens || 0}`, icon: KeyRound, color: "text-cyan-400" },
+            { label: "Active Tunnels", value: `${data?.limits.active_tunnels || 0} / ${data?.limits.max_tunnels || 0}`, icon: Activity, color: "text-emerald-400" }
+          ].map((item, i) => (
+            <div key={i} className="rounded-2xl border border-white/5 bg-zinc-900/20 p-6 backdrop-blur-sm">
+              <div className="flex items-center gap-3 text-zinc-500 mb-2">
+                <item.icon className={`h-4 w-4 ${item.color}`} />
+                <span className="text-[10px] font-bold uppercase tracking-widest">{item.label}</span>
+              </div>
+              <div className="text-2xl font-bold text-white tracking-tight">{item.value}</div>
             </div>
-          </div>
+          ))}
+        </motion.section>
 
-          {newToken && (
-            <div className={dashboardInsetPanelClass("green", "mt-6")}>
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-emerald-100">
-                    New token
-                  </p>
-                  <p className="mt-2 break-all font-mono text-sm text-white">{newToken.token}</p>
+        <div className="grid gap-8 xl:grid-cols-[400px_1fr]">
+          {/* Left: Create Token Form */}
+          <motion.section variants={itemVariants} className="space-y-6">
+            <div className="rounded-2xl border border-white/5 bg-zinc-900/20 p-8 backdrop-blur-sm">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="p-2 rounded-lg bg-violet-500/10">
+                  <Plus className="h-5 w-5 text-violet-400" />
                 </div>
-                <button
-                  onClick={() => copyText(newToken.token, "new-token")}
-                  className={dashboardGhostButtonClass}
+                <h2 className="text-xl font-bold text-white">Generate Token</h2>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 ml-1">Token Identifier</label>
+                  <input 
+                    value={tokenName}
+                    onChange={(e) => setTokenName(e.target.value)}
+                    className="mt-2 w-full bg-black/40 border border-white/5 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-violet-500/50 transition-colors"
+                    placeholder="e.g. Production-MacBook"
+                  />
+                </div>
+
+                <button 
+                  onClick={createToken}
+                  disabled={creating}
+                  className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white rounded-xl font-bold text-sm transition-all active:scale-95"
                 >
-                  {copyState === "new-token" ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
+                  {creating ? <RefreshCcw className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
+                  {data?.auth_mode === "preview" ? "Rotate Preview Token" : "Create Access Token"}
                 </button>
               </div>
-              <p className="mt-3 text-sm text-emerald-100/95">
-                Token prefix: <span className="font-mono">{newToken.record.prefix}</span>
-              </p>
-            </div>
-          )}
 
-          {data?.auth_mode === "preview" && (
-            <p className={`mt-6 ${dashboardMutedTextClass}`}>
-              Local preview mode is active because dashboard auth or Postgres is not configured. This page is backed by the relay&apos;s single preview token so `binboi login` and `binboi whoami` still work against the real backend.
-            </p>
-          )}
-        </section>
+              {/* Warning Box */}
+              <div className="mt-8 p-4 rounded-xl border border-amber-500/10 bg-amber-500/5 flex gap-3">
+                <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
+                <p className="text-[11px] text-amber-200/70 leading-relaxed">
+                  Tokens are only visible at creation. Losing it requires generating a new one and updating your CLI config.
+                </p>
+              </div>
 
-        <section className={dashboardPanelClass("blue", "p-6")}>
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <h2 className="text-xl font-semibold tracking-[-0.02em] text-white">
-                Existing access tokens
-              </h2>
-              <p className={`mt-3 ${dashboardMutedTextClass}`}>
-                Signed in as {data?.user.email || "loading..."} on the {data?.limits.plan || "FREE"} plan.
-              </p>
-            </div>
-            <button
-              onClick={() => load(true)}
-              className={dashboardGhostButtonClass}
-            >
-              <RefreshCcw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
-            </button>
-          </div>
-
-          {error && <p className="mt-4 text-sm text-red-400">{error}</p>}
-
-          <div className={`mt-6 ${dashboardTableShellClass}`}>
-            <table className="w-full border-collapse text-left text-sm">
-              <thead className={dashboardTableHeaderClass}>
-                <tr>
-                  <th className="px-4 py-3">Name</th>
-                  <th className="px-4 py-3">Prefix</th>
-                  <th className="px-4 py-3">Created</th>
-                  <th className="px-4 py-3">Last used</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3 text-right">Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <tr>
-                    <td colSpan={6} className="px-4 py-12 text-center text-slate-500">
-                      Loading access tokens...
-                    </td>
-                  </tr>
-                ) : !data || data.tokens.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="px-4 py-12 text-center text-slate-500">
-                      No access tokens yet. Create one to connect the CLI.
-                    </td>
-                  </tr>
-                ) : (
-                  data.tokens.map((token) => (
-                    <tr key={token.id} className={dashboardTableRowClass}>
-                      <td className={dashboardTableCellClass}>
-                        <p className="font-medium">{token.name}</p>
-                      </td>
-                      <td className={`${dashboardTableCellClass} font-mono text-xs text-[#dfe7ff]`}>
-                        <div className="flex items-center gap-2">
-                          <span>{token.prefix}</span>
-                          <button
-                            onClick={() => copyText(token.prefix, token.id)}
-                            className={dashboardGhostButtonClass}
-                          >
-                            {copyState === token.id ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
-                          </button>
-                        </div>
-                      </td>
-                      <td className={dashboardTableMutedCellClass}>{formatDate(token.createdAt)}</td>
-                      <td className={dashboardTableMutedCellClass}>{formatDate(token.lastUsedAt)}</td>
-                      <td className={dashboardTableCellClass}>
-                        <span className={dashboardBadgeClass(token.status === "ACTIVE" ? "green" : "neutral")}>
-                          {token.status}
-                        </span>
-                      </td>
-                      <td className={`${dashboardTableCellClass} text-right`}>
-                        <button
-                          onClick={() => revokeToken(token.id)}
-                          disabled={token.status !== "ACTIVE"}
-                          className={dashboardDangerButtonClass}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                          {data?.auth_mode === "preview" ? "Rotate" : "Revoke"}
-                        </button>
-                      </td>
-                    </tr>
-                  ))
+              {/* New Token Display */}
+              <AnimatePresence>
+                {newToken && (
+                  <motion.div 
+                    initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }}
+                    className="mt-6 p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5 overflow-hidden"
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">Secret Token Generated</span>
+                      <button onClick={() => copyText(newToken.token, "new-token")} className="text-emerald-400 hover:text-emerald-300">
+                        {copyState === "new-token" ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                      </button>
+                    </div>
+                    <code className="block text-xs font-mono text-white break-all bg-black/40 p-3 rounded-lg border border-white/5">
+                      {newToken.token}
+                    </code>
+                  </motion.div>
                 )}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      </section>
-    </PremiumDashboardShell>
+              </AnimatePresence>
+            </div>
+          </motion.section>
+
+          {/* Right: Existing Tokens Table */}
+          <motion.section variants={itemVariants} className="overflow-hidden rounded-2xl border border-white/5 bg-zinc-900/20 backdrop-blur-sm">
+            <div className="flex items-center justify-between border-b border-white/5 px-8 py-5 bg-white/[0.02]">
+               <h2 className="text-sm font-bold uppercase tracking-widest text-white">Active Credentials</h2>
+               <button onClick={() => load(true)} className="p-2 hover:bg-white/5 rounded-lg transition-colors">
+                  <RefreshCcw className={`h-4 w-4 text-zinc-500 ${refreshing ? 'animate-spin' : ''}`} />
+               </button>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-white/[0.01] text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+                    <th className="px-8 py-4">Name / ID</th>
+                    <th className="px-8 py-4">Prefix</th>
+                    <th className="px-8 py-4">Last Used</th>
+                    <th className="px-8 py-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {loading ? (
+                    <tr><td colSpan={4} className="px-8 py-20 text-center text-sm text-zinc-600 animate-pulse">Establishing connection to control plane...</td></tr>
+                  ) : !data || data.tokens.length === 0 ? (
+                    <tr><td colSpan={4} className="px-8 py-20 text-center text-sm text-zinc-600 font-mono">NO ACTIVE TOKENS FOUND</td></tr>
+                  ) : (
+                    data.tokens.map((token) => (
+                      <tr key={token.id} className="group hover:bg-white/[0.02] transition-colors">
+                        <td className="px-8 py-5">
+                          <div className="font-bold text-white text-sm">{token.name}</div>
+                          <div className="text-[10px] text-zinc-600 mt-1 uppercase tracking-tight">{token.id.slice(0, 8)}</div>
+                        </td>
+                        <td className="px-8 py-5 font-mono text-xs text-cyan-400/80">{token.prefix}...</td>
+                        <td className="px-8 py-5">
+                          <div className="text-xs text-zinc-400">{formatDate(token.lastUsedAt)}</div>
+                          <div className="text-[9px] text-zinc-600 mt-1 uppercase">Created: {formatDate(token.createdAt)}</div>
+                        </td>
+                        <td className="px-8 py-5 text-right">
+                          <button 
+                            onClick={() => revokeToken(token.id)}
+                            className="p-2 text-zinc-600 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all"
+                            title="Revoke Token"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </motion.section>
+        </div>
+      </div>
+    </motion.main>
   );
 }

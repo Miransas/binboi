@@ -45,7 +45,6 @@ export default function DocsLayout({
       <div className="flex h-screen bg-background overflow-hidden">
         <DocsSidebar
           collapsed={collapsed}
-          onToggle={() => setCollapsed((v) => !v)}
           onNavigate={handleNavigate}
         />
         <div className="flex flex-col flex-1 min-w-0 overflow-hidden">

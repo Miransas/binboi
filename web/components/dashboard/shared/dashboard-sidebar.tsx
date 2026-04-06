@@ -1,255 +1,182 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
+import { signOut, useSession } from "next-auth/react";
 import { usePathname } from "next/navigation";
+import type { ComponentType, MouseEvent as ReactMouseEvent } from "react";
+import { BookOpen, LogOut } from "lucide-react";
+
+import { DASHBOARD_LINKS } from "@/constants";
 import { cn } from "@/lib/utils";
-import {
-  Home,
-  Settings,
-  Key,
-  CreditCard,
-  SlidersHorizontal,
-  Activity,
-  Globe,
-  Sparkles,
-  Link2,
-  ChevronLeft,
-  ChevronDown,
-  Zap,
-  Search,
-  HelpCircle,
-  LogOut,
-  ExternalLink,
-} from "lucide-react";
-import { div } from "three/src/nodes/math/OperatorNode.js";
 
-const navSections = [
-  {
-    title: "Getting Started",
-    items: [
-      { label: "Welcome", href: "/dashboard", icon: Home },
-      { label: "Setup & Installation", href: "/dashboard/setup", icon: Settings },
-      { label: "Access Tokens", href: "/dashboard/access-tokens", icon: Key },
-      { label: "Billing", href: "/dashboard/billing", icon: CreditCard },
-      { label: "Tunnel", href: "/dashboard/tunnel", icon: SlidersHorizontal },
-    ],
-  },
-  {
-    title: "Universal Gateway",
-    items: [
-      { label: "Requests", href: "/dashboard/requests", icon: Activity },
-      { label: "Webhooks", href: "/dashboard/webhooks", icon: Globe },
-      { label: "AI Assistant", href: "/dashboard/ai", icon: Sparkles, badge: "New" },
-      { label: "Domains", href: "/dashboard/domains", icon: Link2 },
-    ],
-  },
-];
+type DashboardIcon = ComponentType<{ className?: string }>;
 
-interface SidebarProps {
+type SidebarProps = {
   collapsed: boolean;
-  onToggle: () => void;
   onNavigate?: (href: string) => void;
+};
+
+function isActiveRoute(pathname: string, href: string) {
+  if (href === "/dashboard") {
+    return pathname === href;
+  }
+
+  return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function SidebarDocs({ collapsed, onToggle, onNavigate }: SidebarProps) {
+export function SidebarDocs({ collapsed, onNavigate }: SidebarProps) {
   const pathname = usePathname();
-  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
-    "Getting Started": true,
-    "Universal Gateway": true,
-  });
-  const [hoveredItem, setHoveredItem] = useState<string | null>(null);
+  const { data: session } = useSession();
 
-  const toggleSection = (title: string) => {
-    setExpandedSections((prev) => ({
-      ...prev,
-      [title]: !prev[title],
-    }));
-  };
+  const accountName = session?.user?.name?.trim() || "Workspace";
+  const accountEmail = session?.user?.email?.trim() || "Manage your account";
+  const initials = accountName
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join("");
 
-  const handleNavClick = (href: string, e: React.MouseEvent) => {
-    if (onNavigate) {
-      e.preventDefault();
-      onNavigate(href);
+  const handleNavClick = (
+    href: string,
+    event: ReactMouseEvent<HTMLAnchorElement | HTMLButtonElement>,
+  ) => {
+    if (!onNavigate) {
+      return;
     }
+
+    event.preventDefault();
+    onNavigate(href);
   };
 
   return (
     <aside
       className={cn(
-        "relative flex flex-col h-full bg-[#000000] border-r border-sidebar-border sidebar-transition overflow-hidden",
-        collapsed ? "w-[64px]" : "w-[260px]"
+        "block shrink-0 border-r border-white/10 bg-[#09090b]",
+        "transition-[width] duration-200 ease-out",
+        collapsed ? "w-[88px]" : "w-[272px]",
       )}
     >
-      {/* Logo */}
-      <div className="flex items-center h-14 px-4 border-b border-sidebar-border shrink-0">
-        <div className="flex items-center gap-3 min-w-0">
-          
-          <span
-           
+      <div className="sticky top-0 flex h-screen flex-col">
+        <div className="border-b border-white/10 px-4 py-5">
+          <Link
+            href="/dashboard"
+            onClick={(event) => handleNavClick("/dashboard", event)}
+            className={cn(
+              "flex items-center gap-3 rounded-xl",
+              collapsed ? "justify-center px-0" : "px-1",
+            )}
           >
-            <img src={"/logo.png"} alt="" className="w-14"/>
-          </span>
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-base font-semibold tracking-tight text-white">
+              B
+            </div>
+            {!collapsed ? (
+              <div className="min-w-0">
+                <div className="truncate text-sm font-semibold text-white">Binboi</div>
+                <div className="truncate text-xs text-zinc-500">Dashboard</div>
+              </div>
+            ) : null}
+          </Link>
+        </div>
+
+        <nav className="flex-1 overflow-y-auto px-3 py-4">
+          <div className="space-y-6">
+            {DASHBOARD_LINKS.map((section) => (
+              <section key={section.title} className="space-y-2">
+                {!collapsed ? (
+                  <div className="px-3 text-[11px] font-medium uppercase tracking-[0.18em] text-zinc-600">
+                    {section.title}
+                  </div>
+                ) : null}
+
+                <div className="space-y-1">
+                  {section.items.map((item) => {
+                    const Icon = item.icon as DashboardIcon;
+                    const active = isActiveRoute(pathname, item.href);
+
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        onClick={(event) => handleNavClick(item.href, event)}
+                        className={cn(
+                          "flex items-center gap-3 rounded-xl border px-3 py-2.5 text-sm transition",
+                          collapsed ? "justify-center px-2" : "",
+                          active
+                            ? "border-white/15 bg-white/[0.07] text-white"
+                            : "border-transparent text-zinc-400 hover:border-white/10 hover:bg-white/[0.04] hover:text-zinc-100",
+                        )}
+                      >
+                        <Icon className="h-4 w-4 shrink-0" />
+                        {!collapsed ? (
+                          <>
+                            <span className="truncate">{item.label}</span>
+                            {item.badge ? (
+                              <span className="ml-auto rounded-md border border-white/10 px-1.5 py-0.5 text-[10px] uppercase tracking-[0.16em] text-zinc-500">
+                                {item.badge}
+                              </span>
+                            ) : null}
+                          </>
+                        ) : null}
+                      </Link>
+                    );
+                  })}
+                </div>
+              </section>
+            ))}
+          </div>
+        </nav>
+
+        <div className="border-t border-white/10 p-3">
+          <div className="space-y-2">
+            <Link
+              href="/docs"
+              className={cn(
+                "flex items-center gap-3 rounded-xl border border-transparent px-3 py-2.5 text-sm text-zinc-400 transition hover:border-white/10 hover:bg-white/[0.04] hover:text-zinc-100",
+                collapsed ? "justify-center px-2" : "",
+              )}
+            >
+              <BookOpen className="h-4 w-4 shrink-0" />
+              {!collapsed ? <span>Documentation</span> : null}
+            </Link>
+
+            <button
+              type="button"
+              onClick={() => signOut()}
+              className={cn(
+                "flex w-full items-center gap-3 rounded-xl border border-transparent px-3 py-2.5 text-sm text-zinc-400 transition hover:border-white/10 hover:bg-white/[0.04] hover:text-zinc-100",
+                collapsed ? "justify-center px-2" : "",
+              )}
+            >
+              <LogOut className="h-4 w-4 shrink-0" />
+              {!collapsed ? <span>Sign out</span> : null}
+            </button>
+          </div>
+
+          <Link
+            href="/dashboard/user-management"
+            onClick={(event) => handleNavClick("/dashboard/user-management", event)}
+            className={cn(
+              "mt-3 flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-3 transition hover:border-white/15 hover:bg-white/[0.05]",
+              collapsed ? "justify-center px-2" : "",
+            )}
+          >
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/[0.06] text-sm font-semibold text-white">
+              {initials || "BA"}
+            </div>
+            {!collapsed ? (
+              <div className="min-w-0">
+                <div className="truncate text-sm font-medium text-zinc-100">
+                  {accountName}
+                </div>
+                <div className="truncate text-xs text-zinc-500">
+                  {accountEmail}
+                </div>
+              </div>
+            ) : null}
+          </Link>
         </div>
       </div>
-
-      {/* Search */}
-      <div className={cn("px-3 py-3", collapsed && "px-2")}>
-        {collapsed ? (
-          <button
-            data-hover
-            className="w-10 h-10 flex items-center justify-center rounded-lg bg-secondary/50 text-muted-foreground hover:text-foreground hover:bg-secondary transition-all duration-200 group"
-          >
-            <Search className="w-4 h-4 group-hover:scale-110 transition-transform duration-200" />
-          </button>
-        ) : (
-          <div></div>
-        )}
-      </div>
-
-      {/* Nav Sections */}
-      <nav className="flex-1 overflow-y-auto py-2 px-2 space-y-1 scrollbar-thin">
-        {navSections.map((section) => {
-          const isExpanded = expandedSections[section.title];
-          return (
-            <div key={section.title} className="mb-1">
-              {/* Section Header */}
-              {!collapsed && (
-                <button
-                  onClick={() => toggleSection(section.title)}
-                  className="w-full flex items-center justify-between px-2 py-1.5 text-[11px] font-semibold tracking-wider text-muted-foreground/70 uppercase hover:text-muted-foreground transition-colors duration-200 group"
-                  data-hover
-                >
-                  <span>{section.title}</span>
-                  <ChevronDown
-                    className={cn(
-                      "w-3.5 h-3.5 transition-transform duration-300",
-                      !isExpanded && "-rotate-90"
-                    )}
-                  />
-                </button>
-              )}
-
-              {/* Section Items */}
-              <div
-                className={cn(
-                  "space-y-0.5 overflow-hidden transition-all duration-300",
-                  !collapsed && !isExpanded && "max-h-0 opacity-0",
-                  (!collapsed && isExpanded) && "max-h-[500px] opacity-100"
-                )}
-              >
-                {section.items.map((item) => {
-                  const Icon = item.icon;
-                  const isActive = pathname === item.href;
-                  const isHovered = hoveredItem === item.href;
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      onClick={(e) => handleNavClick(item.href, e)}
-                      onMouseEnter={() => setHoveredItem(item.href)}
-                      onMouseLeave={() => setHoveredItem(null)}
-                      className={cn(
-                        "w-full flex items-center gap-3 rounded-lg px-2.5 py-2 text-md font-bold transition-all duration-200 group relative overflow-hidden",
-                        isActive
-                          ? "inset-0 bg-[#9eff00] text-black"
-                          : "text-white hover:bg-secondary hover:text-sidebar-foreground"
-                      )}
-                      data-hover
-                    >
-                      {/* Active indicator */}
-                      <span
-                        className={cn(
-                          "absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-primary rounded-r-full transition-all duration-300",
-                          isActive ? "opacity-100 " : "opacity-0"
-                        )}
-                      />
-                      <Icon
-                        className={cn(
-                          "w-[18px] h-[18px] shrink-0 transition-all duration-200",
-                          isActive ? "text-black" : "",
-                          isHovered && !isActive ? "scale-110" : ""
-                        )}
-                      />
-                      {!collapsed && (
-                        <>
-                          <span className="truncate">{item.label}</span>
-                          {item.badge && (
-                            <span className="ml-auto text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-primary/20 text-primary shrink-0">
-                              {item.badge}
-                            </span>
-                          )}
-                        </>
-                      )}
-                    </Link>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        })}
-      </nav>
-
-      {/* Footer */}
-      <div className="mt-auto border-t border-sidebar-border px-2 py-3 space-y-0.5">
-       <Link href={"/docs"}>
-        <button  
-          data-hover
-          className="w-full flex items-center gap-3 rounded-lg px-2.5 py-2 text-sm font-medium text-sidebar-foreground/60 hover:bg-secondary hover:text-sidebar-foreground transition-all duration-200 group"
-        >
-          <HelpCircle className="w-[18px] h-[18px] shrink-0 group-hover:scale-110 transition-transform duration-200" />
-          {!collapsed && <span className="truncate">Help & Docs</span>}
-          {!collapsed && <ExternalLink className="w-3.5 h-3.5 ml-auto opacity-50" />}
-        </button>
-       </Link>
-        <button
-          data-hover
-          className="w-full flex items-center gap-3 rounded-lg px-2.5 py-2 text-sm font-medium text-sidebar-foreground/60 hover:bg-secondary hover:text-sidebar-foreground transition-all duration-200 group"
-        >
-          <LogOut className="w-[18px] h-[18px] shrink-0 group-hover:scale-110 transition-transform duration-200" />
-          {!collapsed && <span className="truncate">Sign out</span>}
-        </button>
-
-        {/* User */}
-        {!collapsed && (
-          <div className="flex items-center gap-3 mt-3 px-2 py-2 rounded-lg bg-secondary/30 hover:bg-secondary/50 transition-colors duration-200 cursor-pointer" data-hover>
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/60 to-primary flex items-center justify-center text-primary-foreground text-xs font-semibold">
-              JD
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-foreground truncate">John Doe</p>
-              <p className="text-xs text-muted-foreground truncate">john@nexus.io</p>
-            </div>
-          </div>
-        )}
-      </div>
-
     </aside>
-  );
-}
-
-export function SidebarToggle({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {
-  return (
-    <button
-      onClick={onToggle}
-      data-hover
-      className={cn(
-        "fixed z-50",
-        collapsed ? "left-[52px]" : "left-[248px]",
-        "top-[64px]",
-        "w-7 h-7 rounded-full bg-card border border-border",
-        "flex items-center justify-center",
-        "text-muted-foreground hover:text-foreground hover:border-primary/50 hover:bg-primary/10",
-        "transition-all duration-300 shadow-lg hover:shadow-primary/20"
-      )}
-      aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-    >
-      <ChevronLeft
-        className={cn(
-          "w-4 h-4 transition-transform duration-300",
-          collapsed && "rotate-180"
-        )}
-      />
-    </button>
   );
 }

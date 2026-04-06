@@ -189,6 +189,26 @@ async function findUserByEmail(email: string) {
   return user satisfies DbUserRecord | undefined;
 }
 
+async function findUserById(userId: string) {
+  requireAuthDatabase();
+
+  const [user] = await db!
+    .select({
+      id: users.id,
+      name: users.name,
+      email: users.email,
+      emailVerified: users.emailVerified,
+      image: users.image,
+      passwordHash: users.passwordHash,
+      isActive: users.isActive,
+    })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+
+  return user satisfies DbUserRecord | undefined;
+}
+
 function mapUser(user: DbUserRecord): AuthSessionUser {
   return {
     id: user.id,
@@ -196,6 +216,87 @@ function mapUser(user: DbUserRecord): AuthSessionUser {
     email: user.email,
     image: user.image,
     emailVerified: user.emailVerified,
+  };
+}
+
+export async function getUserSettings(userId: string) {
+  await ensureAuthDatabaseReady();
+
+  const user = await findUserById(userId);
+  if (!user) {
+    throw new AuthRouteError(404, "USER_NOT_FOUND", "Could not load this account.");
+  }
+
+  if (user.isActive === false) {
+    throw new AuthRouteError(
+      403,
+      "ACCOUNT_INACTIVE",
+      "This account is inactive. Contact support or use a different account.",
+    );
+  }
+
+  return mapUser(user);
+}
+
+export async function updateUserSettings(input: {
+  userId: string;
+  name: string;
+  email: string;
+}) {
+  await ensureAuthDatabaseReady();
+  await deleteExpiredTokens();
+
+  const currentUser = await findUserById(input.userId);
+  if (!currentUser) {
+    throw new AuthRouteError(404, "USER_NOT_FOUND", "Could not load this account.");
+  }
+
+  if (currentUser.isActive === false) {
+    throw new AuthRouteError(
+      403,
+      "ACCOUNT_INACTIVE",
+      "This account is inactive. Contact support or use a different account.",
+    );
+  }
+
+  const email = validateEmail(input.email);
+  const name = sanitizeName(input.name, email);
+  const emailChanged = normalizeEmail(currentUser.email) !== email;
+
+  if (emailChanged) {
+    const existingUser = await findUserByEmail(email);
+    if (existingUser && existingUser.id !== currentUser.id) {
+      throw new AuthRouteError(
+        409,
+        "ACCOUNT_EXISTS",
+        "Another account is already using that email address.",
+      );
+    }
+  }
+
+  await db!
+    .update(users)
+    .set({
+      name,
+      email,
+      emailVerified: emailChanged ? null : currentUser.emailVerified,
+      isActive: true,
+    })
+    .where(eq(users.id, currentUser.id));
+
+  const verificationToken = emailChanged
+    ? await createEmailVerificationRequest(currentUser.id, email)
+    : null;
+
+  const updatedUser = await findUserById(currentUser.id);
+  if (!updatedUser) {
+    throw new AuthRouteError(500, "USER_UPDATE_FAILED", "Could not refresh the updated account.");
+  }
+
+  return {
+    user: mapUser(updatedUser),
+    emailChanged,
+    verificationToken,
   };
 }
 

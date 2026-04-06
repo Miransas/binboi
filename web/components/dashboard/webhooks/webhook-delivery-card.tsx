@@ -1,7 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { ArrowUpRight, Clock3, RotateCcw, ShieldAlert } from "lucide-react";
-
+import { ArrowUpRight, Clock3, RotateCcw, ShieldAlert, Zap, Globe, Fingerprint } from "lucide-react";
 import { RequestErrorExplainer } from "@/components/shared/request-error-explainer";
 import {
   buildAssistantContextForDelivery,
@@ -9,31 +9,20 @@ import {
 } from "@/lib/webhook-debug-data";
 import { cn } from "@/lib/utils";
 
-function statusClass(status: WebhookDeliveryRecord["deliveryStatus"]) {
-  if (status === "SUCCESS") {
-    return "border-emerald-400/20 bg-emerald-400/10 text-emerald-200";
+// Sağlayıcıya özel neon vurgular
+function providerAccent(provider: WebhookDeliveryRecord["provider"]) {
+  switch (provider) {
+    case "Stripe": return "bg-violet-500/10 text-violet-400 border-violet-500/20";
+    case "Clerk": return "bg-cyan-500/10 text-cyan-400 border-cyan-500/20";
+    case "GitHub": return "bg-zinc-100/10 text-zinc-100 border-zinc-100/20";
+    default: return "bg-miransas-cyan/10 text-miransas-cyan border-miransas-cyan/20";
   }
-  if (status === "RETRYING") {
-    return "border-amber-400/20 bg-amber-400/10 text-amber-100";
-  }
-  return "border-red-400/20 bg-red-500/10 text-red-200";
 }
 
-function providerGlow(provider: WebhookDeliveryRecord["provider"]) {
-  switch (provider) {
-    case "Stripe":
-      return "from-violet-300/10";
-    case "Clerk":
-      return "from-miransas-cyan/10";
-    case "Supabase":
-      return "from-miransas-cyan/8";
-    case "GitHub":
-      return "from-white/6";
-    case "Linear":
-      return "from-violet-300/10";
-    case "Neon":
-      return "from-miransas-cyan/10";
-  }
+function statusTheme(status: WebhookDeliveryRecord["deliveryStatus"]) {
+  if (status === "SUCCESS") return "text-emerald-500 bg-emerald-500/5 border-emerald-500/10";
+  if (status === "RETRYING") return "text-amber-500 bg-amber-500/5 border-amber-500/10";
+  return "text-rose-500 bg-rose-500/5 border-rose-500/10";
 }
 
 export function WebhookDeliveryCard({
@@ -49,112 +38,116 @@ export function WebhookDeliveryCard({
 
   return (
     <article
+      onClick={onSelect}
       className={cn(
-        "group relative overflow-hidden rounded-[1.75rem] border bg-[linear-gradient(180deg,rgba(20,26,36,0.96),rgba(10,14,21,0.98))] p-5 transition duration-200 [box-shadow:inset_0_1px_0_rgba(255,255,255,0.04),0_20px_60px_rgba(2,6,23,0.28)]",
+        "group relative cursor-pointer overflow-hidden rounded-3xl border transition-all duration-300",
         active
-          ? "border-miransas-cyan/18 shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_0_0_1px_rgba(0,255,209,0.10),0_20px_60px_rgba(2,6,23,0.32)]"
-          : "border-white/10 hover:border-white/18",
+          ? "border-cyan-500/30 bg-zinc-900/60 shadow-[0_0_40px_-15px_rgba(6,182,212,0.2)]"
+          : "border-white/5 bg-zinc-900/20 hover:border-white/10 hover:bg-zinc-900/40"
       )}
     >
-      <div
-        className={cn(
-          "pointer-events-none absolute inset-0 bg-gradient-to-br to-transparent opacity-80",
-          providerGlow(record.provider),
-        )}
-      />
-      <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-white/12 to-transparent" />
+      {/* İnce Üst Işık Çizgisi */}
+      <div className={cn(
+        "absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-zinc-500/20 to-transparent transition-opacity",
+        active ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+      )} />
 
-      <div className="relative z-10">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <button type="button" onClick={onSelect} className="min-w-0 text-left">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-300">
-                {record.provider}
+      <div className="p-6">
+        {/* Header: Meta Bilgiler */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+          <div className="flex flex-wrap items-center gap-2 font-mono">
+            <span className={cn("px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-tighter border", providerAccent(record.provider))}>
+              {record.provider}
+            </span>
+            <span className={cn("px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-tighter border", statusTheme(record.deliveryStatus))}>
+              {record.deliveryStatus}
+            </span>
+            {record.errorClassification && (
+              <span className="px-2.5 py-0.5 rounded bg-black/40 border border-white/5 text-[10px] font-bold text-zinc-500 uppercase tracking-tighter">
+                {record.errorClassification.replace("_", " ")}
               </span>
-              <span className={cn("rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.22em]", statusClass(record.deliveryStatus))}>
-                {record.deliveryStatus}
-              </span>
-              {record.errorClassification && (
-                <span className="rounded-full border border-white/10 bg-black/25 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-400">
-                  {record.errorClassification.replaceAll("_", " ")}
-                </span>
-              )}
-            </div>
-
-            <h3 className="mt-4 text-xl font-semibold tracking-tight text-white">
-              {record.eventType}
-            </h3>
-            <p className="mt-2 text-sm text-zinc-400">
-              {record.method} {record.path}
-            </p>
-          </button>
-
-          <div className="flex flex-wrap items-center gap-2">
-            {isFailure && (
-              <RequestErrorExplainer
-                context={buildAssistantContextForDelivery(record)}
-                className="shrink-0"
-              />
             )}
-            <button
-              type="button"
-              onClick={onSelect}
-              className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3.5 py-2 text-sm text-zinc-300 transition hover:border-white/20 hover:text-white"
-            >
-              View details
-              <ArrowUpRight className="h-4 w-4 text-zinc-500" />
-            </button>
+          </div>
+
+          <div className="flex items-center gap-3">
+             <div className="flex items-center gap-1.5 text-[10px] font-mono text-zinc-600">
+                <Clock3 className="h-3 w-3" />
+                {new Date(record.receivedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+             </div>
+             <ArrowUpRight className={cn("h-4 w-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5", active ? "text-cyan-400" : "text-zinc-700")} />
           </div>
         </div>
 
-        <div className="mt-5 grid gap-3 sm:grid-cols-4">
-          <div className="rounded-2xl border border-white/10 bg-white/[0.025] px-4 py-3">
-            <p className="text-[10px] uppercase tracking-[0.22em] text-zinc-600">Status</p>
-            <p className="mt-2 text-sm font-medium text-white">{record.status}</p>
-          </div>
-          <div className="rounded-2xl border border-white/10 bg-white/[0.025] px-4 py-3">
-            <p className="text-[10px] uppercase tracking-[0.22em] text-zinc-600">Latency</p>
-            <p className="mt-2 inline-flex items-center gap-2 text-sm font-medium text-white">
-              <Clock3 className="h-3.5 w-3.5 text-miransas-cyan" />
-              {record.durationMs} ms
-            </p>
-          </div>
-          <div className="rounded-2xl border border-white/10 bg-white/[0.025] px-4 py-3">
-            <p className="text-[10px] uppercase tracking-[0.22em] text-zinc-600">Retries</p>
-            <p className="mt-2 inline-flex items-center gap-2 text-sm font-medium text-white">
-              <RotateCcw className="h-3.5 w-3.5 text-zinc-400" />
-              {record.retries}
-            </p>
-          </div>
-          <div className="rounded-2xl border border-white/10 bg-white/[0.025] px-4 py-3">
-            <p className="text-[10px] uppercase tracking-[0.22em] text-zinc-600">Destination</p>
-            <p className="mt-2 max-h-12 overflow-hidden text-sm font-medium text-white">
-              {record.destination}
-            </p>
+        {/* Path & Title */}
+        <div className="mb-6">
+          <h3 className="text-xl font-bold tracking-tight text-white group-hover:text-cyan-500 transition-colors">
+            {record.eventType}
+          </h3>
+          <div className="mt-1.5 flex items-center gap-2 text-xs font-mono text-zinc-500">
+            <span className="text-zinc-700">{record.method}</span>
+            <span className="truncate max-w-[200px] sm:max-w-md">{record.path}</span>
           </div>
         </div>
 
-        <div className="mt-4 grid gap-3 xl:grid-cols-2">
-          <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-4">
-            <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
-              <ShieldAlert className="h-3.5 w-3.5 text-zinc-500" />
-              Payload preview
-            </div>
-            <p className="mt-3 max-h-28 overflow-hidden text-sm leading-7 text-zinc-300">
-              {record.payloadPreview}
-            </p>
-          </div>
-          <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-4">
-            <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
-              <ShieldAlert className="h-3.5 w-3.5 text-zinc-500" />
-              Response preview
-            </div>
-            <p className="mt-3 max-h-28 overflow-hidden text-sm leading-7 text-zinc-300">
-              {record.responsePreview}
-            </p>
-          </div>
+        {/* Metrics Bar */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <Metric icon={Zap} label="STATUS" value={record.status} active={active} color={record.status >= 400 ? "text-rose-500" : "text-emerald-500"} />
+          <Metric icon={ActivityIcon} label="LATENCY" value={`${record.durationMs}ms`} active={active} color="text-cyan-400" />
+          <Metric icon={RotateCcw} label="RETRIES" value={record.retries} active={active} />
+          <Metric icon={Globe} label="TUNNEL" value={record.tunnelId} active={active} className="hidden md:flex" />
         </div>
+
+        {/* Payload / Response Snippets (Sadece Hata Varsa veya Aktifse Daha Belirgin) */}
+        {(active || isFailure) && (
+          <div className="mt-6 pt-6 border-t border-white/5 grid gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-[9px] font-bold text-zinc-600 uppercase tracking-widest">
+                <Fingerprint className="h-3 w-3" /> Payload Preview
+              </div>
+              <p className="text-[11px] font-mono leading-relaxed text-zinc-500 line-clamp-2 bg-black/20 p-2 rounded-lg border border-white/[0.02]">
+                {record.payloadPreview}
+              </p>
+            </div>
+            
+            {isFailure && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-[9px] font-bold text-rose-500/50 uppercase tracking-widest">
+                  <ShieldAlert className="h-3 w-3" /> Root Cause
+                </div>
+                <div className="flex items-start gap-2">
+                   <RequestErrorExplainer
+                    context={buildAssistantContextForDelivery(record)}
+                    className="h-auto py-1 px-3 text-[10px]"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </article>
+  );
+}
+
+// Alt Bileşen: Metrik Kutucuğu
+function Metric({ icon: Icon, label, value, active, color, className }: any) {
+  return (
+    <div className={cn("flex flex-col p-3 rounded-2xl bg-white/[0.02] border border-white/[0.03]", className)}>
+      <div className="flex items-center gap-1.5 opacity-40 mb-1">
+        <Icon className="h-3 w-3" />
+        <span className="text-[8px] font-bold tracking-widest uppercase">{label}</span>
+      </div>
+      <span className={cn("text-xs font-mono font-bold", color || "text-zinc-300")}>
+        {value}
+      </span>
+    </div>
+  );
+}
+
+function ActivityIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+    </svg>
   );
 }

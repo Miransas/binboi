@@ -11,7 +11,7 @@ export type DocsNavGroup = {
 
 export const docsNavGroups: DocsNavGroup[] = [
   {
-    title: "Getting Started",
+    title: "Foundation",
     items: [
       {
         title: "Introduction",
@@ -24,11 +24,6 @@ export const docsNavGroups: DocsNavGroup[] = [
         description: "Install, log in, and ship your first public URL in a few steps.",
       },
       {
-        title: "Installation",
-        href: "/docs/installation",
-        description: "Homebrew, npm wrapper direction, direct binaries, and contributor setup.",
-      },
-      {
         title: "Authentication",
         href: "/docs/authentication",
         description: "Access tokens, dashboard token creation, login, and security notes.",
@@ -36,7 +31,37 @@ export const docsNavGroups: DocsNavGroup[] = [
     ],
   },
   {
-    title: "Using Binboi",
+    title: "Installation",
+    items: [
+      {
+        title: "Install Overview",
+        href: "/docs/installation",
+        description: "Supported install paths, platform guidance, and how to choose the right channel.",
+      },
+      {
+        title: "macOS",
+        href: "/docs/installation/macos",
+        description: "Homebrew, install script, direct binary, and post-install verification on macOS.",
+      },
+      {
+        title: "Linux",
+        href: "/docs/installation/linux",
+        description: "Install script, direct binary, source build, and PATH notes for Linux hosts.",
+      },
+      {
+        title: "Windows",
+        href: "/docs/installation/windows",
+        description: "Direct binary setup, PATH guidance, and the safest current Windows workflow.",
+      },
+      {
+        title: "Package Managers",
+        href: "/docs/installation/package-managers",
+        description: "Which package channels are supported now and which ones are still roadmap only.",
+      },
+    ],
+  },
+  {
+    title: "Core Workflows",
     items: [
       {
         title: "CLI",
@@ -53,16 +78,21 @@ export const docsNavGroups: DocsNavGroup[] = [
         href: "/docs/requests",
         description: "Request inspection, metadata, response previews, and error classifications.",
       },
-    ],
-  },
-  {
-    title: "Debugging",
-    items: [
       {
         title: "Webhooks",
         href: "/docs/webhooks",
         description: "Clerk, Neon, Supabase, Stripe, GitHub, and Linear debugging workflows.",
       },
+      {
+        title: "API Gateway",
+        href: "/docs/api-gateway",
+        description: "Current HTTP gateway contract, routing model, and how public traffic reaches your app.",
+      },
+    ],
+  },
+  {
+    title: "Diagnostics & Ops",
+    items: [
       {
         title: "API Keys",
         href: "/docs/api-keys",

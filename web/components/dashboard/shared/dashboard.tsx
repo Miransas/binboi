@@ -1,21 +1,31 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
+import React from "react";
 import { useSession } from "next-auth/react";
-import { Activity, Shield, Waypoints } from "lucide-react";
+import { motion } from "framer-motion";
+import { Activity, Shield, Waypoints, Terminal, Zap, CheckCircle2, Clock } from "lucide-react";
 
 import BandwidthChart from "@/components/dashboard/shared/BandwidthChart";
-import {
-  DashboardSectionHeading,
-  DashboardStatCard,
-  DashboardSurface,
-  DashboardTimeline,
-} from "@/components/dashboard/shared/dashboard-primitives";
 import { useRegisterAssistantContext } from "@/components/shared/assistant-context";
 import { useRequests } from "@/hooks/useRequests";
 import { useTunnels } from "@/hooks/useTunnels";
 
 import TokenManager from "./token-manager";
+
+// --- Framer Motion Variants ---
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.1 }
+  }
+};
+
+const itemVariants = {
+  hidden: { y: 20, opacity: 0 },
+  visible: { y: 0, opacity: 1, transition: { duration: 0.5 } }
+};
 
 export default function DashboardPage() {
   const { data: session } = useSession();
@@ -47,290 +57,206 @@ export default function DashboardPage() {
   });
 
   const statusCards = [
-    {
-      label: "Active tunnels",
-      value: activeCount.toString().padStart(2, "0"),
-      note: activeCount > 0 ? "Traffic is currently flowing through the relay." : "Waiting for the first connected tunnel.",
-      icon: Activity,
-      accent: "cyan" as const,
-    },
-    {
-      label: "Throughput",
-      value: `${(totalBandwidth / (1024 * 1024)).toFixed(1)} MB`,
-      note: "Observed bytes forwarded through the public proxy surface.",
-      icon: Waypoints,
-      accent: "violet" as const,
-    },
-    {
-      label: "Mode",
-      value: session?.user ? "AUTH" : "GUEST",
-      note: session?.user ? "Signed-in control plane mode is active." : "Local preview mode is still available for MVP testing.",
-      icon: Shield,
-      accent: "neutral" as const,
-    },
+    { label: "Active tunnels", value: activeCount.toString().padStart(2, "0"), icon: Activity, accent: "text-cyan-400", bg: "bg-cyan-400/5", border: "border-cyan-400/20" },
+    { label: "Throughput", value: `${(totalBandwidth / (1024 * 1024)).toFixed(1)} MB`, icon: Waypoints, accent: "text-violet-400", bg: "bg-violet-400/5", border: "border-violet-400/20" },
+    { label: "Mode", value: session?.user ? "AUTH" : "GUEST", icon: Shield, accent: "text-zinc-400", bg: "bg-zinc-400/5", border: "border-zinc-400/20" },
   ];
 
-  const setupTimeline = [
-    {
-      label: "Step 1",
-      title: "Issue a CLI token",
-      description:
-        "Create an access token in the dashboard so every machine gets a distinct, revocable identity.",
-      status: session?.user ? "complete" : "active",
-      meta: session?.user ? "Ready" : "Preview",
-    },
-    {
-      label: "Step 2",
-      title: "Authenticate the agent",
-      description:
-        "Run `binboi login --token <token>` and verify with `binboi whoami` before exposing traffic.",
-      status: activeCount > 0 ? "complete" : "active",
-      meta: activeCount > 0 ? "Connected" : "Pending",
-    },
-    {
-      label: "Step 3",
-      title: "Expose public traffic",
-      description:
-        "Reserve a subdomain, attach the relay, and keep request visibility inside the dashboard instead of guessing from raw logs.",
-      status: requestVolume > 0 ? "complete" : "waiting",
-      meta: requestVolume > 0 ? `${requestVolume} requests` : "Waiting",
-    },
-  ] as const;
-  const recentRequests = requests.slice(0, 5);
-
   return (
-    <div className="relative flex min-h-full flex-col px-4 pb-8 pt-4 text-zinc-300 sm:px-6 lg:px-8 bg-black">
-      <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col">
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(24rem,0.85fr)] xl:items-end">
-          <DashboardSectionHeading
-            eyebrow="Binboi control plane"
-            title="Operate tunnels, tokens, traffic, and webhook failures from one surface."
-            description="Live relay state, request visibility, webhook investigation, and token posture stay inside the dashboard without extra route chrome."
-          />
+    <motion.main 
+      initial="hidden"
+      animate="visible"
+      variants={containerVariants}
+      className="relative min-h-screen bg-[#050506] px-4 py-8 text-zinc-300 sm:px-6 lg:px-8"
+    >
+      {/* Background Glow */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute -top-[10%] -left-[10%] h-[40%] w-[40%] rounded-full bg-cyan-500/5 blur-[120px]" />
+        <div className="absolute top-[20%] -right-[10%] h-[30%] w-[30%] rounded-full bg-violet-500/5 blur-[120px]" />
+      </div>
 
-          <DashboardSurface accent="neutral" className="p-5">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-zinc-500">
-              Relay posture
-            </p>
-            <div className="mt-4 flex items-center gap-3">
-              <span
-                className={`h-2.5 w-2.5 rounded-full ${
-                  activeCount > 0
-                    ? "bg-[#c8d7cc]"
-                    : "bg-zinc-500"
-                }`}
-              />
-              <p className="text-sm font-medium text-white">
-                {activeCount > 0 ? "Relay is carrying live tunnel traffic." : "Relay is waiting for the first active tunnel."}
-              </p>
+      <div className="relative mx-auto max-w-7xl">
+        
+        {/* Header Section */}
+        <section className="grid gap-8 xl:grid-cols-[1fr_380px]">
+          <motion.div variants={itemVariants}>
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-cyan-500/20 bg-cyan-500/5 mb-6">
+              <span className="h-1.5 w-1.5 rounded-full bg-cyan-400 animate-pulse" />
+              <span className="text-[10px] font-bold uppercase tracking-widest text-cyan-400">Control Plane</span>
             </div>
-            <p className="mt-4 text-sm leading-7 text-zinc-400">
-              {session?.user
-                ? `Signed in as ${session.user.email}.`
-                : "Guest preview mode is enabled, so the product still behaves coherently without a full auth deployment."}
+            <h1 className="text-4xl font-bold tracking-tight text-white sm:text-5xl lg:max-w-2xl">
+              Operate tunnels, tokens, and traffic from one surface.
+            </h1>
+            <p className="mt-4 text-zinc-500 max-w-xl leading-relaxed">
+              Live relay state, request visibility, and webhook investigation stay inside the dashboard without extra route chrome.
             </p>
-          </DashboardSurface>
-        </div>
+          </motion.div>
 
-        <div className="mt-8 grid gap-6 md:grid-cols-3">
-          {statusCards.map(({ label, value, note, icon, accent }) => (
-            <DashboardStatCard
-              key={label}
-              label={label}
-              value={value}
-              note={note}
-              icon={icon}
-              accent={accent}
-            />
-          ))}
-        </div>
+          {/* Posture Card */}
+          <motion.div variants={itemVariants} className="group relative rounded-2xl border border-white/5 bg-zinc-900/20 p-6 backdrop-blur-sm">
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500">Relay Posture</p>
+              <div className={`h-2 w-2 rounded-full ${activeCount > 0 ? "bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.6)]" : "bg-zinc-600"}`} />
+            </div>
+            <p className="text-sm font-medium text-white">
+              {activeCount > 0 ? "Relay is carrying live traffic." : "Waiting for active tunnel connections."}
+            </p>
+            <p className="mt-3 text-xs text-zinc-500 leading-relaxed">
+              {session?.user ? `Connected as ${session.user.email}` : "Guest preview mode is active."}
+            </p>
+          </motion.div>
+        </section>
 
-        <div className="mt-8 grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(23rem,0.85fr)]">
-          <DashboardSurface accent="cyan" className="p-6">
-            <BandwidthChart currentUsage={activeCount > 0 ? 452.8 : 0} />
-          </DashboardSurface>
-          <TokenManager />
-        </div>
-
-        <div className="mt-8 grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(24rem,0.85fr)]">
-          <DashboardSurface accent="violet" className="overflow-hidden p-0">
-            <div className="flex items-center justify-between border-b border-white/10 px-6 py-5">
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-zinc-500">
-                  Tunnel inventory
-                </p>
-                <h2 className="mt-2 text-xl font-semibold text-white">Live reservations and forwarding targets</h2>
+        {/* Stats Grid */}
+        <section className="mt-12 grid gap-4 sm:grid-cols-3">
+          {statusCards.map((card) => (
+            <motion.div 
+              key={card.label}
+              variants={itemVariants}
+              whileHover={{ y: -2, borderColor: "rgba(255,255,255,0.1)" }}
+              className={`relative overflow-hidden rounded-xl border border-white/5 bg-zinc-900/40 p-5`}
+            >
+              <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-lg ${card.bg}`}>
+                  <card.icon className={`h-4 w-4 ${card.accent}`} />
+                </div>
+                <span className="text-xs font-medium text-zinc-500">{card.label}</span>
               </div>
-              <p className="text-xs uppercase tracking-[0.22em] text-zinc-500">
-                {isError ? "Degraded" : `${tunnels?.length ?? 0} total`}
-              </p>
-            </div>
+              <div className="mt-4 text-3xl font-bold text-white tabular-nums">{card.value}</div>
+            </motion.div>
+          ))}
+        </section>
 
+        {/* Chart & Token Manager */}
+        <section className="mt-8 grid gap-6 xl:grid-cols-[1fr_380px]">
+          <motion.div variants={itemVariants} className="rounded-2xl border border-white/5 bg-zinc-900/20 p-6">
+            <BandwidthChart currentUsage={activeCount > 0 ? 452.8 : 0} />
+          </motion.div>
+          <motion.div variants={itemVariants}>
+            <TokenManager />
+          </motion.div>
+        </section>
+
+        {/* Tunnel Inventory & Timeline */}
+        <section className="mt-8 grid gap-6 xl:grid-cols-[1fr_380px]">
+          <motion.div variants={itemVariants} className="overflow-hidden rounded-2xl border border-white/5 bg-zinc-900/20">
+            <div className="flex items-center justify-between border-b border-white/5 px-6 py-4 bg-white/[0.02]">
+              <h2 className="text-sm font-bold uppercase tracking-widest text-white">Tunnel Inventory</h2>
+              <span className="text-[10px] text-zinc-500">{tunnels?.length ?? 0} TOTAL</span>
+            </div>
+            
             <div className="overflow-x-auto">
-              <table className="min-w-full text-left">
-                <thead>
-                  <tr className="text-[10px] font-semibold uppercase tracking-[0.24em] text-zinc-500">
-                    <th className="border-b border-white/10 px-6 py-4">Subdomain</th>
-                    <th className="border-b border-white/10 px-6 py-4">Status</th>
-                    <th className="border-b border-white/10 px-6 py-4">Target</th>
+              <table className="w-full text-left">
+                <thead className="bg-white/[0.01]">
+                  <tr className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+                    <th className="px-6 py-3">Subdomain</th>
+                    <th className="px-6 py-3">Status</th>
+                    <th className="px-6 py-3">Target</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/10">
+                <tbody className="divide-y divide-white/5">
                   {isLoading ? (
-                    <tr>
-                      <td colSpan={3} className="px-6 py-16 text-center text-sm text-zinc-500">
-                        Scanning the control plane for active tunnel reservations...
-                      </td>
-                    </tr>
-                  ) : tunnels?.length === 0 || isError ? (
-                    <tr>
-                      <td colSpan={3} className="px-6 py-16 text-center text-sm text-zinc-500">
-                        {isError
-                          ? "The API is currently unreachable, so live tunnel inventory is unavailable."
-                          : "No active tunnel reservations were found yet."}
-                      </td>
-                    </tr>
+                    <tr><td colSpan={3} className="px-6 py-12 text-center text-sm text-zinc-600">Scanning control plane...</td></tr>
+                  ) : tunnels?.length === 0 ? (
+                    <tr><td colSpan={3} className="px-6 py-12 text-center text-sm text-zinc-600 font-mono">NO ACTIVE RESERVATIONS</td></tr>
                   ) : (
                     tunnels.map((tunnel: any) => (
-                      <tr key={tunnel.id} className="transition-colors hover:bg-white/[0.03]">
-                        <td className="px-6 py-5">
-                          <div className="text-base font-semibold text-white">
-                            {tunnel.subdomain}
-                            <span className="text-zinc-500">.binboi.link</span>
-                          </div>
-                          <div className="mt-1 text-[10px] uppercase tracking-[0.22em] text-zinc-600">
-                            {tunnel.id.slice(0, 12)}
-                          </div>
+                      <tr key={tunnel.id} className="hover:bg-white/[0.02] transition-colors">
+                        <td className="px-6 py-4">
+                          <div className="text-sm font-bold text-white">{tunnel.subdomain}<span className="text-zinc-600">.binboi.link</span></div>
                         </td>
-                        <td className="px-6 py-5">
-                          <span
-                            className={`inline-flex rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] ${
-                              tunnel.status === "ACTIVE"
-                                ? "border-white/10 bg-white/[0.03] text-zinc-100"
-                                : "border-white/10 bg-white/[0.03] text-zinc-300"
-                            }`}
-                          >
+                        <td className="px-6 py-4">
+                          <span className={`text-[9px] px-2 py-0.5 rounded border border-white/10 ${tunnel.status === 'ACTIVE' ? 'text-cyan-400 bg-cyan-400/5' : 'text-zinc-500'}`}>
                             {tunnel.status}
                           </span>
                         </td>
-                        <td className="px-6 py-5 text-sm text-zinc-400">{tunnel.target}</td>
+                        <td className="px-6 py-4 text-xs font-mono text-zinc-500">{tunnel.target}</td>
                       </tr>
                     ))
                   )}
                 </tbody>
               </table>
             </div>
-          </DashboardSurface>
+          </motion.div>
 
-          <DashboardTimeline
-            eyebrow="Operator path"
-            title="How the live tunnel workflow progresses"
-            items={setupTimeline}
-            className="h-full"
-          />
-        </div>
-
-        <div className="mt-8 grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(24rem,0.85fr)]">
-          <DashboardSurface accent="neutral" className="overflow-hidden p-0">
-            <div className="flex items-center justify-between border-b border-white/10 px-6 py-5">
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-zinc-500">
-                  Recent traffic
-                </p>
-                <h2 className="mt-2 text-xl font-semibold text-white">
-                  The newest request records flowing through the relay
-                </h2>
-              </div>
-              <p className="text-xs uppercase tracking-[0.22em] text-zinc-500">
-                {recentRequests.length > 0 ? `${recentRequests.length} live rows` : "Waiting"}
-              </p>
+          {/* Timeline Placeholder (Since we removed the primitive) */}
+          <motion.div variants={itemVariants} className="rounded-2xl border border-white/5 bg-zinc-900/20 p-6">
+            <h3 className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 mb-6">Operator Path</h3>
+            <div className="space-y-8">
+              {[
+                { title: "Issue CLI Token", done: !!session?.user, desc: "Create an access token for identity." },
+                { title: "Auth Agent", done: activeCount > 0, desc: "Run binboi login." },
+                { title: "Expose Traffic", done: requestVolume > 0, desc: "Reserve a subdomain." }
+              ].map((step, i) => (
+                <div key={i} className="relative flex gap-4">
+                  {i !== 2 && <div className="absolute left-2.5 top-6 w-px h-8 bg-white/5" />}
+                  <div className={`mt-1 h-5 w-5 rounded-full border-2 flex items-center justify-center shrink-0 ${step.done ? "border-cyan-400 bg-cyan-400/10" : "border-zinc-700"}`}>
+                    {step.done && <CheckCircle2 className="h-3 w-3 text-cyan-400" />}
+                  </div>
+                  <div>
+                    <h4 className={`text-sm font-bold ${step.done ? "text-white" : "text-zinc-600"}`}>{step.title}</h4>
+                    <p className="text-xs text-zinc-500 mt-1">{step.desc}</p>
+                  </div>
+                </div>
+              ))}
             </div>
+          </motion.div>
+        </section>
 
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-left">
-                <thead>
-                  <tr className="text-[10px] font-semibold uppercase tracking-[0.24em] text-zinc-500">
-                    <th className="border-b border-white/10 px-6 py-4">Path</th>
-                    <th className="border-b border-white/10 px-6 py-4">Status</th>
-                    <th className="border-b border-white/10 px-6 py-4">Latency</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/10">
-                  {recentRequests.length === 0 ? (
-                    <tr>
-                      <td colSpan={3} className="px-6 py-16 text-center text-sm text-zinc-500">
-                        New requests will appear here once public traffic reaches an active tunnel.
-                      </td>
+        {/* Recent Traffic Table */}
+        <section className="mt-8">
+          <motion.div variants={itemVariants} className="overflow-hidden rounded-2xl border border-white/5 bg-zinc-900/20">
+             <div className="flex items-center justify-between border-b border-white/5 px-6 py-4 bg-white/[0.02]">
+                <div className="flex items-center gap-2">
+                  <Terminal className="h-4 w-4 text-zinc-500" />
+                  <h2 className="text-sm font-bold uppercase tracking-widest text-white">Recent Traffic</h2>
+                </div>
+                <div className="flex items-center gap-2">
+                   <div className="h-1.5 w-1.5 rounded-full bg-cyan-400 animate-pulse" />
+                   <span className="text-[10px] text-zinc-500 uppercase">Live Stream</span>
+                </div>
+             </div>
+             <div className="overflow-x-auto">
+                <table className="w-full text-left">
+                  <thead className="bg-white/[0.01]">
+                    <tr className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+                      <th className="px-6 py-3">Request</th>
+                      <th className="px-6 py-3">Status</th>
+                      <th className="px-6 py-3">Latency</th>
                     </tr>
-                  ) : (
-                    recentRequests.map((request) => (
-                      <tr key={request.id} className="transition-colors hover:bg-white/[0.03]">
-                        <td className="px-6 py-5">
-                          <div className="text-sm font-semibold text-white">
-                            {request.method} {request.path}
-                          </div>
-                          <div className="mt-1 text-[10px] uppercase tracking-[0.22em] text-zinc-600">
-                            {request.tunnel_subdomain}
-                          </div>
-                        </td>
-                        <td className="px-6 py-5">
-                          <span
-                            className={`inline-flex rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] ${
-                              request.status >= 500
-                                ? "border-[#5e3b42]/30 bg-[#1a1416] text-[#e5c7cb]"
-                                : request.status >= 400
-                                  ? "border-white/10 bg-white/[0.03] text-[#dbcbb8]"
-                                  : "border-white/10 bg-white/[0.03] text-[#c8d7cc]"
-                            }`}
-                          >
-                            {request.status}
-                          </span>
-                        </td>
-                        <td className="px-6 py-5 text-sm text-zinc-400">
-                          {request.duration_ms} ms
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </DashboardSurface>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {requests.length === 0 ? (
+                      <tr><td colSpan={3} className="px-6 py-12 text-center text-sm text-zinc-600 font-mono uppercase">Waiting for ingress...</td></tr>
+                    ) : (
+                      requests.slice(0, 5).map((req: any) => (
+                        <tr key={req.id} className="hover:bg-white/[0.02] transition-colors">
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-bold text-cyan-400">{req.method}</span>
+                              <span className="text-sm font-medium text-white">{req.path}</span>
+                            </div>
+                            <div className="text-[10px] text-zinc-600 mt-1 uppercase tracking-tight">{req.tunnel_subdomain}</div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                              req.status >= 500 ? 'bg-red-500/10 text-red-400' : 
+                              req.status >= 400 ? 'bg-amber-500/10 text-amber-400' : 'bg-emerald-500/10 text-emerald-400'
+                            }`}>
+                              {req.status}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-xs font-mono text-zinc-500">{req.duration_ms}ms</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+             </div>
+          </motion.div>
+        </section>
 
-          <DashboardTimeline
-            eyebrow="Product loop"
-            title="How the core tunnel flow now behaves"
-            items={[
-              {
-                label: "CLI",
-                title: "Authenticate and attach the local agent",
-                description:
-                  "Run binboi login, then open a tunnel so the relay can attach the session and mark it active.",
-                status: activeCount > 0 ? "complete" : "active",
-                meta: activeCount > 0 ? "Connected" : "Pending",
-              },
-              {
-                label: "Traffic",
-                title: "Public requests are captured into request inspection",
-                description:
-                  "Each proxy hit now records method, path, status, duration, preview, and headers for the requests page.",
-                status: recentRequests.length > 0 ? "complete" : "waiting",
-                meta: recentRequests.length > 0 ? `${recentRequests.length} rows` : "Waiting",
-              },
-              {
-                label: "Debug",
-                title: "Failures can be explained from one surface",
-                description:
-                  "Request and webhook failures can be opened, inspected, and sent to the assistant for likely-cause analysis.",
-                status: recentRequests.some((request) => request.status >= 400) ? "active" : "waiting",
-                meta: recentRequests.some((request) => request.status >= 400) ? "Explainable" : "Ready",
-              },
-            ]}
-          />
-        </div>
-
-        {/* <TerminalLog /> */}
       </div>
-    </div>
+    </motion.main>
   );
 }

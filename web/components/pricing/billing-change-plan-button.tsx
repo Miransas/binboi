@@ -6,15 +6,20 @@ import { useRouter } from "next/navigation";
 
 import { buildLoginHref } from "@/lib/auth-routing";
 import type { BillingPlan } from "@/lib/pricing";
+import { cn } from "@/lib/utils";
 
 export function BillingChangePlanButton({
   plan,
   label,
   onChanged,
+  callbackPath = "/dashboard/billing",
+  className,
 }: {
   plan: Exclude<BillingPlan, "FREE">;
   label: string;
   onChanged?: () => void;
+  callbackPath?: string;
+  className?: string;
 }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -35,7 +40,7 @@ export function BillingChangePlanButton({
       const body = (await response.json().catch(() => ({}))) as { error?: string };
 
       if (response.status === 401) {
-        router.push(buildLoginHref("/dashboard/billing"));
+        router.push(buildLoginHref(callbackPath));
         return;
       }
 
@@ -61,7 +66,10 @@ export function BillingChangePlanButton({
         type="button"
         onClick={() => void submit()}
         disabled={loading}
-        className="inline-flex w-full items-center justify-center rounded-full border border-white/12 bg-white/[0.03] px-4 py-2.5 text-sm font-semibold text-white transition hover:border-white/20 hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-70"
+        className={cn(
+          "inline-flex w-full items-center justify-center rounded-full border border-white/12 bg-white/[0.03] px-4 py-2.5 text-sm font-semibold text-white transition hover:border-white/20 hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-70",
+          className,
+        )}
       >
         {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : label}
       </button>

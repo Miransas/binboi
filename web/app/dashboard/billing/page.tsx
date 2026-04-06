@@ -1,7 +1,19 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { CreditCard, RefreshCcw, ShieldCheck, Sparkles } from "lucide-react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { 
+  CreditCard, 
+  RefreshCcw, 
+  ShieldCheck, 
+  Sparkles, 
+  Zap, 
+  Calendar, 
+  CheckCircle2, 
+  AlertCircle,
+  ArrowUpRight
+} from "lucide-react";
 
 import { BillingChangePlanButton } from "@/components/pricing/billing-change-plan-button";
 import { BillingCancelButton } from "@/components/pricing/billing-cancel-button";
@@ -9,28 +21,13 @@ import { BillingCheckoutButton } from "@/components/pricing/billing-checkout-but
 import { usePricingPlan } from "@/components/provider/pricing-plan-provider";
 import { useRegisterAssistantContext } from "@/components/shared/assistant-context";
 import { getNextPlan, getPricingPlan, type BillingPlan } from "@/lib/pricing";
-import { PremiumDashboardShell } from "../_components/premium-dashboard-shell";
-import {
-  dashboardGhostButtonClass,
-  dashboardIconTileClass,
-  dashboardInsetPanelClass,
-  dashboardMiniStatClass,
-  dashboardMutedTextClass,
-  dashboardPanelClass,
-  dashboardPrimaryButtonClass,
-  dashboardSecondaryButtonClass,
-} from "../_components/dashboard-ui";
 
+// --- Types ---
 type BillingState = {
   mode: "account" | "preview";
   configured: boolean;
   checkout_enabled: boolean;
-  user: {
-    id: string;
-    name: string;
-    email: string;
-    plan: BillingPlan;
-  };
+  user: { id: string; name: string; email: string; plan: BillingPlan; };
   subscription: {
     plan: BillingPlan;
     status: string;
@@ -41,15 +38,21 @@ type BillingState = {
   };
 };
 
-function formatDate(value: string | null) {
-  if (!value) {
-    return "Not scheduled";
-  }
+// --- Framer Motion Variants ---
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
+};
 
+const itemVariants = {
+  hidden: { y: 20, opacity: 0 },
+  visible: { y: 0, opacity: 1, transition: { duration: 0.5 } }
+};
+
+function formatDate(value: string | null) {
+  if (!value) return "Not scheduled";
   return new Date(value).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
+    year: "numeric", month: "short", day: "numeric",
   });
 }
 
@@ -61,32 +64,23 @@ export default function BillingPage() {
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async (background = false) => {
-    if (background) {
-      setRefreshing(true);
-    } else {
-      setLoading(true);
-    }
-
+    if (background) setRefreshing(true); else setLoading(true);
     try {
       const response = await fetch("/api/billing", { cache: "no-store" });
-      const body = (await response.json()) as BillingState & { error?: string };
-      if (!response.ok) {
-        throw new Error(body.error || "Could not load billing state.");
-      }
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error || "Billing load failed");
       setState(body);
       setError(null);
       void refreshPlan();
-    } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : "Could not load billing state.");
+    } catch (err: any) {
+      setError(err.message);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   }, [refreshPlan]);
 
-  useEffect(() => {
-    void load();
-  }, [load]);
+  useEffect(() => { void load(); }, [load]);
 
   const activePlan = getPricingPlan(state?.subscription.plan || "FREE");
   const nextPlan = getNextPlan(state?.subscription.plan || "FREE");
@@ -96,198 +90,195 @@ export default function BillingPage() {
       path: "/dashboard/billing",
       title: "Billing",
       area: "dashboard",
-      summary: state
-        ? `Billing is showing the ${state.subscription.plan} plan with ${state.subscription.status} subscription status.`
-        : "Billing is loading the current plan and subscription state.",
-    },
-    requestContext: {
-      summary: state
-        ? `Current plan is ${state.subscription.plan} with subscription status ${state.subscription.status}.`
-        : "Billing data is still loading.",
+      summary: state 
+        ? `Billing is showing the ${state.subscription.plan} plan.` 
+        : "Loading billing state...",
     },
   });
 
-  const highlights = useMemo(
-    () => [
-      {
-        label: "Current plan",
-        value: activePlan.name,
-        note: "This is the effective plan currently applied to your dashboard features.",
-      },
-      {
-        label: "Subscription",
-        value: state?.subscription.status || "FREE",
-        note: "Subscription state comes from Paddle webhooks and stays server-side.",
-      },
-      {
-        label: "Renewal",
-        value: formatDate(state?.subscription.renewalDate || null),
-        note: error || "Renewal timing is updated by subscription.created, updated, and canceled events.",
-      },
-    ],
-    [activePlan.name, error, state?.subscription.renewalDate, state?.subscription.status],
-  );
-
   return (
-    <PremiumDashboardShell
-      eyebrow="Billing"
-      title="Manage your Binboi subscription"
-      description="Binboi uses Paddle as Merchant of Record. Upgrade with hosted checkout, see the current plan and renewal state, and cancel at the end of the billing period without exposing any payment secrets to the browser."
-      highlights={highlights}
-      panels={[
-        {
-          title: "Hosted checkout first",
-          description: "Paid upgrades open a Paddle hosted checkout so the MVP stays simple, safe, and easier to maintain than a custom card form.",
-        },
-        {
-          title: "Webhook-driven plan state",
-          description: "The dashboard unlocks plan features from server-side subscription state. Paddle webhooks update the database, then the UI reads the effective plan back through the billing API.",
-        },
-      ]}
+    <motion.main 
+      initial="hidden" animate="visible" variants={containerVariants}
+      className="relative min-h-screen bg-[#050506] px-4 py-12 text-zinc-300 sm:px-6 lg:px-12"
     >
-      <section className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-        <section className={dashboardPanelClass("neutral", "p-6")}>
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className={dashboardIconTileClass("blue")}>
-                <CreditCard className="h-4.5 w-4.5" />
-              </div>
-              <div>
-                <h2 className="text-xl font-semibold tracking-[-0.02em] text-white">
-                  Current billing state
-                </h2>
-                <p className="mt-1 text-sm text-[rgba(194,203,219,0.7)]">
-                  {state?.user.email || "Loading signed-in workspace..."}
-                </p>
-              </div>
-            </div>
+      {/* Background Ambient Glow */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute top-0 right-[10%] h-[500px] w-[500px] rounded-full bg-violet-600/5 blur-[120px]" />
+        <div className="absolute bottom-0 left-[10%] h-[400px] w-[400px] rounded-full bg-cyan-600/5 blur-[120px]" />
+      </div>
 
-            <button
-              type="button"
-              onClick={() => void load(true)}
-              disabled={loading || refreshing}
-              className={dashboardGhostButtonClass}
-            >
-              <RefreshCcw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
-            </button>
+      <div className="relative mx-auto max-w-6xl">
+        
+        {/* Header Section */}
+        <motion.section variants={itemVariants} className="mb-12">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-cyan-500/20 bg-cyan-500/5 mb-6">
+            <CreditCard className="h-3.5 w-3.5 text-cyan-400" />
+            <span className="text-[10px] font-bold uppercase tracking-widest text-cyan-400">Subscription Engine</span>
+          </div>
+          <h1 className="text-4xl font-bold tracking-tight text-white sm:text-5xl">Billing & Plans</h1>
+          <p className="mt-4 text-zinc-500 max-w-2xl text-lg leading-relaxed">
+            Manage your workspace plan and subscription through Paddle. High-performance tunneling requires stable infrastructure.
+          </p>
+        </motion.section>
+
+        {/* Top Highlights Grid */}
+        <motion.section variants={itemVariants} className="grid gap-4 md:grid-cols-3 mb-8">
+          {[
+            { label: "Active Plan", value: activePlan.name, icon: Zap, color: "text-amber-400" },
+            { label: "Status", value: state?.subscription.status || "FREE", icon: ShieldCheck, color: "text-emerald-400" },
+            { label: "Next Renewal", value: formatDate(state?.subscription.renewalDate || null), icon: Calendar, color: "text-cyan-400" }
+          ].map((item, i) => (
+            <div key={i} className="rounded-2xl border border-white/5 bg-zinc-900/20 p-6 backdrop-blur-sm">
+              <div className="flex items-center gap-3 text-zinc-500 mb-2">
+                <item.icon className={`h-4 w-4 ${item.color}`} />
+                <span className="text-[10px] font-bold uppercase tracking-widest">{item.label}</span>
+              </div>
+              <div className="text-xl font-bold text-white tabular-nums">{item.value}</div>
+            </div>
+          ))}
+        </motion.section>
+
+        <div className="grid gap-8 xl:grid-cols-[1fr_400px]">
+          
+          {/* Left: Current State & Info */}
+          <div className="space-y-6">
+            <motion.section variants={itemVariants} className="rounded-2xl border border-white/5 bg-zinc-900/20 p-8">
+              <div className="flex items-center justify-between mb-8">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 rounded-xl bg-cyan-500/10 border border-cyan-500/20">
+                    <CreditCard className="h-5 w-5 text-cyan-400" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-white">Billing Overview</h2>
+                    <p className="text-xs text-zinc-500 mt-1 font-mono">{state?.user.email || "Fetching identity..."}</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => void load(true)}
+                  className="p-2 rounded-lg hover:bg-white/5 transition-colors"
+                >
+                  <RefreshCcw className={`h-4 w-4 text-zinc-500 ${refreshing ? 'animate-spin' : ''}`} />
+                </button>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                {[
+                  { label: "Plan Type", val: activePlan.name },
+                  { label: "Sub Status", val: state?.subscription.status || "N/A" },
+                  { label: "Renewal", val: formatDate(state?.subscription.renewalDate || null) },
+                  { label: "Auto-Renew", val: state?.subscription.cancelAtPeriodEnd ? "Disabled" : "Enabled" }
+                ].map((stat, i) => (
+                  <div key={i} className="p-4 rounded-xl bg-black/40 border border-white/5">
+                    <p className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest mb-1">{stat.label}</p>
+                    <p className="text-sm font-medium text-zinc-300">{stat.val}</p>
+                  </div>
+                ))}
+              </div>
+
+              <AnimatePresence>
+                {(!state?.configured || state?.mode === "preview") && (
+                  <motion.div 
+                    initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}
+                    className="mt-8 p-4 rounded-xl border border-amber-500/20 bg-amber-500/5 flex gap-4"
+                  >
+                    <AlertCircle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+                    <div className="text-xs leading-relaxed text-amber-200/70">
+                      {!state?.configured 
+                        ? "Paddle environment variables are missing. Checkout is disabled for this instance." 
+                        : "Local preview mode active. Real subscriptions require a database and authentication."}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.section>
+
+            {/* Plan Features List */}
+            <motion.section variants={itemVariants} className="p-8 rounded-2xl border border-white/5 bg-zinc-950/40">
+              <h3 className="text-sm font-bold text-white mb-6 flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                Plan Entitlements
+              </h3>
+              <div className="space-y-4">
+                {[
+                  { plan: "Free", desc: "1 tunnel, 24h logs, community support." },
+                  { plan: "Pro", desc: "Unlimited tunnels, 7d logs, custom domains, AI analysis." },
+                  { plan: "Scale", desc: "Advanced logging, priority infrastructure, API access." }
+                ].map((f, i) => (
+                  <div key={i} className="flex items-start gap-4 p-3 rounded-lg hover:bg-white/[0.02] transition-colors">
+                    <div className="text-xs font-bold text-zinc-500 w-12 pt-0.5 uppercase">{f.plan}</div>
+                    <p className="text-sm text-zinc-400 leading-relaxed">{f.desc}</p>
+                  </div>
+                ))}
+              </div>
+            </motion.section>
           </div>
 
-          <div className="mt-6 grid gap-3 sm:grid-cols-2">
-            <div className={dashboardMiniStatClass}>
-              <p className="text-[10px] uppercase tracking-[0.22em] text-zinc-500">Plan</p>
-              <p className="mt-2 text-lg font-semibold text-white">{activePlan.name}</p>
+          {/* Right: Actions & Upgrades */}
+          <motion.section variants={itemVariants} className="space-y-6">
+            <div className="rounded-2xl border border-white/5 bg-zinc-900/20 p-8 backdrop-blur-sm">
+              <div className="flex items-center gap-3 mb-8">
+                <div className="p-3 rounded-xl bg-violet-500/10 border border-violet-500/20">
+                  <Sparkles className="h-5 w-5 text-violet-400" />
+                </div>
+                <h2 className="text-xl font-bold text-white">Upgrade Flow</h2>
+              </div>
+
+              <div className="space-y-4">
+                {/* Dynamically Render Paddle Buttons with Binboi Styling */}
+                {nextPlan === "PRO" && (
+                  <div className="group relative">
+                    <div className="absolute -inset-0.5 bg-gradient-to-r from-violet-500 to-cyan-500 rounded-xl opacity-20 blur group-hover:opacity-40 transition" />
+                    <BillingCheckoutButton 
+                      plan="PRO" label="Upgrade to Pro" 
+                      className="relative w-full flex items-center justify-between py-4 px-6 bg-violet-600 hover:bg-violet-500 text-white rounded-xl font-bold transition-all active:scale-[0.98]" 
+                    />
+                  </div>
+                )}
+
+                {nextPlan === "SCALE" && (
+                  <BillingCheckoutButton 
+                    plan="SCALE" label="Move to Scale" 
+                    className="w-full py-4 px-6 bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl font-bold transition-all flex items-center justify-between" 
+                  />
+                )}
+
+                {/* Manage Existing Subscription */}
+                {state?.subscription.plan !== "FREE" && state?.subscription.status !== "CANCELED" && (
+                  <div className="pt-6 mt-6 border-t border-white/5 space-y-4">
+                    <p className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest text-center">Management Actions</p>
+                    
+                    {state?.subscription.plan === "SCALE" && (
+                      <div className="flex justify-center">
+                        <BillingChangePlanButton 
+                          plan="PRO" label="Downgrade to Pro" 
+                          onChanged={() => void load(true)}
+                          className="text-sm text-zinc-400 hover:text-white transition-colors"
+                        />
+                      </div>
+                    )}
+                    
+                    <div className="flex justify-center">
+                      <BillingCancelButton 
+                        onCanceled={() => void load(true)}
+                        className="text-xs text-red-500/60 hover:text-red-400 transition-colors"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
-            <div className={dashboardMiniStatClass}>
-              <p className="text-[10px] uppercase tracking-[0.22em] text-zinc-500">Status</p>
-              <p className="mt-2 text-lg font-semibold text-white">
-                {loading && !state ? "Loading..." : state?.subscription.status || "FREE"}
+
+            {/* Trust Banner */}
+            <div className="p-6 rounded-2xl border border-white/5 bg-black/40 text-center">
+              <ShieldCheck className="h-6 w-6 text-zinc-700 mx-auto mb-3" />
+              <p className="text-xs text-zinc-500 leading-relaxed">
+                Binboi uses <span className="text-zinc-300 font-medium">Paddle</span> as Merchant of Record. Your payment secrets never hit our servers.
               </p>
             </div>
-            <div className={dashboardMiniStatClass}>
-              <p className="text-[10px] uppercase tracking-[0.22em] text-zinc-500">Renewal</p>
-              <p className="mt-2 text-lg font-semibold text-white">
-                {formatDate(state?.subscription.renewalDate || null)}
-              </p>
-            </div>
-            <div className={dashboardMiniStatClass}>
-              <p className="text-[10px] uppercase tracking-[0.22em] text-zinc-500">Cancel behavior</p>
-              <p className="mt-2 text-lg font-semibold text-white">
-                {state?.subscription.cancelAtPeriodEnd ? "Ends this cycle" : "Auto renew"}
-              </p>
-            </div>
-          </div>
+          </motion.section>
 
-          {error ? <p className="mt-4 text-sm text-red-300">{error}</p> : null}
-
-          {!state?.configured ? (
-            <div className={dashboardInsetPanelClass("orange", "mt-6 text-sm leading-7 text-[#f8ddc3]")}>
-              Paddle is not configured for this deployment yet. Set `PADDLE_API_KEY`,
-              `PADDLE_CLIENT_TOKEN`, `PADDLE_WEBHOOK_SECRET`, `PADDLE_PRO_PRICE_ID`, and
-              `PADDLE_SCALE_PRICE_ID` before using hosted checkout.
-            </div>
-          ) : null}
-
-          {state?.mode === "preview" ? (
-            <div className={dashboardInsetPanelClass("neutral", "mt-6 text-sm leading-7 text-[rgba(214,219,228,0.8)]")}>
-              Billing requires database-backed auth mode. Local preview keeps the UI coherent, but
-              real Paddle subscriptions need a signed-in account and Postgres.
-            </div>
-          ) : null}
-        </section>
-
-        <section className={dashboardPanelClass("blue", "p-6")}>
-          <div className="flex items-center gap-3">
-            <div className={dashboardIconTileClass("orange")}>
-              <Sparkles className="h-4.5 w-4.5" />
-            </div>
-            <div>
-              <h2 className="text-xl font-semibold tracking-[-0.02em] text-white">
-                Upgrade or change plan
-              </h2>
-              <p className="mt-1 text-sm text-[rgba(194,203,219,0.7)]">
-                Move up when you need more history, unlimited AI explain, and stronger infrastructure priority.
-              </p>
-            </div>
-          </div>
-
-          <div className="dashboard-action-stack mt-6 space-y-4">
-            {nextPlan === "PRO" ? (
-              <BillingCheckoutButton
-                plan="PRO"
-                label="Upgrade to Pro"
-                className={`w-full ${dashboardPrimaryButtonClass}`}
-              />
-            ) : null}
-            {nextPlan === "SCALE" ? (
-              <BillingCheckoutButton
-                plan="SCALE"
-                label="Go Scale"
-                className={`w-full ${dashboardPrimaryButtonClass}`}
-              />
-            ) : null}
-            {state?.subscription.plan === "FREE" ? (
-              <BillingCheckoutButton
-                plan="PRO"
-                label="Upgrade to Pro"
-                className={`w-full ${dashboardSecondaryButtonClass}`}
-                variant="secondary"
-              />
-            ) : null}
-            {state?.subscription.plan !== "SCALE" ? (
-              <BillingCheckoutButton
-                plan="SCALE"
-                label="Go Scale"
-                className={`w-full ${dashboardSecondaryButtonClass}`}
-                variant="secondary"
-              />
-            ) : null}
-            {state?.subscription.plan === "SCALE" &&
-            state?.subscription.status !== "CANCELED" ? (
-              <div className="dashboard-secondary-action">
-                <BillingChangePlanButton plan="PRO" label="Downgrade to Pro" onChanged={() => void load(true)} />
-              </div>
-            ) : null}
-            {state?.subscription.plan !== "FREE" &&
-            state?.subscription.status !== "CANCELED" ? (
-              <div className="dashboard-danger-action">
-                <BillingCancelButton onCanceled={() => void load(true)} />
-              </div>
-            ) : null}
-          </div>
-
-          <div className={dashboardInsetPanelClass("neutral", "mt-6 p-5")}>
-            <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
-              <ShieldCheck className="h-3.5 w-3.5 text-miransas-cyan" />
-              What unlocks
-            </div>
-            <div className={`mt-4 space-y-3 ${dashboardMutedTextClass}`}>
-              <p>Free: one active tunnel, capped AI explain, short logs retention, and limited history.</p>
-              <p>Pro: unlimited tunnels, custom domains, full request history, full webhook debugging, and unlimited AI explain.</p>
-              <p>Scale: everything in Pro, plus advanced logs, priority infrastructure, and future-ready team and API surfaces.</p>
-            </div>
-          </div>
-        </section>
-      </section>
-    </PremiumDashboardShell>
+        </div>
+      </div>
+    </motion.main>
   );
 }

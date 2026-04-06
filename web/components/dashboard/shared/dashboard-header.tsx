@@ -1,100 +1,250 @@
 "use client";
 
+import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent as ReactMouseEvent } from "react";
+import { Menu, Search, Sparkles } from "lucide-react";
+import { useSession } from "next-auth/react";
 
-import { SidebarTrigger } from "@/components/animate-ui/components/radix/sidebar";
 import { useAssistantContext } from "@/components/shared/assistant-context";
-import { usePricingPlan } from "@/components/provider/pricing-plan-provider";
-import { AssistantLauncher } from "@/components/site/shared/assistant-launcher";
-import { getPricingPlan } from "@/lib/pricing";
+import { DASHBOARD_LINKS } from "@/constants";
+import { cn } from "@/lib/utils";
 
-import { getDashboardHeaderConfig } from "./dashboard-header-config";
-import { useDashboardScrollState } from "./use-dashboard-scroll-state";
+type HeaderProps = {
+  collapsed: boolean;
+  onToggle: () => void;
+  onNavigate?: (href: string) => void;
+};
 
-export default function DashboardHeader() {
+type SearchResult = {
+  href: string;
+  label: string;
+  section: string;
+};
+
+function isActiveRoute(pathname: string, href: string) {
+  if (href === "/dashboard") {
+    return pathname === href;
+  }
+
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+export default function DashboardHeader({
+  collapsed,
+  onToggle,
+  onNavigate,
+}: HeaderProps) {
   const pathname = usePathname();
   const { pageLabel, context } = useAssistantContext();
-  const { plan } = usePricingPlan();
-  const activePlan = getPricingPlan(plan);
-  const isScrolled = useDashboardScrollState();
-  const headerConfig = getDashboardHeaderConfig(pathname);
+  const { data: session } = useSession();
+  const [query, setQuery] = useState("");
+  const [focused, setFocused] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
+
+  const searchItems = useMemo<SearchResult[]>(
+    () =>
+      DASHBOARD_LINKS.flatMap((section) =>
+        section.items.map((item) => ({
+          href: item.href,
+          label: item.label,
+          section: section.title,
+        })),
+      ).filter((item) => item.href !== pathname),
+    [pathname],
+  );
+
+  const searchResults = useMemo(() => {
+    const value = query.trim().toLowerCase();
+    if (!value) {
+      return searchItems.slice(0, 6);
+    }
+
+    return searchItems
+      .filter((item) => {
+        const haystack = `${item.label} ${item.section} ${item.href}`.toLowerCase();
+        return haystack.includes(value);
+      })
+      .slice(0, 6);
+  }, [query, searchItems]);
+
+  const accountName =
+    session?.user?.name?.trim() || session?.user?.email?.trim() || "Account";
+  const accountEmail = session?.user?.email?.trim() || "Manage your workspace";
+  const initials = accountName
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join("");
+
   const summary =
     context.currentPage?.summary ||
-    "Search docs, runtime clues, and troubleshooting guidance from the dashboard.";
-  const isCompact = isScrolled || !headerConfig.isHome;
-  const showSummary = headerConfig.isHome && !isCompact;
+    "Manage tunnels, traffic, auth, and billing from one stable workspace.";
+
+  const handleNavigate = (href: string) => {
+    setFocused(false);
+    setQuery("");
+    if (onNavigate) {
+      onNavigate(href);
+      return;
+    }
+    window.location.href = href;
+  };
+
+  const handleSearchKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Escape") {
+      setFocused(false);
+      return;
+    }
+
+    if (event.key === "Enter" && searchResults[0]) {
+      event.preventDefault();
+      handleNavigate(searchResults[0].href);
+    }
+  };
+
+  const handleActionClick = (
+    href: string,
+    event: ReactMouseEvent<HTMLAnchorElement>,
+  ) => {
+    if (!onNavigate) {
+      return;
+    }
+
+    event.preventDefault();
+    handleNavigate(href);
+  };
+
+  useEffect(() => {
+    function handlePointerDown(event: PointerEvent) {
+      if (!searchRef.current?.contains(event.target as Node)) {
+        setFocused(false);
+      }
+    }
+
+    window.addEventListener("pointerdown", handlePointerDown);
+    return () => window.removeEventListener("pointerdown", handlePointerDown);
+  }, []);
 
   return (
-    <div
-      className={`sticky top-0 z-30 px-4 transition-[padding] duration-300 sm:px-6 lg:px-8 ${
-        isCompact ? "pb-2 pt-3" : "pb-3 pt-4"
-      }`}
-    >
-      <section className="rounded-xl border border-white/8 bg-[#101113]/95">
-        <div className={`transition-all duration-300 ${isCompact ? "px-4 py-3 sm:px-5" : "px-5 py-4 sm:px-6"}`}>
-          <div className="flex flex-col gap-3">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-              <div className="flex min-w-0 items-start gap-3">
-                <SidebarTrigger className="mt-0.5 rounded-lg border border-white/10 bg-white/[0.03] text-zinc-200 hover:bg-white/[0.06]" />
-                <div
-                  className={`inline-flex shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/[0.03] text-zinc-100 transition-all duration-300 ${
-                    isCompact ? "h-8 w-8" : "h-9 w-9"
-                  }`}
-                >
-                  <LayoutDashboard className="h-4 w-4" />
+    <header className="sticky top-0 z-30 border-b border-white/10 bg-[#09090b]/95 backdrop-blur">
+      <div className="px-4 py-4 sm:px-6 lg:px-8">
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+            <div className="flex min-w-0 items-start gap-3">
+              <button
+                type="button"
+                onClick={onToggle}
+                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-zinc-200 transition hover:border-white/15 hover:bg-white/[0.06] hover:text-white"
+                aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+              >
+                <Menu className="h-4 w-4" />
+              </button>
+              <div className="min-w-0">
+                <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-zinc-500">
+                  Dashboard
+                </p>
+                <h1 className="mt-2 truncate text-2xl font-semibold tracking-tight text-white">
+                  {pageLabel}
+                </h1>
+                <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400">
+                  {summary}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+              <div ref={searchRef} className="relative w-full min-w-0 lg:w-[360px]">
+                <div className="flex h-11 items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 text-zinc-400 transition focus-within:border-white/20 focus-within:bg-white/[0.05] focus-within:text-zinc-200">
+                  <Search className="h-4 w-4 shrink-0" />
+                  <input
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                    onFocus={() => setFocused(true)}
+                    onKeyDown={handleSearchKeyDown}
+                    placeholder="Search dashboard pages"
+                    className="h-full w-full bg-transparent text-sm text-white outline-none placeholder:text-zinc-500"
+                  />
                 </div>
-                <div className="min-w-0">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-zinc-500">
-                    {headerConfig.eyebrow}
-                  </p>
-                  <div className={`${isCompact ? "mt-2" : "mt-3"} flex min-w-0 items-center gap-2`}>
-                    <h1
-                      className={`truncate font-semibold tracking-tight text-white transition-all duration-300 ${
-                        isCompact ? "text-[1.05rem] sm:text-[1.15rem]" : "text-[1.45rem] sm:text-[1.65rem]"
-                      }`}
+
+                <AnimatePresence>
+                  {focused && searchResults.length > 0 ? (
+                    <motion.div
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 8 }}
+                      transition={{ duration: 0.16, ease: "easeOut" }}
+                      className="absolute left-0 right-0 top-[calc(100%+10px)] overflow-hidden rounded-xl border border-white/10 bg-[#111114] shadow-2xl"
                     >
-                      {pageLabel}
-                    </h1>
-                    {headerConfig.mode === "focus" ? (
-                      <span className="hidden rounded-lg border border-white/8 bg-white/[0.03] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-500 sm:inline-flex">
-                        Focused view
-                      </span>
-                    ) : null}
-                  </div>
-                  {showSummary ? (
-                    <p className="mt-2 max-w-3xl text-sm leading-7 text-zinc-400 transition-all duration-300">
-                      {summary}
-                    </p>
+                      <div className="border-b border-white/6 px-3 py-2 text-[11px] font-medium uppercase tracking-[0.18em] text-zinc-500">
+                        {query.trim() ? "Matching pages" : "Quick links"}
+                      </div>
+                      <div className="p-1.5">
+                        {searchResults.map((item) => (
+                          <button
+                            key={item.href}
+                            type="button"
+                            onClick={() => handleNavigate(item.href)}
+                            className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left transition hover:bg-white/[0.04]"
+                          >
+                            <div className="min-w-0">
+                              <div className="truncate text-sm font-medium text-zinc-100">
+                                {item.label}
+                              </div>
+                              <div className="truncate text-xs text-zinc-500">
+                                {item.section}
+                              </div>
+                            </div>
+                            <span className="ml-4 shrink-0 text-[11px] text-zinc-600">
+                              {item.href.replace("/dashboard", "") || "/"}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </motion.div>
                   ) : null}
-                </div>
+                </AnimatePresence>
               </div>
 
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
-                <AssistantLauncher
-                  variant="dashboard"
-                  storageKey="dashboard-global"
-                  density="compact"
-                />
-                {headerConfig.isHome ? (
-                  <div className="flex items-center gap-2">
-                    <div className="inline-flex h-10 items-center rounded-lg border border-white/8 bg-white/[0.03] px-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-300">
-                      {activePlan.name}
-                    </div>
-                    <Link
-                      href="/dashboard/billing"
-                      className="inline-flex h-10 items-center rounded-lg border border-white/8 bg-white/[0.03] px-3.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-300 transition hover:bg-white/[0.06] hover:text-white"
-                    >
-                      Billing
-                    </Link>
+              <div className="flex items-center gap-3">
+                <Link
+                  href="/dashboard/ai"
+                  onClick={(event) => handleActionClick("/dashboard/ai", event)}
+                  className={cn(
+                    "inline-flex h-11 items-center justify-center rounded-xl border px-4 text-sm font-medium transition",
+                    isActiveRoute(pathname, "/dashboard/ai")
+                      ? "border-white/20 bg-white/[0.08] text-white"
+                      : "border-white/10 bg-white/[0.03] text-zinc-200 hover:border-white/15 hover:bg-white/[0.06] hover:text-white",
+                  )}
+                >
+                  <Sparkles className="mr-2 h-4 w-4" />
+                  Try AI
+                </Link>
+
+                <Link
+                  href="/dashboard/user-management"
+                  onClick={(event) => handleActionClick("/dashboard/user-management", event)}
+                  className="inline-flex min-w-0 items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-left transition hover:border-white/15 hover:bg-white/[0.06]"
+                >
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/[0.06] text-sm font-semibold text-white">
+                    {initials || "BA"}
                   </div>
-                ) : null}
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-medium text-zinc-100">
+                      {accountName}
+                    </div>
+                    <div className="truncate text-xs text-zinc-500">
+                      {accountEmail}
+                    </div>
+                  </div>
+                </Link>
               </div>
             </div>
           </div>
         </div>
-      </section>
-    </div>
+      </div>
+    </header>
   );
 }
