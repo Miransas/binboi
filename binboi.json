@@ -1,14 +1,33 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "name": "binboi",
   "displayName": "Binboi",
+  "projectId": "miransas.binboi",
   "version": "0.4.0",
   "webVersion": "0.1.0",
+  "releaseChannel": "candidate",
+  "apiVersion": "v1",
+  "releaseDate": "2026-04-06",
   "repository": "https://github.com/Miransas/binboi",
   "license": "MIT",
   "owner": "Miransas",
   "maintainer": "Sardor Azimov",
-  "description": "Self-hosted tunneling platform with a Go control plane, CLI agent, and Next.js web dashboard.",
+  "description": "Self-hosted tunneling platform with a Go control plane, CLI agent, and Next.js product app.",
+  "deployMode": {
+    "default": "local-full-stack",
+    "supported": ["local-preview", "local-full-stack", "staging", "production-like"]
+  },
+  "buildTarget": {
+    "type": "multi-platform-cli",
+    "platforms": ["darwin/amd64", "darwin/arm64", "linux/amd64", "linux/arm64"]
+  },
+  "versions": {
+    "go": "1.25.6",
+    "next": "16.2.1",
+    "react": "19.2.4"
+  },
+  "minimumCliVersion": "0.4.0",
+  "supportTier": "community-supported",
   "components": {
     "server": {
       "language": "Go",
@@ -17,7 +36,8 @@
     },
     "cli": {
       "language": "Go",
-      "entrypoint": "./cmd/binboi-client"
+      "entrypoint": "./cmd/binboi-client",
+      "binaryName": "binboi"
     },
     "web": {
       "language": "TypeScript",
@@ -32,12 +52,26 @@
     "proxy": 8000,
     "web": 3000
   },
+  "distribution": {
+    "supported": ["homebrew", "direct-binary", "install-script", "go-source"],
+    "planned": ["npm", "bun", "cargo", "apt", "pip"]
+  },
   "storage": ["SQLite", "Postgres"],
   "optionalIntegrations": ["GitHub OAuth", "OpenAI", "Paddle"],
   "docs": {
-    "readme": "./README.md",
+    "readme": "./README",
     "architecture": "./docs/architecture-overview.md",
     "apiRequirements": "./docs/api-requirements.md",
-    "releaseGuide": "./docs/releasing-cli.md"
+    "releaseGuide": "./docs/releasing-cli.md",
+    "installMatrix": "./docs/install-channel-matrix.md",
+    "releaseNotesUrl": "https://github.com/Miransas/binboi/releases"
+  },
+  "endpoints": {
+    "dashboardUrl": "http://127.0.0.1:3000/dashboard",
+    "publicDashboardUrl": "http://127.0.0.1:3000/dashboard",
+    "apiBaseUrl": "http://127.0.0.1:8080",
+    "proxyBaseUrl": "http://binboi.localhost:8000",
+    "health": "/api/v1/health",
+    "metrics": "/metrics"
   }
 }

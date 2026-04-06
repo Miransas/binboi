@@ -3,27 +3,20 @@ package main
 import (
 	"context"
 	"errors"
-	"log"
+	"log/slog"
 	"net"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/miransas/binboi/internal/controlplane"
 )
 
-const (
-	readHeaderTimeout = 10 * time.Second
-	readTimeout       = 30 * time.Second
-	writeTimeout      = 60 * time.Second
-	idleTimeout       = 90 * time.Second
-	shutdownTimeout   = 10 * time.Second
-)
-
 func main() {
+	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo})))
+
 	rootCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
@@ -31,7 +24,8 @@ func main() {
 
 	service, err := controlplane.NewService(cfg)
 	if err != nil {
-		log.Fatalf("failed to initialize control plane: %v", err)
+		slog.Error("failed to initialize control plane", "error", err)
+		os.Exit(1)
 	}
 
 	router := gin.New()
@@ -40,29 +34,28 @@ func main() {
 	apiServer := &http.Server{
 		Addr:              cfg.APIAddr,
 		Handler:           router,
-		ReadHeaderTimeout: readHeaderTimeout,
-		ReadTimeout:       readTimeout,
-		WriteTimeout:      writeTimeout,
-		IdleTimeout:       idleTimeout,
+		ReadHeaderTimeout: cfg.ReadHeaderTimeout,
+		ReadTimeout:       cfg.ReadTimeout,
+		WriteTimeout:      cfg.WriteTimeout,
+		IdleTimeout:       cfg.IdleTimeout,
 	}
 
 	proxyServer := &http.Server{
 		Addr:              cfg.ProxyAddr,
 		Handler:           service.ServeProxy(),
-		ReadHeaderTimeout: readHeaderTimeout,
-		ReadTimeout:       readTimeout,
-		WriteTimeout:      writeTimeout,
-		IdleTimeout:       idleTimeout,
+		ReadHeaderTimeout: cfg.ReadHeaderTimeout,
+		ReadTimeout:       cfg.ReadTimeout,
+		WriteTimeout:      cfg.WriteTimeout,
+		IdleTimeout:       cfg.IdleTimeout,
 	}
 
 	tunnelListener, err := net.Listen("tcp", cfg.TunnelAddr)
 	if err != nil {
-		log.Fatalf("failed to listen for tunnel agents on %s: %v", cfg.TunnelAddr, err)
+		slog.Error("failed to listen for tunnel agents", "addr", cfg.TunnelAddr, "error", err)
+		os.Exit(1)
 	}
 
-	log.Printf("tunnel listener ready on %s", cfg.TunnelAddr)
-	log.Printf("public proxy listening on %s", cfg.ProxyAddr)
-	log.Printf("control plane API listening on %s", cfg.APIAddr)
+	slog.Info("binboi control plane ready", "tunnel_addr", cfg.TunnelAddr, "proxy_addr", cfg.ProxyAddr, "api_addr", cfg.APIAddr)
 
 	runErrCh := make(chan error, 3)
 
@@ -73,26 +66,27 @@ func main() {
 	var runErr error
 	select {
 	case <-rootCtx.Done():
-		log.Printf("shutdown requested: %v", rootCtx.Err())
+		slog.Info("shutdown requested", "reason", rootCtx.Err())
 	case err := <-runErrCh:
 		runErr = err
-		log.Printf("server error: %v", err)
+		slog.Error("server error", "error", err)
 	}
 
 	stop()
 
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
 	defer cancel()
 
 	if err := shutdownRuntime(shutdownCtx, tunnelListener, apiServer, proxyServer, service); err != nil {
-		log.Printf("shutdown completed with errors: %v", err)
+		slog.Error("shutdown completed with errors", "error", err)
 		if runErr == nil {
 			runErr = err
 		}
 	}
 
 	if runErr != nil && !errors.Is(runErr, context.Canceled) {
-		log.Fatalf("binboi server stopped with error: %v", runErr)
+		slog.Error("binboi server stopped with error", "error", runErr)
+		os.Exit(1)
 	}
 }
 

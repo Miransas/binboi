@@ -105,6 +105,27 @@ Preview mode is no longer meant to be an invisible production fallback. If you w
 - [`docs/`](./docs/README.md): architecture, API, release, and environment docs
 - [`packaging/`](./packaging/README.md): release packaging and Homebrew files
 
+## Project manifests
+
+The repository ships with two checked-in project metadata files:
+
+- [`miransas.json`](./miransas.json): organization and project-level manifest
+- [`binboi.json`](./binboi.json): product/runtime manifest
+
+Anyone downloading the project gets these files immediately at the repo root. When versions change, refresh them with:
+
+```bash
+make sync-manifests
+```
+
+These manifests now track:
+
+- project and repository identity
+- CLI/web/runtime versions
+- release channel and API version
+- release date and minimum CLI version
+- deploy modes and build targets
+
 ## Stable API contract
 
 The Go control plane now exposes a stable product contract under `/api/v1/*`.
@@ -284,10 +305,18 @@ Detailed setup guidance:
 
 ## Installation helpers
 
+- install channel matrix: [`docs/install-channel-matrix.md`](./docs/install-channel-matrix.md)
 - local source install: `go build -o binboi ./cmd/binboi-client`
 - quick installer: [`install.sh`](./install.sh)
 - Homebrew formula: [`packaging/homebrew/binboi.rb`](./packaging/homebrew/binboi.rb)
 - release notes: [`docs/releasing-cli.md`](./docs/releasing-cli.md)
+
+Current recommendation:
+
+- use Homebrew or direct release binaries for end users
+- use `install.sh` as a convenience wrapper over release artifacts
+- use Go source builds for contributors
+- do not market npm, bun, cargo, apt, or pip as supported install channels yet
 
 ## Extra docs
 

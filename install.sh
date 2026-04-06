@@ -24,15 +24,8 @@ esac
 
 echo "Installing Binboi CLI..."
 
-if command -v go &>/dev/null; then
-  go install github.com/miransas/binboi/cmd/binboi-client@latest
-  echo "✅ Binboi installed via go install"
-  echo "Make sure \$GOPATH/bin is in your PATH"
-  exit 0
-fi
-
 if ! command -v curl &>/dev/null; then
-  echo "Error: curl is required when Go is not installed."
+  echo "Error: curl is required to download the Binboi release archive."
   exit 1
 fi
 

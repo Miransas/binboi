@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net"
 	"net/http"
 	"net/http/httputil"
@@ -62,16 +61,16 @@ var (
 )
 
 type Config struct {
-	APIAddr         string
-	TunnelAddr      string
-	ProxyAddr       string
-	BaseDomain      string
-	PublicScheme    string
-	PublicPort      int
-	DatabasePath    string
-	InstanceName    string
-	DefaultRegion   string
-	AuthDatabaseURL string
+	APIAddr            string
+	TunnelAddr         string
+	ProxyAddr          string
+	BaseDomain         string
+	PublicScheme       string
+	PublicPort         int
+	DatabasePath       string
+	InstanceName       string
+	DefaultRegion      string
+	AuthDatabaseURL    string
 	ReadHeaderTimeout  time.Duration
 	ReadTimeout        time.Duration
 	WriteTimeout       time.Duration
@@ -85,15 +84,15 @@ type Config struct {
 
 func LoadConfigFromEnv() Config {
 	cfg := Config{
-		APIAddr:         envOrDefault("BINBOI_API_ADDR", defaultAPIAddr),
-		TunnelAddr:      envOrDefault("BINBOI_TUNNEL_ADDR", defaultTunnelAddr),
-		ProxyAddr:       envOrDefault("BINBOI_PROXY_ADDR", defaultProxyAddr),
-		BaseDomain:      envOrDefault("BINBOI_BASE_DOMAIN", defaultBaseDomain),
-		PublicScheme:    envOrDefault("BINBOI_PUBLIC_SCHEME", "http"),
-		DatabasePath:    envOrDefault("BINBOI_DATABASE_PATH", defaultDatabase),
-		InstanceName:    envOrDefault("BINBOI_INSTANCE_NAME", defaultInstance),
-		DefaultRegion:   envOrDefault("BINBOI_DEFAULT_REGION", defaultRegion),
-		AuthDatabaseURL: envOrDefault("BINBOI_AUTH_DATABASE_URL", strings.TrimSpace(os.Getenv("DATABASE_URL"))),
+		APIAddr:            envOrDefault("BINBOI_API_ADDR", defaultAPIAddr),
+		TunnelAddr:         envOrDefault("BINBOI_TUNNEL_ADDR", defaultTunnelAddr),
+		ProxyAddr:          envOrDefault("BINBOI_PROXY_ADDR", defaultProxyAddr),
+		BaseDomain:         envOrDefault("BINBOI_BASE_DOMAIN", defaultBaseDomain),
+		PublicScheme:       envOrDefault("BINBOI_PUBLIC_SCHEME", "http"),
+		DatabasePath:       envOrDefault("BINBOI_DATABASE_PATH", defaultDatabase),
+		InstanceName:       envOrDefault("BINBOI_INSTANCE_NAME", defaultInstance),
+		DefaultRegion:      envOrDefault("BINBOI_DEFAULT_REGION", defaultRegion),
+		AuthDatabaseURL:    envOrDefault("BINBOI_AUTH_DATABASE_URL", strings.TrimSpace(os.Getenv("DATABASE_URL"))),
 		ReadHeaderTimeout:  durationEnvOrDefault("BINBOI_READ_HEADER_TIMEOUT", defaultReadHeaderTimeout),
 		ReadTimeout:        durationEnvOrDefault("BINBOI_READ_TIMEOUT", defaultReadTimeout),
 		WriteTimeout:       durationEnvOrDefault("BINBOI_WRITE_TIMEOUT", defaultWriteTimeout),
@@ -241,6 +240,8 @@ type Service struct {
 	cfg          Config
 	db           *gorm.DB
 	authProvider accessAuthenticator
+	startedAt    time.Time
+	metrics      runtimeMetrics
 
 	mu       sync.RWMutex
 	sessions map[string]*activeSession
@@ -366,11 +367,12 @@ func NewService(cfg Config) (*Service, error) {
 	}
 
 	service := &Service{
-		cfg:      cfg,
-		db:       db,
-		sessions: make(map[string]*activeSession),
-		clients:  make(map[*websocket.Conn]struct{}),
-		backlog:  make([]string, 0, maxLogBacklog),
+		cfg:       cfg,
+		db:        db,
+		startedAt: time.Now().UTC(),
+		sessions:  make(map[string]*activeSession),
+		clients:   make(map[*websocket.Conn]struct{}),
+		backlog:   make([]string, 0, maxLogBacklog),
 	}
 
 	authProvider, err := newAuthProvider(cfg.AuthDatabaseURL)
@@ -465,9 +467,11 @@ func (s *Service) ensureDefaults() error {
 
 func (s *Service) RegisterRoutes(r *gin.Engine) {
 	r.Use(gin.Recovery())
+	r.Use(s.requestContext())
 	r.Use(s.requestLogger())
 
 	r.GET("/ws/logs", s.handleLogsSocket)
+	r.GET("/metrics", s.requireControlPlaneAccess(), s.handlePrometheusMetrics)
 
 	api := r.Group("/api")
 	api.GET("/health", func(c *gin.Context) {
@@ -479,6 +483,7 @@ func (s *Service) RegisterRoutes(r *gin.Engine) {
 	api.GET("/nodes", func(c *gin.Context) {
 		c.JSON(http.StatusOK, s.listNodes())
 	})
+	api.GET("/metrics", s.requireControlPlaneAccess(), s.handleMetrics)
 
 	operator := api.Group("/")
 	operator.Use(s.requireControlPlaneAccess())
@@ -503,6 +508,7 @@ func (s *Service) RegisterRoutes(r *gin.Engine) {
 	apiV1.GET("/health", s.handleV1Health)
 	apiV1.GET("/instance", s.handleV1Instance)
 	apiV1.GET("/nodes", s.handleV1Nodes)
+	apiV1.GET("/metrics", s.requireControlPlaneAccess(), s.handleV1Metrics)
 	apiV1Operator := apiV1.Group("/")
 	apiV1Operator.Use(s.requireControlPlaneAccess())
 	apiV1Operator.GET("/events", s.handleV1ListEvents)
@@ -609,11 +615,13 @@ func (s *Service) HandleTunnelConnection(conn net.Conn) {
 	identity, err := s.authenticateToken(authToken)
 	if err != nil {
 		s.writeHandshakeError(conn, err.Error())
+		s.recordTunnelConnectionRejected()
 		s.broadcastLog("warn", fmt.Sprintf("Rejected tunnel connection for %s", subdomain), subdomain)
 		return
 	}
 
 	if err := s.upsertTunnelOnConnect(subdomain, payload.LocalPort, identity); err != nil {
+		s.recordTunnelConnectionRejected()
 		s.broadcastLog("warn", fmt.Sprintf("Rejected tunnel connection for %s: %v", subdomain, err), subdomain)
 		s.writeHandshakeError(conn, err.Error())
 		return
@@ -646,12 +654,13 @@ func (s *Service) HandleTunnelConnection(conn net.Conn) {
 	s.attachSession(subdomain, session, conn.RemoteAddr().String())
 	defer s.detachSession(subdomain)
 
+	s.recordTunnelConnectionAccepted()
 	s.broadcastLog("info", fmt.Sprintf("Tunnel %s connected from %s as %s", subdomain, conn.RemoteAddr().String(), identity.Email), subdomain)
 	<-session.CloseChan()
 }
 
 func (s *Service) ServeProxy() http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	return s.withProxyObservability(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		subdomain := extractSubdomain(r.Host, s.cfg.BaseDomain)
 		if subdomain == "" {
 			s.renderProxyLanding(w)
@@ -726,6 +735,7 @@ func (s *Service) ServeProxy() http.Handler {
 				req.URL.Scheme = "http"
 				req.URL.Host = r.Host
 				req.Host = r.Host
+				req.Header.Set(requestIDHeader, r.Header.Get(requestIDHeader))
 				req.Header.Set("X-Forwarded-Proto", s.cfg.PublicScheme)
 				req.Header.Set("X-Forwarded-Host", r.Host)
 				req.Header.Set("X-Binboi-Subdomain", subdomain)
@@ -765,7 +775,7 @@ func (s *Service) ServeProxy() http.Handler {
 			PayloadPreview:  requestSnapshot.PayloadPreview,
 			ResponsePreview: fallbackString(captureWriter.BodyPreview(), requestSnapshot.ResponsePreviewHint),
 		})
-	})
+	}))
 }
 
 func (s *Service) BuildPublicURL(subdomain string) string {
@@ -817,14 +827,6 @@ func (s *Service) handleLogsSocket(c *gin.Context) {
 		if _, _, err := conn.ReadMessage(); err != nil {
 			return
 		}
-	}
-}
-
-func (s *Service) requestLogger() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		start := time.Now()
-		c.Next()
-		log.Printf("[binboi] %d %s %s %s", c.Writer.Status(), c.Request.Method, c.Request.URL.Path, time.Since(start).Round(time.Millisecond))
 	}
 }
 
@@ -920,7 +922,7 @@ func (s *Service) handleListTunnels(c *gin.Context) {
 
 func (s *Service) handleListEvents(c *gin.Context) {
 	events, err := s.listEvents(currentRequestAccess(c), eventListOptions{
-		Limit:  parsePositiveLimit(c.Query("limit"), s.cfg.RecentEventLimit, 500),
+		Limit:  parsePositiveLimit(c.Query("limit"), s.recentEventLimit(), 500),
 		Level:  c.Query("level"),
 		Tunnel: c.Query("tunnel"),
 		Query:  c.Query("q"),
@@ -934,7 +936,7 @@ func (s *Service) handleListEvents(c *gin.Context) {
 
 func (s *Service) handleListRequests(c *gin.Context) {
 	requests, err := s.listRequests(currentRequestAccess(c), requestListOptions{
-		Limit:       parsePositiveLimit(c.Query("limit"), s.cfg.RecentRequestLimit, 500),
+		Limit:       parsePositiveLimit(c.Query("limit"), s.recentRequestLimit(), 500),
 		Kind:        c.Query("kind"),
 		Tunnel:      c.Query("tunnel"),
 		Provider:    c.Query("provider"),
@@ -1248,7 +1250,7 @@ func (s *Service) handleV1ListEvents(c *gin.Context) {
 	access := currentRequestAccess(c)
 	meta := s.apiMeta(access)
 	events, err := s.listEvents(access, eventListOptions{
-		Limit:  parsePositiveLimit(c.Query("limit"), s.cfg.RecentEventLimit, 500),
+		Limit:  parsePositiveLimit(c.Query("limit"), s.recentEventLimit(), 500),
 		Level:  c.Query("level"),
 		Tunnel: c.Query("tunnel"),
 		Query:  c.Query("q"),
@@ -1264,7 +1266,7 @@ func (s *Service) handleV1ListRequests(c *gin.Context) {
 	access := currentRequestAccess(c)
 	meta := s.apiMeta(access)
 	requests, err := s.listRequests(access, requestListOptions{
-		Limit:       parsePositiveLimit(c.Query("limit"), s.cfg.RecentRequestLimit, 500),
+		Limit:       parsePositiveLimit(c.Query("limit"), s.recentRequestLimit(), 500),
 		Kind:        c.Query("kind"),
 		Tunnel:      c.Query("tunnel"),
 		Provider:    c.Query("provider"),
@@ -2029,12 +2031,14 @@ func (s *Service) broadcastLog(level, message, subdomain string) {
 	}
 	s.logMu.Unlock()
 
+	s.logRuntimeEvent(slogLevelFromString(level), message, "component", "controlplane", "tunnel_subdomain", subdomain)
+
 	if err := s.db.Create(&EventRecord{
 		Level:           strings.ToLower(level),
 		Message:         message,
 		TunnelSubdomain: subdomain,
 	}).Error; err == nil {
-		_ = s.pruneEventRecords(maxStoredEventRows)
+		_ = s.pruneEventRecords(s.storedEventLimit())
 	}
 }
 
@@ -2429,7 +2433,7 @@ func (s *Service) recordObservedRequest(tunnel TunnelRecord, observed requestObs
 	if err := s.db.Create(&record).Error; err != nil {
 		return err
 	}
-	return s.pruneRequestRecords(maxStoredRequestRows)
+	return s.pruneRequestRecords(s.storedRequestLimit())
 }
 
 func (s *Service) pruneEventRecords(limit int) error {

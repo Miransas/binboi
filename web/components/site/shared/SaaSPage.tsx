@@ -1,636 +1,389 @@
 "use client";
 
-import Link from "next/link";
-import { useEffect, useState, type ComponentType } from "react";
-import { motion } from "framer-motion";
-import {
-  ArrowRight,
-  BookOpen,
-  Globe,
-  KeyRound,
-  LayoutDashboard,
-  ShieldCheck,
-  Sparkles,
-  TerminalSquare,
-  Waypoints,
-  Webhook,
-} from "lucide-react";
-import { integrationCards } from "@/content/site-content";
+import { motion, useAnimationFrame } from "framer-motion";
+import { useRef, useState } from "react";
 
-import {
-  AccentBadge,
-  PremiumSurface,
-  SectionHeading,
-  type Accent,
-} from "./landing-primitives";
-import { LandingSectionDivider } from "./landing-section-divider";
-import { LandingSignalBand } from "./landing-signal-band";
-
-
-
-
-type IconType = ComponentType<{ className?: string }>;
-
-type EngineModule = {
-  id: string;
-  label: string;
-  color: string;
-  accent: Accent;
-  icon: IconType;
-  steps: [string, string, string];
-  details: [string, string, string];
-  logs: [string, string, string, string];
-  focus: string;
-};
-
-type EngineNode = {
-  id: string;
-  title: string;
-  sub: string;
-  x: number;
-  y: number;
-  delay: number;
-};
-
-type EnginePath = {
-  id: string;
-  d: string;
-  delay: number;
-  duration: number;
-};
-
-type EngineScenario = {
-  key: string;
-  module: EngineModule;
-  nodes: EngineNode[];
-  paths: EnginePath[];
-  logs: EngineModule["logs"];
-};
-
-const engineModules: EngineModule[] = [
-  {
-    id: "routing",
-    label: "HTTP Routing",
-    color: "#00ffd1",
-    accent: "cyan",
-    icon: Globe,
-    steps: ["Reserve subdomain", "Match public host", "Forward to localhost"],
-    details: [
-      "Allocated stripe-dev.binboi.link",
-      "Mapped Host header to stripe-dev",
-      "Sent POST /webhooks/stripe to 127.0.0.1:3000",
-    ],
-    logs: [
-      "Public URL reserved: https://stripe-dev.binboi.link",
-      "> Matched host and active tunnel session",
-      "> Forwarded request to localhost:3000/webhooks/stripe",
-      "Delivery completed with 200 OK in 38ms",
-    ],
-    focus: "Fast public exposure without hiding the forwarding path.",
-  },
-  {
-    id: "webhooks",
-    label: "Webhook Trace",
-    color: "#ff00ff",
-    accent: "magenta",
-    icon: Webhook,
-    steps: ["Capture signature headers", "Preserve raw payload", "Classify failure"],
-    details: [
-      "Stored stripe-signature and delivery id",
-      "Compared raw body to app parser behavior",
-      "Flagged application failure after local handler returned 500",
-    ],
-    logs: [
-      "Webhook trace: Stripe payment_intent.succeeded",
-      "> Raw body preserved for signature verification",
-      "> Local app returned 500 after verification mismatch",
-      "Suggested next step: compare raw-body handling and endpoint route",
-    ],
-    focus: "Debug provider callbacks before you redeploy or lose the payload.",
-  },
-  {
-    id: "tokens",
-    label: "Token Auth",
-    color: "#fbbf24",
-    accent: "amber",
-    icon: KeyRound,
-    steps: ["Validate CLI token", "Attach tunnel agent", "Refresh last-used"],
-    details: [
-      "Matched token prefix and secure hash",
-      "Bound agent identity to tunnel session",
-      "Recorded token usage for audit visibility",
-    ],
-    logs: [
-      "CLI login accepted for machine token",
-      "> Token prefix matched and hash verified",
-      "> Tunnel session attached to operator workspace",
-      "Last used timestamp refreshed successfully",
-    ],
-    focus: "Keep dashboard accounts and machine credentials clearly separated.",
-  },
-  {
-    id: "logs",
-    label: "Relay Logs",
-    color: "#a855f7",
-    accent: "violet",
-    icon: TerminalSquare,
-    steps: ["Tail relay events", "Mark tunnel lifecycle", "Guide troubleshooting"],
-    details: [
-      "Streamed connection and proxy events",
-      "Marked tunnel ACTIVE after handshake ACK",
-      "Linked runtime hints to docs and assistant search",
-    ],
-    logs: [
-      "Tunnel logs live for stripe-dev",
-      "> Agent handshake acknowledged by relay",
-      "> Proxy stream opened and request metadata captured",
-      "Operator hint: compare status, duration, and local route registration",
-    ],
-    focus: "Move from raw transport logs to product-level debugging clues.",
-  },
-  {
-    id: "regions",
-    label: "Edge Regions",
-    color: "#38bdf8",
-    accent: "blue",
-    icon: Waypoints,
-    steps: ["Pick nearest node", "Measure edge latency", "Keep session warm"],
-    details: [
-      "Selected lowest-latency active region",
-      "Measured round trip between edge and agent",
-      "Kept tunnel session ready for the next webhook burst",
-    ],
-    logs: [
-      "Preferred node: fra-edge-01",
-      "> Edge-to-agent latency settled at 42ms",
-      "> Session warmed for webhook retries and bursts",
-      "Route remained stable across repeat deliveries",
-    ],
-    focus: "Choose a region that stays close to your provider and your machine.",
-  },
-  {
-    id: "tls",
-    label: "TLS Edge",
-    color: "#34d399",
-    accent: "emerald",
-    icon: ShieldCheck,
-    steps: ["Terminate TLS", "Normalize headers", "Forward trusted request"],
-    details: [
-      "Handled HTTPS at the edge",
-      "Passed x-forwarded-* headers to the app",
-      "Kept a clean chain from public request to local target",
-    ],
-    logs: [
-      "TLS terminated at edge for binboi public URL",
-      "> Forwarded x-forwarded-proto and host metadata",
-      "> Local service received normalized request headers",
-      "Trusted forwarding chain stayed intact",
-    ],
-    focus: "Keep HTTPS public while your local target stays simple.",
-  },
-];
-
-const engineSlots = [
-  { id: "top", y: 135, portY: 180 },
-  { id: "mid", y: 255, portY: 300 },
-  { id: "bot", y: 375, portY: 420 },
-] as const;
-
-const engineLayouts = [[1], [0, 2], [0, 1, 2], [0], [2]] as const;
-
-
-const featureCards: Array<{
-  accent: Accent;
-  eyebrow: string;
-  title: string;
-  description: string;
-  bullets: string[];
-  icon: IconType;
-}> = [
-    {
-      accent: "cyan",
-      eyebrow: "Request inspection",
-      title: "Follow the full handoff from edge to localhost.",
-      description:
-        "Binboi is designed around the moment after the public URL works. Read what actually arrived, which host matched, how long the target took, and where the request went next.",
-      bullets: [
-        "Headers, payload previews, status, duration, and target service in one surface.",
-        "Cleaner clues when a 404 or 500 came from the app instead of the tunnel.",
-        "A calmer path from transport success to debugging reality.",
-      ],
-      icon: TerminalSquare,
-    },
-    {
-      accent: "magenta",
-      eyebrow: "Webhook debugging",
-      title: "Diagnose provider failures before you redeploy.",
-      description:
-        "Stripe, Clerk, Supabase, GitHub, Neon, and Linear all surface different versions of the same problem: the provider delivered something, but your local app still rejected it.",
-      bullets: [
-        "Compare signature headers, raw body handling, and route registration.",
-        "See retries, application failures, and likely next steps without guessing.",
-        "Keep webhook docs and assistant help one click away from the active tunnel.",
-      ],
-      icon: Webhook,
-    },
-    {
-      accent: "violet",
-      eyebrow: "Logs and events",
-      title: "Keep the relay honest about what happened.",
-      description:
-        "Raw logs are useful, but lifecycle events, tunnel state, and product-level notes are what make the control plane readable under pressure.",
-      bullets: [
-        "Tunnel attach, disconnect, and error moments stay visible.",
-        "Runtime logs can be summarized by the assistant when context is available.",
-        "Surface gaps are labeled clearly when the backend is still MVP.",
-      ],
-      icon: Sparkles,
-    },
-    {
-      accent: "amber",
-      eyebrow: "Access control",
-      title: "Separate operator accounts from machine credentials.",
-      description:
-        "Users create tokens in the dashboard, the CLI uses those tokens for machine auth, and the product stays honest about free and paid plan foundations while billing matures.",
-      bullets: [
-        "Full tokens are shown once and stored as prefix plus secure hash.",
-        "binboi login and binboi whoami behave like a real developer product.",
-        "Plan labels and limits are visible without pretending billing is finished.",
-      ],
-      icon: KeyRound,
-    },
-  ];
-
-function generateScenario(previousId?: string): EngineScenario {
-  const availableModules = engineModules.filter((module) => module.id !== previousId);
-  const activeModule =
-    availableModules[Math.floor(Math.random() * availableModules.length)] ?? engineModules[0];
-  const layout = engineLayouts[Math.floor(Math.random() * engineLayouts.length)] ?? engineLayouts[0];
-  const key = `${activeModule.id}-${Date.now()}`;
-
-  const nodes = layout.map((slotIndex, index) => {
-    const slot = engineSlots[slotIndex];
-
-    return {
-      id: `${key}-${slot.id}`,
-      title: activeModule.steps[slotIndex],
-      sub: activeModule.details[slotIndex],
-      x: 520,
-      y: slot.y,
-      delay: index * 0.12,
-    };
-  });
-
-  const paths = layout.flatMap((slotIndex) => {
-    const slot = engineSlots[slotIndex];
-
-    return [
-      {
-        id: `in-${key}-${slot.id}`,
-        d: `M 300 280 C 410 280, 410 ${slot.portY}, 520 ${slot.portY}`,
-        delay: Math.random() * 0.35,
-        duration: 2.8 + Math.random(),
-      },
-      {
-        id: `out-${key}-${slot.id}`,
-        d:
-          slot.portY === 300
-            ? `M 780 300 L 850 300`
-            : `M 780 ${slot.portY} C 820 ${slot.portY}, 810 300, 850 300`,
-        delay: Math.random() * 0.35 + 0.25,
-        duration: 2.8 + Math.random(),
-      },
-    ];
-  });
-
-  return {
-    key,
-    module: activeModule,
-    nodes,
-    paths,
-    logs: activeModule.logs,
-  };
+// ─── Background Ambient Orb ───────────────────────────────────────────────────
+function PurpleOrb({ className }: { className: string }) {
+  return (
+    <motion.div
+      className={`pointer-events-none absolute rounded-full blur-[100px] ${className}`}
+      animate={{ scale: [1, 1.18, 1], opacity: [0.35, 0.65, 0.35] }}
+      transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+    />
+  );
 }
 
+// ─── Card 1: Inbound Lead ─────────────────────────────────────────────────────
+function Card1Visual() {
+  return (
+    <div className="relative flex h-40 items-center justify-center">
+      <div className="absolute bottom-2 left-1/2 h-16 w-36 -translate-x-1/2 rounded-full bg-purple-600/50 blur-2xl" />
+      {[0, 1, 2].map((i) => (
+        <motion.div
+          key={i}
+          className="absolute rounded-full border border-purple-500/25"
+          style={{ width: 170 + i * 44, height: 38 + i * 10 }}
+          animate={{ scaleX: [1, 1.07, 1], opacity: [0.12, 0.5, 0.12] }}
+          transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut", delay: i * 0.7 }}
+        />
+      ))}
+      <div className="absolute h-8 w-32 rounded-full bg-purple-500/45 blur-xl" />
+      <motion.div
+        animate={{ y: [0, -7, 0] }}
+        transition={{ duration: 3.2, repeat: Infinity, ease: "easeInOut" }}
+        className="relative z-10 flex items-center gap-2 rounded-full border border-purple-400/35 bg-[#140e2e]/90 px-5 py-2 text-sm font-medium text-purple-200"
+        style={{ boxShadow: "0 0 28px rgba(140,70,255,0.55), inset 0 0 12px rgba(120,60,220,0.15)" }}
+      >
+        <motion.span
+          className="h-2 w-2 rounded-full bg-purple-400"
+          animate={{ opacity: [1, 0.2, 1] }}
+          transition={{ duration: 1.4, repeat: Infinity }}
+          style={{ boxShadow: "0 0 6px rgba(180,120,255,0.9)" }}
+        />
+        Inbound Lead
+      </motion.div>
+    </div>
+  );
+}
 
+// ─── Card 2: Conversions ──────────────────────────────────────────────────────
+function Card2Visual() {
+  return (
+    <div className="relative flex h-40 items-center justify-center">
+      <div className="absolute h-28 w-28 rounded-full bg-purple-700/55 blur-3xl" />
 
-function LinkCard({
-  href,
-  accent,
-  eyebrow,
-  title,
-  description,
+      {/* Outer spin ring */}
+      <motion.div
+        className="absolute h-36 w-36 rounded-full border border-purple-500/20"
+        style={{ borderTopColor: "transparent", borderRightColor: "transparent" }}
+        animate={{ rotate: 360 }}
+        transition={{ duration: 9, repeat: Infinity, ease: "linear" }}
+      />
+
+      {/* Orbiting bright dot */}
+      <motion.div
+        className="absolute"
+        animate={{ rotate: 360 }}
+        transition={{ duration: 9, repeat: Infinity, ease: "linear" }}
+        style={{ width: 144, height: 144 }}
+      >
+        <div
+          className="absolute -top-2 left-1/2 h-4 w-4 -translate-x-1/2 rounded-full bg-purple-300"
+          style={{ boxShadow: "0 0 12px rgba(210,170,255,1), 0 0 24px rgba(160,100,255,0.6)" }}
+        />
+      </motion.div>
+
+      {/* Inner slow ring */}
+      <motion.div
+        className="absolute h-24 w-24 rounded-full border border-purple-700/30"
+        animate={{ rotate: -360 }}
+        transition={{ duration: 12, repeat: Infinity, ease: "linear" }}
+      />
+
+      {/* Core orb */}
+      <motion.div
+        animate={{ y: [0, -6, 0] }}
+        transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+        className="relative z-10 flex h-20 w-20 items-center justify-center rounded-full border-2 border-purple-900 bg-gradient-to-b from-[#1e1040] to-[#0d0820]"
+        style={{ boxShadow: "0 0 50px rgba(110,50,220,0.6), inset 0 0 24px rgba(90,40,180,0.35)" }}
+      >
+        <motion.div
+          className="h-3 w-3 rounded-full bg-white"
+          animate={{ opacity: [1, 0.15, 1], scale: [1, 1.4, 1] }}
+          transition={{ duration: 2.2, repeat: Infinity }}
+          style={{ boxShadow: "0 0 10px #fff, 0 0 20px rgba(210,180,255,0.9)" }}
+        />
+      </motion.div>
+
+      <div className="absolute bottom-5 right-8 flex gap-1.5">
+        {[1, 0.55, 0.22].map((o, i) => (
+          <div key={i} className="h-1.5 w-1.5 rounded-full bg-purple-400" style={{ opacity: o }} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Card 3: Intelligence / Live Chart ───────────────────────────────────────
+function Card3Visual() {
+  const [tick, setTick] = useState(0);
+  const startRef = useRef<number | null>(null);
+
+  useAnimationFrame((t) => {
+    if (startRef.current === null) startRef.current = t;
+    setTick(((t - startRef.current) / 5000) % 1);
+  });
+
+  const basePts: [number, number][] = [
+    [0, 70], [28, 62], [52, 50], [72, 56],
+    [94, 36], [114, 42], [134, 20], [155, 26],
+    [175, 11], [200, 16], [220, 8],
+  ];
+
+  const drawn = Math.max(2, Math.round(tick * basePts.length));
+  const pts = basePts.slice(0, drawn);
+  const poly = pts.map((p) => p.join(",")).join(" ");
+  const tip = pts[pts.length - 1] ?? [0, 70];
+
+  return (
+    <div className="relative h-40 overflow-hidden">
+      <div className="pointer-events-none absolute bottom-0 left-4 right-4 h-10 rounded-full bg-purple-700/25 blur-xl" />
+      <svg viewBox="0 0 220 80" className="absolute inset-x-0 top-6 h-full w-full">
+        <defs>
+          <linearGradient id="lgLine" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor="#4020a0" />
+            <stop offset="100%" stopColor="#d090ff" />
+          </linearGradient>
+          <filter id="lineGlow">
+            <feGaussianBlur stdDeviation="2.5" result="blur" />
+            <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+          </filter>
+          {/* dashed grid */}
+          {[20, 40, 60].map((y) => (
+            <line key={y} x1="0" y1={y} x2="220" y2={y} stroke="#4a2880" strokeWidth="0.4" strokeDasharray="3 7" />
+          ))}
+        </defs>
+        <polyline
+          points={poly}
+          fill="none"
+          stroke="url(#lgLine)"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          filter="url(#lineGlow)"
+        />
+        {drawn >= 3 && (
+          <>
+            <circle cx={tip[0]} cy={tip[1]} r="7" fill="rgba(190,130,255,0.15)" />
+            <circle cx={tip[0]} cy={tip[1]} r="4" fill="rgba(210,160,255,0.3)" />
+            <circle cx={tip[0]} cy={tip[1]} r="2.5" fill="#d090ff" filter="url(#lineGlow)" />
+          </>
+        )}
+      </svg>
+    </div>
+  );
+}
+
+// ─── Card 4: Content Calendar ─────────────────────────────────────────────────
+function Card4Visual() {
+  const rows = [
+    { label: "How we str…",  time: "10:30 AM", color: "#9060d0", bg: "rgba(90,50,150,0.38)" },
+    { label: "Quantum Al…",  time: "14:00 PM", color: "#7040b8", bg: "rgba(60,30,110,0.32)" },
+    { label: "Growth Rev…",  time: "16:00 PM", color: "#a070e0", bg: "rgba(100,60,160,0.28)" },
+  ];
+
+  return (
+    <div className="relative mt-2">
+      <div className="pointer-events-none absolute -right-3 -top-3 h-20 w-20 rounded-full bg-purple-600/30 blur-2xl" />
+      <div
+        className="overflow-hidden rounded-xl border border-[#251d40]/70 bg-[#0b091a]/90"
+        style={{ boxShadow: "0 0 30px rgba(80,40,160,0.18)" }}
+      >
+        <div className="grid grid-cols-4 border-b border-[#1e1835]/70">
+          {["Mon", "Tue", "Wed", "Thu"].map((d) => (
+            <div key={d} className="border-r border-[#1a1530]/60 py-2 text-center text-[10px] text-[#3a3060] last:border-r-0">{d}</div>
+          ))}
+        </div>
+        <div className="space-y-1.5 p-3">
+          {rows.map((r, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, x: -12 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.1 + i * 0.14, duration: 0.45 }}
+              className="flex items-center gap-2.5 rounded-lg px-2.5 py-2"
+              style={{ background: r.bg }}
+            >
+              <motion.div
+                className="h-1.5 w-1.5 flex-shrink-0 rounded-full"
+                style={{ background: r.color, boxShadow: `0 0 7px ${r.color}` }}
+                animate={{ opacity: [1, 0.3, 1] }}
+                transition={{ duration: 2.2, repeat: Infinity, delay: i * 0.6 }}
+              />
+              <span className="flex-1 text-[10px] text-[#9080c0]">{r.label}</span>
+              <span className="text-[9px] text-[#4a3878]">{r.time}</span>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Card 5: Retention Funnel ─────────────────────────────────────────────────
+function Card5Visual() {
+  const stages = [
+    { w: 150, label: "Acquire",  color: "rgba(130,70,230,0.80)" },
+    { w: 112, label: "Activate", color: "rgba(105,50,205,0.72)" },
+    { w: 80,  label: "Retain",   color: "rgba(85,40,175,0.65)" },
+    { w: 52,  label: "Expand",   color: "rgba(65,30,145,0.58)" },
+  ];
+
+  return (
+    <div className="relative flex h-40 flex-col items-center justify-center gap-1">
+      {/* Top beam */}
+      <motion.div
+        className="absolute top-0 left-1/2 h-10 w-16 -translate-x-1/2 rounded-full bg-purple-400/60 blur-xl"
+        animate={{ opacity: [0.5, 1, 0.5] }}
+        transition={{ duration: 2, repeat: Infinity }}
+      />
+
+      {stages.map((s, i) => (
+        <motion.div
+          key={i}
+          initial={{ scaleX: 0, opacity: 0 }}
+          animate={{ scaleX: 1, opacity: 1 }}
+          transition={{ delay: 0.08 + i * 0.13, duration: 0.5, ease: "easeOut" }}
+          className="relative flex items-center justify-center rounded-[3px] text-[9px] text-purple-300/60"
+          style={{
+            width: s.w,
+            height: 24,
+            background: s.color,
+            boxShadow: i === 0 ? "0 0 24px rgba(160,80,255,0.6), inset 0 0 10px rgba(200,140,255,0.15)" : undefined,
+          }}
+        >
+          {i === 0 && (
+            <motion.div
+              className="absolute inset-0 rounded-[3px]"
+              animate={{ opacity: [0.3, 0.8, 0.3] }}
+              transition={{ duration: 2, repeat: Infinity }}
+              style={{ boxShadow: "0 0 20px rgba(170,100,255,0.7)" }}
+            />
+          )}
+          <span className="relative z-10">{s.label}</span>
+        </motion.div>
+      ))}
+
+      {/* Bottom exit beam */}
+      <motion.div
+        className="h-5 w-4 rounded-full bg-purple-500/50 blur-md"
+        animate={{ opacity: [0.4, 0.9, 0.4] }}
+        transition={{ duration: 2, repeat: Infinity, delay: 0.5 }}
+      />
+    </div>
+  );
+}
+
+// ─── Card Wrapper ─────────────────────────────────────────────────────────────
+function Card({
+  num, title, children, className = "",
 }: {
-  href: string;
-  accent: Accent;
-  eyebrow: string;
-  title: string;
-  description: string;
+  num: string; title: string; children: React.ReactNode; className?: string;
 }) {
   return (
-    <motion.div whileHover={{ y: -4 }} transition={{ duration: 0.18 }}>
-      <Link href={href} className="block h-full">
-        <PremiumSurface accent={accent} contentClassName="p-5 sm:p-5" className="h-full">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-zinc-500">
-            {eyebrow}
-          </p>
-          <h3 className="mt-3 text-lg font-semibold text-white">{title}</h3>
-          <p className="mt-3 text-sm leading-7 text-zinc-400">{description}</p>
-          <div className="mt-5 inline-flex items-center gap-2 text-sm font-medium text-white">
-            Open
-            <ArrowRight className="h-4 w-4 text-zinc-500" />
-          </div>
-        </PremiumSurface>
-      </Link>
+    <motion.div
+      variants={{
+        hidden:   { opacity: 0, y: 28 },
+        visible:  { opacity: 1, y: 0, transition: { duration: 0.55, ease: "easeOut" } },
+      }}
+      whileHover={{
+        y: -4,
+        borderColor: "rgba(140,70,255,0.55)",
+        boxShadow: "0 0 50px rgba(100,40,210,0.22), inset 0 0 24px rgba(80,30,160,0.08)",
+      }}
+      transition={{ duration: 0.22 }}
+      className={`relative overflow-hidden rounded-2xl border border-[#1c1730] bg-[#09081a] p-6 ${className}`}
+    >
+      <div className="pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full bg-purple-900/25 blur-2xl" />
+      <span className="mb-1 block text-[10px] tracking-widest text-[#2a2245]">{num}</span>
+      {children}
+      <p
+        className="mt-4 text-[15px] font-semibold leading-snug text-[#ccc0ee]"
+        style={{ fontFamily: "'Syne', sans-serif" }}
+        dangerouslySetInnerHTML={{ __html: title }}
+      />
     </motion.div>
   );
 }
 
-export default function SaaSPage() {
-  const [, setScenario] = useState<EngineScenario>(() => generateScenario());
-
-  useEffect(() => {
-    const timer = window.setInterval(() => {
-      setScenario((current) => generateScenario(current.module.id));
-    }, 4200);
-
-    return () => window.clearInterval(timer);
-  }, []);
-
+// ─── Main Section ─────────────────────────────────────────────────────────────
+export default function BentoGrid() {
   return (
-    <main className="relative overflow-hidden bg-[#040405] text-white selection:bg-miransas-cyan/30 mt-10">
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-[920px] bg-[radial-gradient(circle_at_top,rgba(0,255,209,0.16),transparent_24%),radial-gradient(circle_at_82%_14%,rgba(255,0,255,0.14),transparent_28%),linear-gradient(180deg,rgba(255,255,255,0.03),transparent_35%)]" />
-      <div className="pointer-events-none absolute inset-0 bg-grid-pattern opacity-[0.16]" />
-      <div className="pointer-events-none absolute left-[-16rem] top-[18rem] h-[28rem] w-[28rem] rounded-full bg-miransas-cyan/10 blur-[160px]" />
-      <div className="pointer-events-none absolute right-[-18rem] top-[9rem] h-[32rem] w-[32rem] rounded-full bg-miransas-magenta/10 blur-[180px]" />
+    <section className="relative min-h-screen overflow-hidden bg-[#05040e] px-6 py-20 md:px-14 lg:px-24">
+      {/* Ambient background glows */}
+      <PurpleOrb className="h-[400px] w-[400px] bg-purple-900/35 -top-32 -left-32" />
+      <PurpleOrb className="h-[500px] w-[500px] bg-purple-800/20 top-1/2 -right-48 -translate-y-1/2" />
+      <PurpleOrb className="h-[300px] w-[300px] bg-violet-900/25 bottom-0 left-1/3" />
 
-{/* 
-      <section className="relative px-4 py-8 sm:px-6 lg:px-8">
-        <div className="mx-auto grid max-w-full gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-          <motion.div whileHover={{ y: -4 }} transition={{ duration: 0.18 }}>
-            <PremiumSurface accent="cyan" className="h-full">
-              <AccentBadge accent="cyan">Quick path</AccentBadge>
-              <h2 className="mt-5 text-3xl font-black tracking-tight text-white">
-                Keep the first successful request path visible from install to inspection.
-              </h2>
-              <p className="mt-4 max-w-2xl text-sm leading-7 text-zinc-400 sm:text-base">
-                The current CTA areas were kept, but upgraded to match the hero quality: install,
-                token creation, CLI login, first tunnel, and the next debugging clue now sit in a
-                single product-grade surface.
-              </p>
+      {/* Grain overlay */}
+      <div
+        className="pointer-events-none absolute inset-0 opacity-[0.035]"
+        style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
+          backgroundSize: "120px",
+        }}
+      />
 
-              <div className="mt-6 rounded-[1.5rem] border border-white/10 bg-black/45 p-4">
-                <div className="flex items-center gap-2 text-sm font-semibold text-white">
-                  <Command className="h-4 w-4 text-miransas-cyan" />
-                  CLI onboarding
-                </div>
-                <pre className="mt-4 overflow-x-auto rounded-[1.25rem] border border-white/10 bg-black/60 p-4 text-sm leading-7 text-miransas-cyan">
-                  <code>{`brew tap binboi/tap
-                      brew install binboi
-                      binboi login --token <token>
-                      binboi start 3000 stripe-dev
-                     curl https://stripe-dev.binboi.link/health`}</code>
-                </pre>
-              </div>
+      {/* Label */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.5 }}
+        className="relative mb-6 flex items-center gap-2.5"
+      >
+        <motion.span
+          className="h-1.5 w-1.5 rounded-full bg-purple-400"
+          animate={{ opacity: [1, 0.2, 1], scale: [1, 1.4, 1] }}
+          transition={{ duration: 2, repeat: Infinity }}
+          style={{ boxShadow: "0 0 8px rgba(180,110,255,0.9)" }}
+        />
+        <span className="text-xs uppercase tracking-[0.18em] text-purple-500/70">Capability</span>
+      </motion.div>
 
-              <div className="mt-6 grid gap-4 md:grid-cols-3">
-                {[
-                  {
-                    label: "1. Create token",
-                    text: "Generate a revocable access token once in the dashboard and copy it safely.",
-                  },
-                  {
-                    label: "2. Attach the CLI",
-                    text: "Authenticate the machine, reserve a public URL, and map it to localhost.",
-                  },
-                  {
-                    label: "3. Inspect the result",
-                    text: "Read the request, webhook, or log clues without redeploying anything yet.",
-                  },
-                ].map((step) => (
-                  <div
-                    key={step.label}
-                    className="rounded-[1.35rem] border border-white/10 bg-white/[0.03] p-4"
-                  >
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
-                      {step.label}
-                    </p>
-                    <p className="mt-3 text-sm leading-7 text-zinc-300">{step.text}</p>
-                  </div>
-                ))}
-              </div>
+      {/* Header row */}
+      <div className="relative mb-14 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+        <motion.h2
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.65, delay: 0.05 }}
+          className="text-4xl font-bold leading-[1.1] text-[#ede6ff] md:max-w-sm md:text-5xl"
+          style={{ fontFamily: "'Syne', sans-serif" }}
+        >
+          What Binboi<br />Unlocks Fast
+        </motion.h2>
+        <motion.p
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.65, delay: 0.15 }}
+          className="max-w-[200px] text-right text-[13px] leading-relaxed text-[#3d3560] md:pt-2"
+        >
+          Not growth hacks. Not fluff.<br />
+          Just ingress, visibility, and safer sharing.
+        </motion.p>
+      </div>
 
-              <div className="mt-6 flex flex-wrap gap-3">
-                <Link
-                  href="/docs/quick-start"
-                  className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.04] px-4 py-2.5 text-sm text-white transition hover:border-white/20 hover:bg-white/[0.07]"
-                >
-                  <BookOpen className="h-4 w-4 text-miransas-cyan" />
-                  Follow quick start
-                </Link>
-                <Link
-                  href="/dashboard/access-tokens"
-                  className="inline-flex items-center gap-2 rounded-full border border-miransas-cyan/18 bg-miransas-cyan/8 px-4 py-2.5 text-sm font-medium text-white transition hover:brightness-110"
-                >
-                  <KeyRound className="h-4 w-4 text-miransas-cyan" />
-                  Create machine token
-                </Link>
-              </div>
-            </PremiumSurface>
-          </motion.div>
+      {/* Cards */}
+      <motion.div
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, margin: "-50px" }}
+        variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.09 } } }}
+        className="relative grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
+      >
+        <Card num="· 01" title="Fast Public<br/>URLs">
+          <Card1Visual />
+        </Card>
 
-          <motion.div whileHover={{ y: -4 }} transition={{ duration: 0.18 }}>
-            <PremiumSurface accent="violet" className="h-full p-1" contentClassName="p-1">
-              <BinboiAssistant
-                variant="hero"
-                storageKey="site-home-hero"
-                title="Ask Binboi before you start changing code"
-                description="Search docs, product pages, live tunnel context, requests, webhooks, and logs from the same dark assistant surface. When AI credentials are configured, the summaries stay server-side and secure."
-                className="h-full border-transparent bg-transparent shadow-none"
-              />
-            </PremiumSurface>
-          </motion.div>
-        </div>
-      </section> */}
+        <Card num="· 02" title="Request<br/>Visibility">
+          <Card2Visual />
+        </Card>
 
-      <LandingSectionDivider label="Operator surfaces" />
-      <LandingSignalBand />
+        <Card num="· 03" title="Traffic Clarity<br/>Before Guesswork">
+          <Card3Visual />
+        </Card>
 
-      <section className="relative px-4 py-10 sm:px-6 lg:px-8 rounded-xl">
-        <div className="mx-auto max-w-full  ">
-          <SectionHeading
-            eyebrow="Inspection surfaces"
-            accent="magenta"
-            title="The tunnel is only the first answer."
-            description="The rest of the landing now follows the same visual language as the hero: beam-edged panels, glowing control surfaces, and product sections that stay focused on debugging, not generic SaaS filler."
-          />
+        <Card num="· 04" title="Webhook Flows<br/>That Stay Legible" className="sm:col-span-2 lg:col-span-2">
+          <Card4Visual />
+        </Card>
 
-          <div className="mt-8 grid gap-6 rounded-xl lg:grid-cols-3 xl:grid-cols-4">
-            {featureCards.map((card) => {
-              const Icon = card.icon;
-
-              return (
-                <motion.div
-                  key={card.title}
-                  whileHover={{ y: -4 }}
-                  transition={{ duration: 0.18 }}
-                  className="h-full"
-                >
-                  <PremiumSurface accent={card.accent} className="h-full">
-                    <div className="flex items-center justify-between gap-3">
-                      <AccentBadge accent={card.accent}>{card.eyebrow}</AccentBadge>
-                      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-                        <Icon className="h-5 w-5 text-white" />
-                      </div>
-                    </div>
-
-                    <h3 className="mt-5 text-2xl font-black tracking-tight text-white">
-                      {card.title}
-                    </h3>
-                    <p className="mt-4 text-sm leading-7 text-zinc-400">{card.description}</p>
-
-                    <div className="mt-6 space-y-3">
-                      {card.bullets.map((bullet) => (
-                        <div
-                          key={bullet}
-                          className="rounded-[1.2rem] border border-white/10 bg-white/[0.03] px-4 py-3 text-sm leading-7 text-zinc-300"
-                        >
-                          {bullet}
-                        </div>
-                      ))}
-                    </div>
-                  </PremiumSurface>
-                </motion.div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      <LandingSectionDivider label="Provider flows" />
-
-      <section className="relative px-4 py-10 sm:px-6 lg:px-8">
-        <div className="mx-auto grid max-w-[1440px] rounded-lg gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-          <div>
-            <SectionHeading
-              eyebrow="Integrations"
-              accent="cyan"
-              title="Use the same public workflow across the providers that trigger real debugging work."
-              description="Stripe, Clerk, Supabase, GitHub, Neon, and Linear all force you to care about callback URLs, signature handling, retries, or target routes. Binboi keeps those realities close to the product instead of hiding them behind a single tunnel command."
-            />
-
-            <div className="mt-8 grid gap-5 md:grid-cols-2 xl:grid-cols-3 ">
-              {integrationCards.map((card, index) => (
-                <motion.div
-                  key={card.name}
-                  whileHover={{ y: -4 }}
-                  transition={{ duration: 0.18 }}
-                  className="h-full"
-                >
-                  <PremiumSurface
-                    accent={
-                      (["cyan", "magenta", "violet", "amber", "emerald", "blue"][
-                        index % 6
-                      ] as Accent)
-                    }
-                    contentClassName="p-5"
-                    className="h-full"
-                    beamSize={140}
-                    beamDuration={7 + index * 0.4}
-                    beamDelay={index * 0.4}
-                  >
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
-                      {card.label}
-                    </p>
-                    <h3 className="mt-3 text-xl font-semibold text-white">{card.name}</h3>
-                    <p className="mt-3 text-sm leading-7 text-zinc-400">{card.summary}</p>
-                  </PremiumSurface>
-                </motion.div>
-              ))}
-            </div>
-          </div>
-
-          <div className="grid gap-6">
-            <LinkCard
-              href="/docs"
-              accent="amber"
-              eyebrow="Documentation"
-              title="Move from the landing to the actual guides without losing context."
-              description="Installation, authentication, CLI usage, HTTP tunnels, requests, webhooks, regions, logs, and troubleshooting are all live routes instead of placeholder docs."
-            />
-            <LinkCard
-              href="/dashboard"
-              accent="cyan"
-              eyebrow="Dashboard"
-              title="Open the control plane and work from a real operator surface."
-              description="Guest-safe fallback states, access token management, tunnel inventory, setup guidance, AI search, and the request-first product model are all visible today."
-            />
-            <LinkCard
-              href="/dashboard/access-tokens"
-              accent="magenta"
-              eyebrow="Access tokens"
-              title="Create a machine credential that behaves like a real product feature."
-              description="Users mint tokens in the dashboard, the CLI authenticates with them, and the full token is only shown once before secure hash storage."
-            />
-          </div>
-        </div>
-      </section>
-
-      <LandingSectionDivider label="Start cleanly" />
-
-      <section className="relative px-4 pb-20 pt-8 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-[1440px]">
-          <PremiumSurface accent="cyan" beamSize={320} beamDuration={10}>
-            <div className="grid gap-8 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
-              <div>
-                <AccentBadge accent="cyan">Ready to start</AccentBadge>
-                <h2 className="mt-5 max-w-3xl text-3xl font-black tracking-tight text-white sm:text-4xl lg:text-5xl">
-                  Start with the same premium surface language all the way through the product.
-                </h2>
-                <p className="mt-4 max-w-2xl text-sm leading-7 text-zinc-400 sm:text-base">
-                  The hero now drives the landing instead of sitting beside generic sections. The
-                  same beam and glow treatment carries into showcase panels, feature cards, docs
-                  links, and the closing CTA so the page feels like one product system.
-                </p>
-
-                <div className="mt-7 flex flex-wrap gap-3">
-                  <Link
-                    href="/dashboard"
-                    className="inline-flex items-center gap-2 rounded-full bg-miransas-cyan px-5 py-3 text-sm font-semibold text-black transition hover:brightness-110"
-                  >
-                    <LayoutDashboard className="h-4 w-4" />
-                    Open dashboard
-                  </Link>
-                  <Link
-                    href="/docs/quick-start"
-                    className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.04] px-5 py-3 text-sm font-semibold text-white transition hover:border-white/20 hover:bg-white/[0.07]"
-                  >
-                    <BookOpen className="h-4 w-4 text-miransas-cyan" />
-                    Read docs
-                  </Link>
-                </div>
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                <LinkCard
-                  href="/pricing"
-                  accent="amber"
-                  eyebrow="Plans"
-                  title="Free and Pro foundations stay visible."
-                  description="Usage, limits, and upgrade direction are present in the UX without pretending billing is already complete."
-                />
-                <LinkCard
-                  href="/blog"
-                  accent="violet"
-                  eyebrow="Build notes"
-                  title="Read the product story behind the control plane."
-                  description="The blog and changelog explain why Binboi leans into request truth, token security, and a premium developer workflow."
-                />
-              </div>
-            </div>
-          </PremiumSurface>
-        </div>
-      </section>
-    </main>
+        <Card num="· 05" title="Access Control<br/>That Scales">
+          <Card5Visual />
+        </Card>
+      </motion.div>
+    </section>
   );
 }

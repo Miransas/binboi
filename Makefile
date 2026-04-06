@@ -3,7 +3,10 @@ CLI_VERSION_PKG := github.com/miransas/binboi/internal/cli
 LDFLAGS := -s -w -X $(CLI_VERSION_PKG).Version=$(VERSION)
 CLI_PLATFORMS := darwin/amd64 darwin/arm64 linux/amd64 linux/arm64
 
-.PHONY: build-cli build-server release-cli clean
+.PHONY: build-cli build-server release-cli sync-manifests clean
+
+sync-manifests:
+	bash ./scripts/sync-project-manifests.sh
 
 build-cli:
 	mkdir -p dist
@@ -13,7 +16,7 @@ build-server:
 	mkdir -p dist
 	CGO_ENABLED=1 go build -trimpath -o dist/binboi-server ./cmd/binboi-server
 
-release-cli:
+release-cli: sync-manifests
 	mkdir -p dist/release
 	for target in $(CLI_PLATFORMS); do \
 		GOOS=$${target%/*}; \

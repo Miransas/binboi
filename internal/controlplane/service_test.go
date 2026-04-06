@@ -105,6 +105,48 @@ func TestNormalizeTarget(t *testing.T) {
 	}
 }
 
+func TestLoadConfigFromEnvParsesTimeoutsAndLimits(t *testing.T) {
+	t.Setenv("BINBOI_READ_HEADER_TIMEOUT", "2s")
+	t.Setenv("BINBOI_READ_TIMEOUT", "11s")
+	t.Setenv("BINBOI_WRITE_TIMEOUT", "21s")
+	t.Setenv("BINBOI_IDLE_TIMEOUT", "31s")
+	t.Setenv("BINBOI_SHUTDOWN_TIMEOUT", "7s")
+	t.Setenv("BINBOI_EVENT_LIMIT", "75")
+	t.Setenv("BINBOI_REQUEST_LIMIT", "250")
+	t.Setenv("BINBOI_STORED_EVENT_LIMIT", "1500")
+	t.Setenv("BINBOI_STORED_REQUEST_LIMIT", "5500")
+
+	cfg := LoadConfigFromEnv()
+
+	if cfg.ReadHeaderTimeout != 2*time.Second {
+		t.Fatalf("ReadHeaderTimeout = %s, want 2s", cfg.ReadHeaderTimeout)
+	}
+	if cfg.ReadTimeout != 11*time.Second {
+		t.Fatalf("ReadTimeout = %s, want 11s", cfg.ReadTimeout)
+	}
+	if cfg.WriteTimeout != 21*time.Second {
+		t.Fatalf("WriteTimeout = %s, want 21s", cfg.WriteTimeout)
+	}
+	if cfg.IdleTimeout != 31*time.Second {
+		t.Fatalf("IdleTimeout = %s, want 31s", cfg.IdleTimeout)
+	}
+	if cfg.ShutdownTimeout != 7*time.Second {
+		t.Fatalf("ShutdownTimeout = %s, want 7s", cfg.ShutdownTimeout)
+	}
+	if cfg.RecentEventLimit != 75 {
+		t.Fatalf("RecentEventLimit = %d, want 75", cfg.RecentEventLimit)
+	}
+	if cfg.RecentRequestLimit != 250 {
+		t.Fatalf("RecentRequestLimit = %d, want 250", cfg.RecentRequestLimit)
+	}
+	if cfg.StoredEventLimit != 1500 {
+		t.Fatalf("StoredEventLimit = %d, want 1500", cfg.StoredEventLimit)
+	}
+	if cfg.StoredRequestLimit != 5500 {
+		t.Fatalf("StoredRequestLimit = %d, want 5500", cfg.StoredRequestLimit)
+	}
+}
+
 func TestExtractSubdomain(t *testing.T) {
 	subdomain := extractSubdomain("demo.binboi.localhost:8000", "binboi.localhost")
 	if subdomain != "demo" {
@@ -185,6 +227,99 @@ func TestV1InstanceRouteReturnsEnvelope(t *testing.T) {
 	}
 	if payload.Meta.InstanceName == "" {
 		t.Fatal("expected meta.instance_name to be populated")
+	}
+}
+
+func TestHealthRouteSetsRequestIDHeader(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	service := newTestService(t)
+	router := gin.New()
+	service.RegisterRoutes(router)
+
+	request := httptest.NewRequest(http.MethodGet, "/api/health", nil)
+	request.RemoteAddr = "127.0.0.1:4040"
+	recorder := httptest.NewRecorder()
+	router.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("/api/health = %d, want %d", recorder.Code, http.StatusOK)
+	}
+	if recorder.Header().Get(requestIDHeader) == "" {
+		t.Fatal("expected X-Request-ID header to be populated")
+	}
+}
+
+func TestV1MetricsRouteReturnsEnvelope(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	service := newTestService(t)
+	service.recordAPIRequest(http.StatusOK)
+	service.recordAPIRequest(http.StatusInternalServerError)
+	service.recordProxyRequest(http.StatusBadGateway)
+	service.recordTunnelConnectionAccepted()
+	service.recordTunnelConnectionRejected()
+
+	if _, err := service.createDomain("docs.example.com", requestAccess{TrustedLocal: true}); err != nil {
+		t.Fatalf("createDomain returned error: %v", err)
+	}
+	if err := service.db.Create(&TunnelRecord{
+		ID:         "metrics_tunnel",
+		Subdomain:  "metrics",
+		Target:     "http://localhost:3000",
+		TargetPort: 3000,
+		Status:     "ACTIVE",
+		Region:     "local",
+	}).Error; err != nil {
+		t.Fatalf("insert tunnel: %v", err)
+	}
+
+	router := gin.New()
+	service.RegisterRoutes(router)
+
+	request := httptest.NewRequest(http.MethodGet, "/api/v1/metrics", nil)
+	request.RemoteAddr = "127.0.0.1:4040"
+	recorder := httptest.NewRecorder()
+	router.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("/api/v1/metrics = %d, want %d", recorder.Code, http.StatusOK)
+	}
+
+	var payload struct {
+		Data MetricsSnapshot `json:"data"`
+		Meta APIMeta         `json:"meta"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode /api/v1/metrics response: %v", err)
+	}
+
+	if payload.Data.APIRequestsTotal != 2 {
+		t.Fatalf("api_requests_total = %d, want 2", payload.Data.APIRequestsTotal)
+	}
+	if payload.Data.APIRequestErrorsTotal != 1 {
+		t.Fatalf("api_request_errors_total = %d, want 1", payload.Data.APIRequestErrorsTotal)
+	}
+	if payload.Data.ProxyRequestsTotal != 1 {
+		t.Fatalf("proxy_requests_total = %d, want 1", payload.Data.ProxyRequestsTotal)
+	}
+	if payload.Data.TunnelConnectionsTotal != 1 {
+		t.Fatalf("tunnel_connections_total = %d, want 1", payload.Data.TunnelConnectionsTotal)
+	}
+	if payload.Data.TunnelRejectionsTotal != 1 {
+		t.Fatalf("tunnel_rejections_total = %d, want 1", payload.Data.TunnelRejectionsTotal)
+	}
+	if payload.Data.ReservedTunnels < 1 {
+		t.Fatalf("reserved_tunnels = %d, want at least 1", payload.Data.ReservedTunnels)
+	}
+	if payload.Data.DomainsTotal < 2 {
+		t.Fatalf("domains_total = %d, want at least 2", payload.Data.DomainsTotal)
+	}
+	if payload.Data.PendingDomainsTotal < 1 {
+		t.Fatalf("pending_domains_total = %d, want at least 1", payload.Data.PendingDomainsTotal)
+	}
+	if payload.Meta.AccessScope != "trusted-local" {
+		t.Fatalf("access scope = %q, want %q", payload.Meta.AccessScope, "trusted-local")
 	}
 }
 
@@ -547,7 +682,7 @@ func TestRecordObservedRequestPrunesOldRows(t *testing.T) {
 		t.Fatalf("insert tunnel: %v", err)
 	}
 
-	for i := 0; i < maxStoredRequestRows+5; i++ {
+	for i := 0; i < defaultStoredRequestLimit+5; i++ {
 		if err := service.recordObservedRequest(tunnel, requestObservation{
 			Method:         http.MethodGet,
 			Path:           fmt.Sprintf("/events/%d", i),
@@ -562,7 +697,7 @@ func TestRecordObservedRequestPrunesOldRows(t *testing.T) {
 	if err := service.db.Model(&RequestRecord{}).Count(&count).Error; err != nil {
 		t.Fatalf("count request records: %v", err)
 	}
-	if count != maxStoredRequestRows {
-		t.Fatalf("stored request count = %d, want %d", count, maxStoredRequestRows)
+	if count != defaultStoredRequestLimit {
+		t.Fatalf("stored request count = %d, want %d", count, defaultStoredRequestLimit)
 	}
 }

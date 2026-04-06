@@ -2,6 +2,8 @@
 
 This document is the final operator-facing checklist for taking Binboi from local development to a production-minded deployment.
 
+For the backend-first go/no-go view, see [launch-blockers.md](/Users/sardorazimov/binboi/docs/launch-blockers.md).
+
 It is intentionally focused on the current shipping surface:
 
 - Go control plane
@@ -96,6 +98,8 @@ npm run build
 ## 4. Preview smoke test
 
 This is the fastest end-to-end smoke path for the ngrok-style loop.
+
+If you only need the short release-day checklist, use [smoke-test-checklist.md](/Users/sardorazimov/binboi/docs/smoke-test-checklist.md).
 
 ### Start a local upstream app
 
