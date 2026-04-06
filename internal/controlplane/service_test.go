@@ -63,10 +63,14 @@ func newTestService(t *testing.T) *Service {
 
 	service := &Service{
 		cfg: Config{
-			BaseDomain:    "binboi.localhost",
-			PublicScheme:  "http",
-			PublicPort:    8000,
-			DefaultRegion: "local",
+			BaseDomain:     "binboi.localhost",
+			PublicScheme:   "http",
+			PublicPort:     8000,
+			DefaultRegion:  "local",
+			APIRateLimit:   defaultAPIRateLimit,
+			APIRateBurst:   defaultAPIRateBurst,
+			ProxyRateLimit: defaultProxyRateLimit,
+			ProxyRateBurst: defaultProxyRateBurst,
 		},
 		db:           db,
 		sessions:     make(map[string]*activeSession),
@@ -74,6 +78,7 @@ func newTestService(t *testing.T) *Service {
 		backlog:      make([]string, 0, maxLogBacklog),
 		authProvider: &authProvider{},
 	}
+	service.configureRuntimeGuards()
 
 	if err := service.ensureDefaults(); err != nil {
 		t.Fatalf("ensure defaults: %v", err)
@@ -115,6 +120,10 @@ func TestLoadConfigFromEnvParsesTimeoutsAndLimits(t *testing.T) {
 	t.Setenv("BINBOI_REQUEST_LIMIT", "250")
 	t.Setenv("BINBOI_STORED_EVENT_LIMIT", "1500")
 	t.Setenv("BINBOI_STORED_REQUEST_LIMIT", "5500")
+	t.Setenv("BINBOI_API_RATE_LIMIT", "320")
+	t.Setenv("BINBOI_API_RATE_BURST", "44")
+	t.Setenv("BINBOI_PROXY_RATE_LIMIT", "980")
+	t.Setenv("BINBOI_PROXY_RATE_BURST", "120")
 
 	cfg := LoadConfigFromEnv()
 
@@ -144,6 +153,18 @@ func TestLoadConfigFromEnvParsesTimeoutsAndLimits(t *testing.T) {
 	}
 	if cfg.StoredRequestLimit != 5500 {
 		t.Fatalf("StoredRequestLimit = %d, want 5500", cfg.StoredRequestLimit)
+	}
+	if cfg.APIRateLimit != 320 {
+		t.Fatalf("APIRateLimit = %d, want 320", cfg.APIRateLimit)
+	}
+	if cfg.APIRateBurst != 44 {
+		t.Fatalf("APIRateBurst = %d, want 44", cfg.APIRateBurst)
+	}
+	if cfg.ProxyRateLimit != 980 {
+		t.Fatalf("ProxyRateLimit = %d, want 980", cfg.ProxyRateLimit)
+	}
+	if cfg.ProxyRateBurst != 120 {
+		t.Fatalf("ProxyRateBurst = %d, want 120", cfg.ProxyRateBurst)
 	}
 }
 
@@ -250,6 +271,75 @@ func TestHealthRouteSetsRequestIDHeader(t *testing.T) {
 	}
 }
 
+func TestAPIRateLimitRejectsBurstAndTrustedLocalBypasses(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	service := newTestService(t)
+	service.cfg.APIRateLimit = 1
+	service.cfg.APIRateBurst = 1
+	service.configureRuntimeGuards()
+
+	router := gin.New()
+	service.RegisterRoutes(router)
+
+	first := httptest.NewRequest(http.MethodGet, "/api/health", nil)
+	first.RemoteAddr = "8.8.8.8:4040"
+	recorder := httptest.NewRecorder()
+	router.ServeHTTP(recorder, first)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("first remote /api/health = %d, want %d", recorder.Code, http.StatusOK)
+	}
+
+	second := httptest.NewRequest(http.MethodGet, "/api/health", nil)
+	second.RemoteAddr = "8.8.8.8:4040"
+	recorder = httptest.NewRecorder()
+	router.ServeHTTP(recorder, second)
+	if recorder.Code != http.StatusTooManyRequests {
+		t.Fatalf("second remote /api/health = %d, want %d", recorder.Code, http.StatusTooManyRequests)
+	}
+	if recorder.Header().Get("Retry-After") == "" {
+		t.Fatal("expected Retry-After header when API rate limit trips")
+	}
+
+	local := httptest.NewRequest(http.MethodGet, "/api/health", nil)
+	local.RemoteAddr = "127.0.0.1:4040"
+	recorder = httptest.NewRecorder()
+	router.ServeHTTP(recorder, local)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("trusted local /api/health = %d, want %d", recorder.Code, http.StatusOK)
+	}
+}
+
+func TestProxyRateLimitRejectsBurst(t *testing.T) {
+	service := newTestService(t)
+	service.cfg.ProxyRateLimit = 1
+	service.cfg.ProxyRateBurst = 1
+	service.configureRuntimeGuards()
+
+	handler := service.ServeProxy()
+
+	first := httptest.NewRequest(http.MethodGet, "http://binboi.localhost:8000/", nil)
+	first.Host = "binboi.localhost:8000"
+	first.RemoteAddr = "7.7.7.7:5050"
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, first)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("first proxy request = %d, want %d", recorder.Code, http.StatusOK)
+	}
+
+	second := httptest.NewRequest(http.MethodGet, "http://binboi.localhost:8000/", nil)
+	second.Host = "binboi.localhost:8000"
+	second.RemoteAddr = "7.7.7.7:5050"
+	recorder = httptest.NewRecorder()
+	handler.ServeHTTP(recorder, second)
+	if recorder.Code != http.StatusTooManyRequests {
+		t.Fatalf("second proxy request = %d, want %d", recorder.Code, http.StatusTooManyRequests)
+	}
+	if recorder.Header().Get("Retry-After") == "" {
+		t.Fatal("expected Retry-After header when proxy rate limit trips")
+	}
+}
+
 func TestV1MetricsRouteReturnsEnvelope(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
@@ -300,8 +390,14 @@ func TestV1MetricsRouteReturnsEnvelope(t *testing.T) {
 	if payload.Data.APIRequestErrorsTotal != 1 {
 		t.Fatalf("api_request_errors_total = %d, want 1", payload.Data.APIRequestErrorsTotal)
 	}
+	if payload.Data.APIRateLimitedTotal != 0 {
+		t.Fatalf("api_rate_limited_total = %d, want 0", payload.Data.APIRateLimitedTotal)
+	}
 	if payload.Data.ProxyRequestsTotal != 1 {
 		t.Fatalf("proxy_requests_total = %d, want 1", payload.Data.ProxyRequestsTotal)
+	}
+	if payload.Data.ProxyRateLimitedTotal != 0 {
+		t.Fatalf("proxy_rate_limited_total = %d, want 0", payload.Data.ProxyRateLimitedTotal)
 	}
 	if payload.Data.TunnelConnectionsTotal != 1 {
 		t.Fatalf("tunnel_connections_total = %d, want 1", payload.Data.TunnelConnectionsTotal)

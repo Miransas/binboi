@@ -1,0 +1,76 @@
+{
+  "name": "@miransas/binboi",
+  "version": "0.4.0",
+  "description": "Self-hosted tunneling platform with a Go control plane, CLI agent, and Next.js product app.",
+  "license": "MIT",
+  "author": "Sardor Azimov",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Miransas/binboi.git"
+  },
+  "homepage": "https://github.com/Miransas/binboi#readme",
+  "bugs": {
+    "url": "https://github.com/Miransas/binboi/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "os": [
+    "darwin",
+    "linux"
+  ],
+  "cpu": [
+    "x64",
+    "arm64"
+  ],
+  "bin": {
+    "binboi": "./bin/binboi.cjs"
+  },
+  "files": [
+    "README.md",
+    "bin",
+    "scripts"
+  ],
+  "scripts": {
+    "postinstall": "node ./scripts/postinstall.cjs",
+    "verify-install": "node ./scripts/verify.cjs"
+  },
+  "keywords": [
+    "binboi",
+    "tunnel",
+    "webhook",
+    "proxy",
+    "cli",
+    "miransas"
+  ],
+  "miransas": {
+    "verified": true,
+    "organization": "Miransas",
+    "maintainer": "Sardor Azimov",
+    "nodeRequirement": "20+",
+    "runtime": {
+      "commands": {
+        "server": "go run ./cmd/binboi-server",
+        "cli": "go build -o binboi ./cmd/binboi-client",
+        "web": "cd web && npm run dev"
+      },
+      "defaultPorts": {
+        "api": 8080,
+        "tunnel": 8081,
+        "proxy": 8000,
+        "web": 3000
+      }
+    },
+    "endpoints": {
+      "dashboardUrl": "http://127.0.0.1:3000/dashboard",
+      "publicDashboardUrl": "http://127.0.0.1:3000/dashboard",
+      "apiBaseUrl": "http://127.0.0.1:8080",
+      "proxyBaseUrl": "http://binboi.localhost:8000",
+      "health": "/api/v1/health",
+      "metrics": "/metrics"
+    }
+  }
+}

@@ -15,6 +15,10 @@ BINBOI_EVENT_LIMIT=50
 BINBOI_REQUEST_LIMIT=200
 BINBOI_STORED_EVENT_LIMIT=1000
 BINBOI_STORED_REQUEST_LIMIT=5000
+BINBOI_API_RATE_LIMIT=240
+BINBOI_API_RATE_BURST=60
+BINBOI_PROXY_RATE_LIMIT=1200
+BINBOI_PROXY_RATE_BURST=240
 
 # Enable Postgres-backed personal access tokens and account ownership in the control plane.
 BINBOI_AUTH_DATABASE_URL=postgresql://binboi:binboi@localhost:5432/binboi?sslmode=disable

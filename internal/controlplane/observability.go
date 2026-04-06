@@ -19,8 +19,10 @@ const requestIDHeader = "X-Request-ID"
 type runtimeMetrics struct {
 	apiRequestsTotal        atomic.Uint64
 	apiRequestErrorsTotal   atomic.Uint64
+	apiRateLimitedTotal     atomic.Uint64
 	proxyRequestsTotal      atomic.Uint64
 	proxyRequestErrorsTotal atomic.Uint64
+	proxyRateLimitedTotal   atomic.Uint64
 	tunnelConnectionsTotal  atomic.Uint64
 	tunnelRejectionsTotal   atomic.Uint64
 }
@@ -39,8 +41,10 @@ type MetricsSnapshot struct {
 	LogSubscribers          int    `json:"log_subscribers"`
 	APIRequestsTotal        uint64 `json:"api_requests_total"`
 	APIRequestErrorsTotal   uint64 `json:"api_request_errors_total"`
+	APIRateLimitedTotal     uint64 `json:"api_rate_limited_total"`
 	ProxyRequestsTotal      uint64 `json:"proxy_requests_total"`
 	ProxyRequestErrorsTotal uint64 `json:"proxy_request_errors_total"`
+	ProxyRateLimitedTotal   uint64 `json:"proxy_rate_limited_total"`
 	TunnelConnectionsTotal  uint64 `json:"tunnel_connections_total"`
 	TunnelRejectionsTotal   uint64 `json:"tunnel_rejections_total"`
 }
@@ -125,8 +129,10 @@ func (s *Service) metricsSnapshot() (MetricsSnapshot, error) {
 	snapshot.LogSubscribers = s.activeLogSubscribers()
 	snapshot.APIRequestsTotal = s.metrics.apiRequestsTotal.Load()
 	snapshot.APIRequestErrorsTotal = s.metrics.apiRequestErrorsTotal.Load()
+	snapshot.APIRateLimitedTotal = s.metrics.apiRateLimitedTotal.Load()
 	snapshot.ProxyRequestsTotal = s.metrics.proxyRequestsTotal.Load()
 	snapshot.ProxyRequestErrorsTotal = s.metrics.proxyRequestErrorsTotal.Load()
+	snapshot.ProxyRateLimitedTotal = s.metrics.proxyRateLimitedTotal.Load()
 	snapshot.TunnelConnectionsTotal = s.metrics.tunnelConnectionsTotal.Load()
 	snapshot.TunnelRejectionsTotal = s.metrics.tunnelRejectionsTotal.Load()
 
@@ -160,11 +166,19 @@ func (s *Service) recordAPIRequest(status int) {
 	}
 }
 
+func (s *Service) recordAPIRateLimited() {
+	s.metrics.apiRateLimitedTotal.Add(1)
+}
+
 func (s *Service) recordProxyRequest(status int) {
 	s.metrics.proxyRequestsTotal.Add(1)
 	if status >= http.StatusBadRequest {
 		s.metrics.proxyRequestErrorsTotal.Add(1)
 	}
+}
+
+func (s *Service) recordProxyRateLimited() {
+	s.metrics.proxyRateLimitedTotal.Add(1)
 }
 
 func (s *Service) recordTunnelConnectionAccepted() {
@@ -231,8 +245,10 @@ func renderPrometheusMetrics(snapshot MetricsSnapshot) string {
 	writeMetric("binboi_log_subscribers", "gauge", "Number of connected live log websocket clients.", snapshot.LogSubscribers)
 	writeMetric("binboi_api_requests_total", "counter", "Total number of control plane API requests.", snapshot.APIRequestsTotal)
 	writeMetric("binboi_api_request_errors_total", "counter", "Total number of control plane API requests ending with 4xx or 5xx.", snapshot.APIRequestErrorsTotal)
+	writeMetric("binboi_api_rate_limited_total", "counter", "Total number of control plane API requests rejected by rate limiting.", snapshot.APIRateLimitedTotal)
 	writeMetric("binboi_proxy_requests_total", "counter", "Total number of public proxy requests.", snapshot.ProxyRequestsTotal)
 	writeMetric("binboi_proxy_request_errors_total", "counter", "Total number of public proxy requests ending with 4xx or 5xx.", snapshot.ProxyRequestErrorsTotal)
+	writeMetric("binboi_proxy_rate_limited_total", "counter", "Total number of public proxy requests rejected by rate limiting.", snapshot.ProxyRateLimitedTotal)
 	writeMetric("binboi_tunnel_connections_total", "counter", "Total number of accepted tunnel connections.", snapshot.TunnelConnectionsTotal)
 	writeMetric("binboi_tunnel_rejections_total", "counter", "Total number of rejected tunnel handshakes.", snapshot.TunnelRejectionsTotal)
 

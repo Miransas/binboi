@@ -1,0 +1,17 @@
+Package: binboi
+Version: 0.4.0
+Section: utils
+Priority: optional
+Architecture: any
+Maintainer: Sardor Azimov
+Homepage: https://github.com/Miransas/binboi
+Vcs-Git: https://github.com/Miransas/binboi.git
+Depends: ca-certificates, libc6 (>= 2.31)
+Recommends: curl, tar
+Description: Self-hosted tunneling platform with a Go control plane, CLI agent, and Next.js product app.
+ Binboi exposes local applications through public URLs and keeps request
+ inspection, webhook debugging, and control-plane operations in one workflow.
+ Miransas Verified release metadata is bundled with this Debian package.
+X-Miransas-Organization: Miransas
+X-Miransas-Supported-Architectures: amd64, arm64
+X-Miransas-Release-Channel: candidate

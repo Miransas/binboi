@@ -30,11 +30,11 @@ Avoid promising these paths yet:
 | `install.sh` | Supported | `binboi` installed from GitHub release artifacts | Uses release archives instead of relying on local Go naming |
 | `go build -o binboi ./cmd/binboi-client` | Supported for contributors | local `binboi` binary | Best source path when working in the repo |
 | `go install github.com/miransas/binboi/cmd/binboi-client@latest` | Technically possible but not the primary user path | `binboi-client` in Go bin directory | Good for contributors, but the binary name is not the product-facing `binboi` name |
-| `npm install -g @binboi/cli` | Not implemented in this repo | No supported package flow yet | Mentioned in product docs as a future direction only |
-| `bun add -g @binboi/cli` | Not implemented in this repo | No supported package flow yet | Same status as npm |
-| `cargo install binboi` | Not implemented in this repo | No supported crate flow yet | `rust/` exists but no published crate or `Cargo.toml` package is present |
-| `apt install binboi` | Not implemented | No supported APT repo yet | No Debian packaging or APT repository is present |
-| `pip install binboi` | Not implemented | No supported PyPI package yet | No Python package distribution is present |
+| `npm install -g @miransas/binboi` | Manifest-ready, not published | Wrapper package metadata plus verify hook | Registry publishing and native binary bundling are still pending |
+| `bun add -g @miransas/binboi` | Manifest-ready, not published | Same wrapper metadata as npm | Bun can use the npm package once it is published |
+| `cargo install miransas-binboi` | Manifest-ready, not published | Wrapper crate metadata plus verify guidance | Crate publishing and native binary bundling are still pending |
+| `apt install binboi` | Manifest-ready, not published | Debian control metadata plus post-install verify hook | APT repository and signed `.deb` artifacts are still pending |
+| `pip install binboi` | Manifest-ready, not published | Python wrapper metadata plus verify guidance | PyPI publishing and native binary bundling are still pending |
 
 ## What Happens Today
 
@@ -115,13 +115,11 @@ Expected outcome:
 
 From the current repository state:
 
-- there is no npm package publishing setup for `@binboi/cli`
-- there is no Bun-specific global package flow beyond the hypothetical npm wrapper
-- the `rust/` directory does not yet contain a published crate path
-- there is no Debian package, APT repo, or packaging metadata for `apt`
-- there is no Python package metadata or PyPI publishing path
+- packaging manifests now exist for npm, Bun, Cargo, Debian, and PyPI
+- there is still no public registry release automation for these channels
+- wrapper channels still point operators back to GitHub releases for the native CLI
 
-That means these channels should be treated as roadmap or ecosystem ideas, not current install promises.
+That means these channels are now packaging-ready, but they still should not be marketed as live install promises until they are published and smoke-tested.
 
 ## Release Diagram
 
@@ -141,12 +139,12 @@ flowchart TD
     E --> J
     F --> J
 
-    G --> K["Not a current release channel"]
+    G --> K["Manifest-ready wrapper channel"]
     H --> K
     I --> K
 
     J --> L["Can run: binboi version"]
-    K --> M["Document as planned or unsupported"]
+    K --> M["Publish and smoke-test before marketing"]
 ```
 
 ## Product Recommendation

@@ -3,10 +3,14 @@ CLI_VERSION_PKG := github.com/miransas/binboi/internal/cli
 LDFLAGS := -s -w -X $(CLI_VERSION_PKG).Version=$(VERSION)
 CLI_PLATFORMS := darwin/amd64 darwin/arm64 linux/amd64 linux/arm64
 
-.PHONY: build-cli build-server release-cli sync-manifests clean
+.PHONY: build-cli build-server release-cli sync-manifests sync-distribution-manifests clean
 
 sync-manifests:
 	bash ./scripts/sync-project-manifests.sh
+	node ./scripts/sync-distribution-manifests.mjs
+
+sync-distribution-manifests:
+	node ./scripts/sync-distribution-manifests.mjs
 
 build-cli:
 	mkdir -p dist

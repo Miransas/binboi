@@ -4,6 +4,7 @@ This folder contains repository-level documentation that complements the web doc
 
 Key files:
 
+- `antigravity-distribution.md`: generated package-manager manifests for npm, Cargo, PyPI, and Debian
 - `architecture-overview.md`: subsystem map
 - `api-requirements.md`: internal API and external integration requirements
 - `deploy-readiness.md`: release checklist and smoke-test runbook

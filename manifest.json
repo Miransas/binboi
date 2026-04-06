@@ -1,0 +1,112 @@
+{
+  "schemaVersion": 2,
+  "organization": "Miransas",
+  "project": {
+    "name": "Binboi",
+    "slug": "binboi",
+    "projectId": "miransas.binboi",
+    "status": "release-candidate",
+    "maintainer": "Sardor Azimov",
+    "license": "MIT",
+    "repository": "https://github.com/Miransas/binboi"
+  },
+  "release": {
+    "channel": "candidate",
+    "apiVersion": "v1",
+    "releaseDate": "2026-04-06",
+    "minimumCliVersion": "0.4.0",
+    "supportTier": "community-supported"
+  },
+  "buildTarget": {
+    "type": "multi-platform-cli",
+    "platforms": [
+      "darwin/amd64",
+      "darwin/arm64",
+      "linux/amd64",
+      "linux/arm64"
+    ]
+  },
+  "versions": {
+    "cli": "0.4.0",
+    "web": "0.1.0",
+    "go": "1.25.6",
+    "next": "16.2.1",
+    "react": "19.2.4",
+    "nodeRequirement": "20+"
+  },
+  "runtime": {
+    "deployMode": {
+      "default": "local-full-stack",
+      "supported": [
+        "local-preview",
+        "local-full-stack",
+        "staging",
+        "production-like"
+      ]
+    },
+    "defaultPorts": {
+      "api": 8080,
+      "tunnel": 8081,
+      "proxy": 8000,
+      "web": 3000
+    },
+    "commands": {
+      "server": "go run ./cmd/binboi-server",
+      "cli": "go build -o binboi ./cmd/binboi-client",
+      "web": "cd web && npm run dev"
+    }
+  },
+  "distribution": {
+    "recommended": [
+      "homebrew",
+      "direct-binary",
+      "install-script",
+      "go-source"
+    ],
+    "planned": [
+      "npm",
+      "bun",
+      "cargo",
+      "apt",
+      "pip"
+    ]
+  },
+  "stack": {
+    "backend": [
+      "Go",
+      "Gin",
+      "Yamux"
+    ],
+    "frontend": [
+      "Next.js",
+      "React",
+      "TypeScript"
+    ],
+    "storage": [
+      "SQLite",
+      "Postgres"
+    ],
+    "integrations": [
+      "GitHub OAuth",
+      "OpenAI",
+      "Paddle"
+    ]
+  },
+  "docs": {
+    "root": "./README",
+    "web": "./web/README.md",
+    "docs": "./docs/README.md",
+    "installMatrix": "./docs/install-channel-matrix.md",
+    "deployReadiness": "./docs/deploy-readiness.md",
+    "launchBlockers": "./docs/launch-blockers.md",
+    "releaseNotesUrl": "https://github.com/Miransas/binboi/releases"
+  },
+  "endpoints": {
+    "dashboardUrl": "http://127.0.0.1:3000/dashboard",
+    "publicDashboardUrl": "http://127.0.0.1:3000/dashboard",
+    "apiBaseUrl": "http://127.0.0.1:8080",
+    "proxyBaseUrl": "http://binboi.localhost:8000",
+    "health": "/api/v1/health",
+    "metrics": "/metrics"
+  }
+}

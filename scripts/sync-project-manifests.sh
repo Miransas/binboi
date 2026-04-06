@@ -159,6 +159,8 @@ cat > "$ROOT_DIR/miransas.json" <<EOF
 }
 EOF
 
+cp "$ROOT_DIR/miransas.json" "$ROOT_DIR/manifest.json"
+
 cat > "$ROOT_DIR/binboi.json" <<EOF
 {
   "schemaVersion": 2,
@@ -241,4 +243,5 @@ EOF
 
 echo "Synced project manifests:"
 echo "  - $ROOT_DIR/miransas.json"
+echo "  - $ROOT_DIR/manifest.json"
 echo "  - $ROOT_DIR/binboi.json"

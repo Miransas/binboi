@@ -48,6 +48,10 @@ const (
 	defaultRecentRequestLimit = 200
 	defaultStoredEventLimit   = 1000
 	defaultStoredRequestLimit = 5000
+	defaultAPIRateLimit       = 240
+	defaultAPIRateBurst       = 60
+	defaultProxyRateLimit     = 1200
+	defaultProxyRateBurst     = 240
 	maxLogBacklog             = 100
 	maxHeaderPreviewRows      = 10
 	maxBodyPreviewBytes       = 4096
@@ -80,6 +84,10 @@ type Config struct {
 	RecentRequestLimit int
 	StoredEventLimit   int
 	StoredRequestLimit int
+	APIRateLimit       int
+	APIRateBurst       int
+	ProxyRateLimit     int
+	ProxyRateBurst     int
 }
 
 func LoadConfigFromEnv() Config {
@@ -102,6 +110,10 @@ func LoadConfigFromEnv() Config {
 		RecentRequestLimit: intEnvOrDefault("BINBOI_REQUEST_LIMIT", defaultRecentRequestLimit),
 		StoredEventLimit:   intEnvOrDefault("BINBOI_STORED_EVENT_LIMIT", defaultStoredEventLimit),
 		StoredRequestLimit: intEnvOrDefault("BINBOI_STORED_REQUEST_LIMIT", defaultStoredRequestLimit),
+		APIRateLimit:       nonNegativeIntEnvOrDefault("BINBOI_API_RATE_LIMIT", defaultAPIRateLimit),
+		APIRateBurst:       nonNegativeIntEnvOrDefault("BINBOI_API_RATE_BURST", defaultAPIRateBurst),
+		ProxyRateLimit:     nonNegativeIntEnvOrDefault("BINBOI_PROXY_RATE_LIMIT", defaultProxyRateLimit),
+		ProxyRateBurst:     nonNegativeIntEnvOrDefault("BINBOI_PROXY_RATE_BURST", defaultProxyRateBurst),
 	}
 
 	if port, err := strconv.Atoi(envOrDefault("BINBOI_PUBLIC_PORT", strconv.Itoa(portFromAddr(cfg.ProxyAddr, 8000)))); err == nil {
@@ -139,6 +151,18 @@ func intEnvOrDefault(key string, fallback int) int {
 	}
 	parsed, err := strconv.Atoi(value)
 	if err != nil || parsed <= 0 {
+		return fallback
+	}
+	return parsed
+}
+
+func nonNegativeIntEnvOrDefault(key string, fallback int) int {
+	value := strings.TrimSpace(os.Getenv(key))
+	if value == "" {
+		return fallback
+	}
+	parsed, err := strconv.Atoi(value)
+	if err != nil || parsed < 0 {
 		return fallback
 	}
 	return parsed
@@ -242,6 +266,8 @@ type Service struct {
 	authProvider accessAuthenticator
 	startedAt    time.Time
 	metrics      runtimeMetrics
+	apiLimiter   *requestRateLimiter
+	proxyLimiter *requestRateLimiter
 
 	mu       sync.RWMutex
 	sessions map[string]*activeSession
@@ -380,6 +406,7 @@ func NewService(cfg Config) (*Service, error) {
 		return nil, err
 	}
 	service.authProvider = authProvider
+	service.configureRuntimeGuards()
 
 	if err := service.ensureDefaults(); err != nil {
 		return nil, err
@@ -465,6 +492,11 @@ func (s *Service) ensureDefaults() error {
 	return nil
 }
 
+func (s *Service) configureRuntimeGuards() {
+	s.apiLimiter = newRequestRateLimiter(s.cfg.APIRateLimit, s.cfg.APIRateBurst)
+	s.proxyLimiter = newRequestRateLimiter(s.cfg.ProxyRateLimit, s.cfg.ProxyRateBurst)
+}
+
 func (s *Service) RegisterRoutes(r *gin.Engine) {
 	r.Use(gin.Recovery())
 	r.Use(s.requestContext())
@@ -474,6 +506,7 @@ func (s *Service) RegisterRoutes(r *gin.Engine) {
 	r.GET("/metrics", s.requireControlPlaneAccess(), s.handlePrometheusMetrics)
 
 	api := r.Group("/api")
+	api.Use(s.apiRateLimit(false))
 	api.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
@@ -505,6 +538,7 @@ func (s *Service) RegisterRoutes(r *gin.Engine) {
 	admin.POST("/tokens/revoke", s.handleRevokeSessions)
 
 	apiV1 := r.Group("/api/v1")
+	apiV1.Use(s.apiRateLimit(true))
 	apiV1.GET("/health", s.handleV1Health)
 	apiV1.GET("/instance", s.handleV1Instance)
 	apiV1.GET("/nodes", s.handleV1Nodes)
@@ -660,7 +694,7 @@ func (s *Service) HandleTunnelConnection(conn net.Conn) {
 }
 
 func (s *Service) ServeProxy() http.Handler {
-	return s.withProxyObservability(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	return s.withProxyObservability(s.withProxyRateLimit(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		subdomain := extractSubdomain(r.Host, s.cfg.BaseDomain)
 		if subdomain == "" {
 			s.renderProxyLanding(w)
@@ -775,7 +809,7 @@ func (s *Service) ServeProxy() http.Handler {
 			PayloadPreview:  requestSnapshot.PayloadPreview,
 			ResponsePreview: fallbackString(captureWriter.BodyPreview(), requestSnapshot.ResponsePreviewHint),
 		})
-	}))
+	})))
 }
 
 func (s *Service) BuildPublicURL(subdomain string) string {
