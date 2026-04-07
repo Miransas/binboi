@@ -61,6 +61,31 @@ export const docsNavGroups: DocsNavGroup[] = [
     ],
   },
   {
+    title: "Deployment",
+    items: [
+      {
+        title: "Environments",
+        href: "/docs/environments",
+        description: "Local preview, full-stack, staging, and production-like environment models for Binboi.",
+      },
+      {
+        title: "Deploy Readiness",
+        href: "/docs/deploy-readiness",
+        description: "The final operator checklist before a serious staging push or public rollout.",
+      },
+      {
+        title: "Staging Runbook",
+        href: "/docs/staging-runbook",
+        description: "Shortest serious bring-up path for staging with real auth, tokens, tunnels, and public forwarding.",
+      },
+      {
+        title: "Smoke Testing",
+        href: "/docs/smoke-testing",
+        description: "The fastest operator checklist for validating tunnels, metrics, requests, and forwarding before release.",
+      },
+    ],
+  },
+  {
     title: "Core Workflows",
     items: [
       {
@@ -94,6 +119,31 @@ export const docsNavGroups: DocsNavGroup[] = [
     title: "Diagnostics & Ops",
     items: [
       {
+        title: "Readiness",
+        href: "/docs/readiness",
+        description: "How to read health versus ready, degraded workers, and the checks behind deployment gates.",
+      },
+      {
+        title: "Quotas & Limits",
+        href: "/docs/limits",
+        description: "Plan quotas, response headers, retention windows, and the runtime limits Binboi enforces.",
+      },
+      {
+        title: "Metrics",
+        href: "/docs/metrics",
+        description: "JSON metrics, Prometheus export, request IDs, and the counters that matter during rollout.",
+      },
+      {
+        title: "Audit Export",
+        href: "/docs/audit-export",
+        description: "Export audit trails, slice incidents by time and resource, and hand off smaller summaries cleanly.",
+      },
+      {
+        title: "Operator Snapshot",
+        href: "/docs/operator-snapshot",
+        description: "One endpoint for health, readiness, limits, metrics, recent failures, and tunnel state.",
+      },
+      {
         title: "API Keys",
         href: "/docs/api-keys",
         description: "Create, review, revoke, and safely operate CLI credentials.",
@@ -103,11 +153,26 @@ export const docsNavGroups: DocsNavGroup[] = [
         href: "/docs/logs",
         description: "Raw relay logs, activity events, and tunnel lifecycle visibility.",
       },
+      {
+        title: "Request Replay",
+        href: "/docs/request-replay",
+        description: "Archive, export, replay, replay policy, and how to operate redelivery safely.",
+      },
     ],
   },
   {
     title: "Operations",
     items: [
+      {
+        title: "Domains & TLS",
+        href: "/docs/domains-and-tls",
+        description: "Custom domain verification, ACME readiness, TLS mode selection, and rollout checks.",
+      },
+      {
+        title: "Production Domains",
+        href: "/docs/production-domains",
+        description: "Per-domain rollout sheet for DNS, TXT verification, TLS readiness, and HTTPS validation.",
+      },
       {
         title: "Regions",
         href: "/docs/regions",

@@ -77,6 +77,7 @@ Run:
 
 ```bash
 curl -i -s http://127.0.0.1:9080/api/v1/health
+curl -s -H 'Authorization: Bearer <preview-token>' http://127.0.0.1:9080/api/v1/snapshot
 curl -s http://127.0.0.1:9080/api/v1/tunnels
 curl -s http://demo.binboi.localhost:9082
 curl -s 'http://127.0.0.1:9080/api/v1/requests?limit=5&kind=REQUEST'
@@ -85,6 +86,7 @@ curl -s 'http://127.0.0.1:9080/api/v1/requests?limit=5&kind=REQUEST'
 Pass if:
 
 - `/api/v1/health` returns `status: ok`
+- `/api/v1/snapshot` returns health, readiness, metrics, and limits together
 - the tunnel list contains an active `demo` tunnel
 - the public URL returns the upstream HTML
 - the request feed shows the forwarded request

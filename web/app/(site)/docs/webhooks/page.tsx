@@ -38,7 +38,7 @@ export default function WebhooksPage() {
         <DocsCodeBlock
           title="Typical webhook tunnel"
           language="bash"
-          code={`binboi start 3000 webhook-dev
+          code={`binboi http 3000 webhook-dev
 
 # Example endpoint configured in a provider
 https://webhook-dev.binboi.link/api/webhooks/stripe`}
@@ -91,7 +91,7 @@ https://webhook-dev.binboi.link/api/webhooks/stripe`}
         <DocsCodeBlock
           title="Stripe local example"
           language="bash"
-          code={`binboi start 3000 stripe-events
+          code={`binboi http 3000 stripe-events
 
 # Configure Stripe to send events to:
 https://stripe-events.binboi.link/webhooks/stripe

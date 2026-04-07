@@ -16,6 +16,8 @@ type eventListOptions struct {
 	ResourceType string
 	ResourceID   string
 	RequestID    string
+	AccessScope  string
+	Sort         string
 	Since        *time.Time
 	Until        *time.Time
 	Query        string
@@ -28,6 +30,9 @@ type requestListOptions struct {
 	Provider    string
 	EventType   string
 	DeliveryID  string
+	Method      string
+	PathPrefix  string
+	Sort        string
 	Since       *time.Time
 	Until       *time.Time
 	Query       string
@@ -98,6 +103,26 @@ func normalizeFilterValue(raw string, max int) string {
 	}
 	if max > 0 && len(value) > max {
 		value = value[:max]
+	}
+	return value
+}
+
+func normalizeSortDirection(raw string) string {
+	switch strings.ToLower(strings.TrimSpace(raw)) {
+	case "asc":
+		return "asc"
+	default:
+		return "desc"
+	}
+}
+
+func normalizeHTTPMethodFilter(raw string) string {
+	value := strings.ToUpper(strings.TrimSpace(raw))
+	if value == "" {
+		return ""
+	}
+	if len(value) > 16 {
+		value = value[:16]
 	}
 	return value
 }

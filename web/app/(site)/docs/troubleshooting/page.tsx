@@ -60,7 +60,7 @@ export default function TroubleshootingPage() {
           language="bash"
           code={`binboi whoami
 curl http://127.0.0.1:3000/health
-binboi start 3000 my-app`}
+binboi http 3000 my-app`}
         />
 
         <div className="space-y-3 rounded-3xl border border-white/10 bg-black/25 p-5 text-sm leading-7 text-zinc-300">

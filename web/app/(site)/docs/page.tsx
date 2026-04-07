@@ -1,4 +1,4 @@
-import { BookOpen, Globe, Zap, KeyRound, Terminal, Webhook, LifeBuoy, ArrowRight } from "lucide-react";
+import { ArrowRight, BookOpen } from "lucide-react";
 import Link from "next/link";
 import { DocsToc, TocItem } from "./_components/docs-toc";
 
@@ -35,15 +35,34 @@ const guideGroups = [
     items: [
       { href: "/docs/quick-start",    title: "Quick Start",     description: "First tunnel in minutes." },
       { href: "/docs/authentication", title: "Authentication",  description: "Tokens and CLI login." },
+      { href: "/docs/cli",            title: "CLI",             description: "Current commands and compatibility aliases." },
     ],
   },
   {
-    title: "Platform",
+    title: "Core workflows",
     items: [
       { href: "/docs/http-tunnels",     title: "HTTP Tunnels",    description: "Public URLs for localhost." },
       { href: "/docs/webhooks",         title: "Webhooks",        description: "Inspect and replay events." },
-      { href: "/docs/cli",              title: "CLI Reference",   description: "Every command and flag." },
-      { href: "/docs/troubleshooting",  title: "Troubleshooting", description: "Diagnose and recover." },
+      { href: "/docs/request-replay",   title: "Request Replay",  description: "Archive, inspect, and resend captured traffic." },
+      { href: "/docs/api-gateway",      title: "API Gateway",     description: "Host routing, TLS ownership, and public entry behavior." },
+    ],
+  },
+  {
+    title: "Deployment",
+    items: [
+      { href: "/docs/environments",       title: "Environments",       description: "Local preview, full-stack, staging, and production-like modes." },
+      { href: "/docs/deploy-readiness",   title: "Deploy Readiness",   description: "Preflight checks before public traffic." },
+      { href: "/docs/staging-runbook",    title: "Staging Runbook",    description: "Bring up the stack in the right order." },
+      { href: "/docs/production-domains", title: "Production Domains", description: "Roll out real hosts and TLS safely." },
+    ],
+  },
+  {
+    title: "Operations",
+    items: [
+      { href: "/docs/operator-snapshot", title: "Operator Snapshot", description: "One endpoint for health, readiness, metrics, and limits." },
+      { href: "/docs/metrics",           title: "Metrics",           description: "Prometheus counters and JSON metrics snapshots." },
+      { href: "/docs/readiness",         title: "Readiness",         description: "Know when the control plane is fit for real traffic." },
+      { href: "/docs/troubleshooting",   title: "Troubleshooting",   description: "Diagnose auth, tunnel, and delivery failures." },
     ],
   },
 ];
@@ -147,12 +166,13 @@ export default function DocsPage() {
               <code>{`brew install binboi/tap/binboi
 binboi login --token <dashboard-token>
 binboi whoami
-binboi start 3000 my-app`}</code>
+binboi http 3000 my-app`}</code>
             </pre>
             <div className="px-5 pb-4">
               <p className="text-xs text-muted-foreground/60 leading-relaxed">
-                The current repository uses <code className="text-primary/80 font-mono">binboi start</code> for
-                the working HTTP tunnel flow.
+                <code className="text-primary/80 font-mono">binboi start 3000 my-app</code> remains
+                as a compatibility alias, but the primary command surface is
+                <code className="ml-1 text-primary/80 font-mono">binboi http 3000 my-app</code>.
               </p>
             </div>
           </div>
@@ -240,14 +260,18 @@ binboi start 3000 my-app`}</code>
           </div>
           <div className="rounded-xl border border-border bg-card px-6 py-5 text-sm leading-7 text-muted-foreground space-y-3">
             <p>
-              The strongest current product surfaces are HTTP tunnels, dashboard-backed access tokens,{" "}
+              The strongest current product surfaces are HTTP tunnels,
+              dashboard-backed access tokens,{" "}
               <code className="text-primary/80 font-mono">binboi login</code>,{" "}
-              <code className="text-primary/80 font-mono">binboi whoami</code>, relay event logs, and a
+              <code className="text-primary/80 font-mono">binboi whoami</code>,
+              request archive and replay, structured audit events, and a
               coherent self-hosted control plane.
             </p>
             <p>
-              Richer request inspection, replay ergonomics, and broader runtime surfaces are still
-              evolving. The docs call that out directly instead of pretending everything is equally finished.
+              The deployment and operations guides now cover readiness, metrics,
+              domain verification, and launch checks directly. Broader runtime
+              surfaces such as raw TCP are still evolving, and the docs call that
+              out instead of flattening everything into the same maturity level.
             </p>
           </div>
           {/* Callout */}

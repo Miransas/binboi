@@ -27,7 +27,9 @@ export default function CliDocsPage() {
               The Binboi CLI, command by command.
             </h1>
             <p className="text-lg text-muted-foreground leading-relaxed max-w-2xl">
-              The CLI is intentionally compact, but the docs need to explain both the commands available today and the product-facing commands that are planned next. This guide does that without pretending unfinished commands already ship.
+              The CLI is intentionally compact. This guide separates commands
+              that work today from planned surfaces, and it also calls out
+              compatibility aliases so the docs stay aligned with the real binary.
             </p>
           </header>
         </ScrollReveal>
@@ -39,7 +41,8 @@ export default function CliDocsPage() {
               <p className="text-xs font-semibold text-primary/80 uppercase tracking-wider">Reference</p>
               <h2 className="text-2xl font-semibold text-foreground">Current CLI command surface</h2>
               <p className="text-muted-foreground">
-                The table below distinguishes what is available in the repository today from commands that are documented as the intended product surface.
+                The table below distinguishes what is available in the repository
+                today from planned commands and legacy aliases.
               </p>
             </div>
 
@@ -63,6 +66,11 @@ export default function CliDocsPage() {
                       <td className="px-4 py-3 text-muted-foreground">Validate an access token and save it to local config.</td>
                     </tr>
                     <tr>
+                      <td className="px-4 py-3"><code className="text-xs bg-secondary px-1.5 py-0.5 rounded">binboi auth &lt;token&gt;</code></td>
+                      <td className="px-4 py-3"><span className="text-xs font-medium text-cyan-400 bg-cyan-400/10 px-2 py-0.5 rounded">Legacy alias</span></td>
+                      <td className="px-4 py-3 text-muted-foreground">Compatibility entrypoint that maps to <code className="text-xs bg-secondary px-1 rounded">login --token</code>.</td>
+                    </tr>
+                    <tr>
                       <td className="px-4 py-3"><code className="text-xs bg-secondary px-1.5 py-0.5 rounded">binboi logout</code></td>
                       <td className="px-4 py-3"><span className="text-xs font-medium text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded">Planned</span></td>
                       <td className="px-4 py-3 text-muted-foreground">Will remove locally stored auth state.</td>
@@ -74,8 +82,13 @@ export default function CliDocsPage() {
                     </tr>
                     <tr>
                       <td className="px-4 py-3"><code className="text-xs bg-secondary px-1.5 py-0.5 rounded">binboi http 3000</code></td>
-                      <td className="px-4 py-3"><span className="text-xs font-medium text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded">Alias planned</span></td>
-                      <td className="px-4 py-3 text-muted-foreground">Product-facing shorthand for HTTP tunnel. Today use <code className="text-xs bg-secondary px-1 rounded">binboi start</code>.</td>
+                      <td className="px-4 py-3"><span className="text-xs font-medium text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded">Available</span></td>
+                      <td className="px-4 py-3 text-muted-foreground">Primary HTTP tunnel command for exposing a local port.</td>
+                    </tr>
+                    <tr>
+                      <td className="px-4 py-3"><code className="text-xs bg-secondary px-1.5 py-0.5 rounded">binboi start 3000</code></td>
+                      <td className="px-4 py-3"><span className="text-xs font-medium text-cyan-400 bg-cyan-400/10 px-2 py-0.5 rounded">Compatibility alias</span></td>
+                      <td className="px-4 py-3 text-muted-foreground">Alias for <code className="text-xs bg-secondary px-1 rounded">binboi http</code> kept for older flows and scripts.</td>
                     </tr>
                     <tr>
                       <td className="px-4 py-3"><code className="text-xs bg-secondary px-1.5 py-0.5 rounded">binboi tcp 5432</code></td>
@@ -124,6 +137,7 @@ binboi version`}</code>
 
             <div className="rounded-xl border border-border bg-card/50 p-5 space-y-3 text-sm leading-relaxed text-muted-foreground">
               <p><code className="text-xs bg-secondary px-1 rounded">binboi login</code> validates the token against the backend and writes it to local config.</p>
+              <p><code className="text-xs bg-secondary px-1 rounded">binboi auth</code> still works as a token-only legacy alias, but new examples should prefer the explicit login form.</p>
               <p><code className="text-xs bg-secondary px-1 rounded">binboi whoami</code> is the fastest way to prove that your saved token still works before debugging a failing tunnel.</p>
               <p><code className="text-xs bg-secondary px-1 rounded">binboi version</code> is intentionally simple because package managers and operator runbooks depend on predictable output.</p>
             </div>
@@ -137,7 +151,10 @@ binboi version`}</code>
               <p className="text-xs font-semibold text-primary/80 uppercase tracking-wider">Traffic</p>
               <h2 className="text-2xl font-semibold text-foreground">Running tunnels from the CLI</h2>
               <p className="text-muted-foreground">
-                Today the working HTTP tunnel entrypoint is <code className="text-xs bg-secondary px-1 rounded">binboi start</code>, even though the product docs also describe the future <code className="text-xs bg-secondary px-1 rounded">binboi http</code> shape.
+                The primary HTTP tunnel entrypoint is
+                <code className="mx-1 text-xs bg-secondary px-1 rounded">binboi http</code>.
+                <code className="mx-1 text-xs bg-secondary px-1 rounded">binboi start</code>
+                stays available as a compatibility alias.
               </p>
             </div>
 
@@ -147,19 +164,24 @@ binboi version`}</code>
                 <Terminal className="w-4 h-4 text-muted-foreground/60" />
               </div>
               <pre className="p-4 text-sm overflow-x-auto">
-                <code className="text-foreground/90">{`binboi start 3000 my-app
+                <code className="text-foreground/90">{`binboi http 3000 my-app
 
-# Intended future alias
-binboi http 3000`}</code>
+# Compatibility alias
+binboi start 3000 my-app`}</code>
               </pre>
             </div>
 
-            <div className="flex gap-3 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4">
+            <div className="flex gap-3 rounded-xl border border-cyan-500/30 bg-cyan-500/5 p-4">
               <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
               <div className="space-y-1">
-                <p className="text-sm font-medium text-amber-400">Why document the alias?</p>
+                <p className="text-sm font-medium text-cyan-400">Why keep the alias visible?</p>
                 <p className="text-sm text-muted-foreground leading-relaxed">
-                  Because users naturally expect protocol-shaped commands such as <code className="text-xs bg-secondary px-1 rounded">http</code> and <code className="text-xs bg-secondary px-1 rounded">tcp</code>. The docs make that future direction visible, while still telling you exactly which command works today.
+                  Older scripts and habits may still use
+                  <code className="mx-1 text-xs bg-secondary px-1 rounded">start</code>.
+                  Keeping the alias documented avoids surprising users while the
+                  public docs converge on the clearer protocol-shaped
+                  <code className="mx-1 text-xs bg-secondary px-1 rounded">http</code>
+                  command.
                 </p>
               </div>
             </div>
@@ -206,7 +228,7 @@ binboi http 3000`}</code>
               </div>
               <pre className="p-4 text-sm overflow-x-auto">
                 <code className="text-foreground/90">{`binboi whoami
-binboi start 3000 local-dashboard
+binboi http 3000 local-dashboard
 curl https://local-dashboard.binboi.link/health`}</code>
               </pre>
             </div>

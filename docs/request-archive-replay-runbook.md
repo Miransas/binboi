@@ -50,9 +50,14 @@ Useful filters:
 
 - `kind=REQUEST|WEBHOOK`
 - `provider=stripe|github|clerk|supabase|linear|neon`
+- `method=GET|POST|PUT|PATCH|DELETE`
+- `path_prefix=/webhooks/stripe`
 - `status=success|client_error|server_error|error`
 - `error_only=true`
 - `tunnel=<subdomain>`
+- `sort=asc|desc`
+- `since=<RFC3339>`
+- `until=<RFC3339>`
 - `q=<search text>`
 
 Look for:
@@ -183,6 +188,22 @@ Supported formats:
 - `format=json`
 - `format=ndjson`
 - `format=csv`
+- `summary=true` for lighter exports without heavy preview/detail fields
+
+Useful export filters:
+
+- `sort=asc|desc`
+- `since=<RFC3339>`
+- `until=<RFC3339>`
+- `provider=<name>`
+- `event_type=<provider event>`
+- `delivery_id=<provider delivery id>`
+
+Summary export is recommended when:
+
+- you only need IDs, timing, status, route, and provider context
+- you want a smaller artifact for incident handoff
+- you are close to `BINBOI_EXPORT_MAX_BYTES`
 
 Storage and transport behavior:
 

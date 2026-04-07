@@ -622,6 +622,7 @@ func (s *Service) RegisterRoutes(r *gin.Engine) {
 	operator.Use(s.requireControlPlaneAccess())
 	operator.Use(s.quotaHeadersMiddleware())
 	operator.GET("/limits", s.handleQuotaLimits)
+	operator.GET("/snapshot", s.handleOperatorSnapshot)
 	operator.GET("/events/export", s.handleExportEvents)
 	operator.GET("/requests/export", s.handleExportRequests)
 	operator.GET("/events", s.handleListEvents)
@@ -654,6 +655,7 @@ func (s *Service) RegisterRoutes(r *gin.Engine) {
 	apiV1Operator.Use(s.requireControlPlaneAccess())
 	apiV1Operator.Use(s.quotaHeadersMiddleware())
 	apiV1Operator.GET("/limits", s.handleV1QuotaLimits)
+	apiV1Operator.GET("/snapshot", s.handleV1OperatorSnapshot)
 	apiV1Operator.GET("/events/export", s.handleV1ExportEvents)
 	apiV1Operator.GET("/requests/export", s.handleV1ExportRequests)
 	apiV1Operator.GET("/events", s.handleV1ListEvents)
@@ -1152,6 +1154,8 @@ func (s *Service) handleListEvents(c *gin.Context) {
 		ResourceType: c.Query("resource_type"),
 		ResourceID:   c.Query("resource_id"),
 		RequestID:    c.Query("request_id"),
+		AccessScope:  c.Query("access_scope"),
+		Sort:         c.Query("sort"),
 		Since:        since,
 		Until:        until,
 		Query:        c.Query("q"),
@@ -1186,6 +1190,9 @@ func (s *Service) handleListRequests(c *gin.Context) {
 		Provider:    c.Query("provider"),
 		EventType:   c.Query("event_type"),
 		DeliveryID:  c.Query("delivery_id"),
+		Method:      c.Query("method"),
+		PathPrefix:  c.Query("path_prefix"),
+		Sort:        c.Query("sort"),
 		Since:       since,
 		Until:       until,
 		Query:       c.Query("q"),
@@ -1655,6 +1662,8 @@ func (s *Service) handleV1ListEvents(c *gin.Context) {
 		ResourceType: c.Query("resource_type"),
 		ResourceID:   c.Query("resource_id"),
 		RequestID:    c.Query("request_id"),
+		AccessScope:  c.Query("access_scope"),
+		Sort:         c.Query("sort"),
 		Since:        since,
 		Until:        until,
 		Query:        c.Query("q"),
@@ -1681,6 +1690,9 @@ func (s *Service) handleV1ListRequests(c *gin.Context) {
 		Provider:    c.Query("provider"),
 		EventType:   c.Query("event_type"),
 		DeliveryID:  c.Query("delivery_id"),
+		Method:      c.Query("method"),
+		PathPrefix:  c.Query("path_prefix"),
+		Sort:        c.Query("sort"),
 		Since:       since,
 		Until:       until,
 		Query:       c.Query("q"),
@@ -1932,10 +1944,7 @@ func (s *Service) rotateToken() (string, error) {
 
 func (s *Service) listTunnels(access requestAccess, scope string) ([]TunnelResponse, error) {
 	var records []TunnelRecord
-	query := s.db.Model(&TunnelRecord{})
-	if access.Identity != nil && s.authProvider != nil && s.authProvider.Enabled() {
-		query = query.Where("owner_user_id = ?", access.Identity.UserID)
-	}
+	query := s.scopedTunnelQuery(context.Background(), access)
 
 	switch strings.ToLower(strings.TrimSpace(scope)) {
 	case "active":
@@ -2291,6 +2300,9 @@ func (s *Service) listRequests(access requestAccess, options requestListOptions)
 	options.EventType = normalizeFilterValue(options.EventType, 160)
 	options.DeliveryID = normalizeFilterValue(options.DeliveryID, 160)
 	options.Tunnel = normalizeFilterValue(options.Tunnel, 120)
+	options.PathPrefix = strings.TrimSpace(options.PathPrefix)
+	options.Method = normalizeHTTPMethodFilter(options.Method)
+	options.Sort = normalizeSortDirection(options.Sort)
 	options.Query = normalizeSearchQuery(options.Query)
 	options.StatusClass = normalizeStatusClassFilter(options.StatusClass)
 	effectiveLimit := options.Limit
@@ -2330,6 +2342,12 @@ func (s *Service) listRequests(access requestAccess, options requestListOptions)
 	if options.DeliveryID != "" {
 		query = query.Where("LOWER(request_records.delivery_id) = ?", options.DeliveryID)
 	}
+	if options.Method != "" {
+		query = query.Where("request_records.method = ?", options.Method)
+	}
+	if options.PathPrefix != "" {
+		query = query.Where("request_records.path LIKE ?", options.PathPrefix+"%")
+	}
 	if options.ErrorOnly {
 		query = query.Where("request_records.status >= ?", http.StatusBadRequest)
 	}
@@ -2359,7 +2377,11 @@ func (s *Service) listRequests(access requestAccess, options requestListOptions)
 			LOWER(request_records.payload_preview) LIKE ?
 		`, like, like, like, like, like, like, like, like, like, like, like)
 	}
-	if err := query.Order("request_records.created_at desc").Limit(effectiveLimit).Find(&records).Error; err != nil {
+	orderClause := "request_records.created_at desc"
+	if options.Sort == "asc" {
+		orderClause = "request_records.created_at asc"
+	}
+	if err := query.Order(orderClause).Limit(effectiveLimit).Find(&records).Error; err != nil {
 		return nil, err
 	}
 

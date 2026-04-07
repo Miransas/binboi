@@ -485,6 +485,207 @@ func TestV1LimitsRouteReturnsQuotaEnvelope(t *testing.T) {
 	}
 }
 
+func TestV1OperatorSnapshotRouteReturnsEnvelope(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	service := newTestService(t)
+	now := time.Now().UTC()
+	service.recordDomainVerifierRun(nil)
+	service.workerMu.Lock()
+	service.domainVerifierState.LastRunAt = &now
+	service.domainVerifierState.LastSuccessAt = &now
+	service.workerMu.Unlock()
+
+	if err := service.db.Create(&TunnelRecord{
+		ID:         "snapshot_tunnel",
+		Subdomain:  "snapshot",
+		Target:     "http://localhost:3000",
+		TargetPort: 3000,
+		Status:     "ACTIVE",
+		Region:     "local",
+	}).Error; err != nil {
+		t.Fatalf("insert tunnel: %v", err)
+	}
+
+	router := gin.New()
+	service.RegisterRoutes(router)
+
+	request := httptest.NewRequest(http.MethodGet, "/api/v1/snapshot", nil)
+	request.RemoteAddr = "127.0.0.1:4040"
+	recorder := httptest.NewRecorder()
+	router.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("/api/v1/snapshot = %d, want %d", recorder.Code, http.StatusOK)
+	}
+
+	var payload struct {
+		Data OperatorSnapshotResponse `json:"data"`
+		Meta APIMeta                  `json:"meta"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode /api/v1/snapshot response: %v", err)
+	}
+
+	if payload.Data.Health.Status != "ok" {
+		t.Fatalf("health status = %q, want ok", payload.Data.Health.Status)
+	}
+	if !payload.Data.Readiness.Ready {
+		t.Fatal("expected readiness.ready to be true")
+	}
+	if payload.Data.Metrics.InstanceName == "" {
+		t.Fatal("expected metrics.instance_name to be populated")
+	}
+	if payload.Data.Limits.Plan != "PREVIEW" {
+		t.Fatalf("limits.plan = %q, want PREVIEW", payload.Data.Limits.Plan)
+	}
+	if payload.Data.Instance.ManagedDomain != "binboi.localhost" {
+		t.Fatalf("instance.managed_domain = %q, want %q", payload.Data.Instance.ManagedDomain, "binboi.localhost")
+	}
+	if payload.Meta.AccessScope != "trusted-local" {
+		t.Fatalf("meta.access_scope = %q, want %q", payload.Meta.AccessScope, "trusted-local")
+	}
+}
+
+func TestV1OperatorSnapshotRouteReturnsServiceUnavailableWhenReadinessFails(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	service := newTestService(t)
+	service.authProvider = stubAuthProvider{
+		enabled:   true,
+		healthErr: errors.New("postgres unreachable"),
+	}
+
+	router := gin.New()
+	service.RegisterRoutes(router)
+
+	request := httptest.NewRequest(http.MethodGet, "/api/v1/snapshot", nil)
+	request.RemoteAddr = "127.0.0.1:4040"
+	recorder := httptest.NewRecorder()
+	router.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusServiceUnavailable {
+		t.Fatalf("/api/v1/snapshot = %d, want %d", recorder.Code, http.StatusServiceUnavailable)
+	}
+
+	var payload struct {
+		Data OperatorSnapshotResponse `json:"data"`
+		Meta APIMeta                  `json:"meta"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode /api/v1/snapshot response: %v", err)
+	}
+
+	if payload.Data.Status != "error" {
+		t.Fatalf("snapshot status = %q, want error", payload.Data.Status)
+	}
+	if payload.Data.Readiness.Checks["auth"].Status != "error" {
+		t.Fatalf("auth readiness status = %q, want error", payload.Data.Readiness.Checks["auth"].Status)
+	}
+}
+
+func TestV1OperatorSnapshotRouteIncludesRecentCriticalEventsAndTunnelSummary(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	service := newTestService(t)
+	now := time.Now().UTC()
+	older := now.Add(-2 * time.Minute)
+
+	tunnels := []TunnelRecord{
+		{
+			ID:               "snapshot-active",
+			Subdomain:        "alpha",
+			Target:           "http://localhost:3000",
+			Status:           "ACTIVE",
+			Region:           "local",
+			RequestCount:     12,
+			BytesTransferred: 4096,
+			LastConnectedAt:  &now,
+			CreatedAt:        older,
+			UpdatedAt:        now,
+		},
+		{
+			ID:                 "snapshot-error",
+			Subdomain:          "beta",
+			Target:             "http://localhost:4000",
+			Status:             "ERROR",
+			Region:             "local",
+			LastError:          "proxy stream failed",
+			LastDisconnectedAt: &older,
+			CreatedAt:          older,
+			UpdatedAt:          older,
+		},
+	}
+	for _, tunnel := range tunnels {
+		if err := service.db.Create(&tunnel).Error; err != nil {
+			t.Fatalf("insert tunnel %s: %v", tunnel.Subdomain, err)
+		}
+	}
+
+	events := []EventRecord{
+		{Level: "info", Message: "noise", TunnelSubdomain: "alpha", CreatedAt: older.Add(-time.Minute)},
+		{Level: "warn", Message: "quota pressure", TunnelSubdomain: "beta", CreatedAt: older},
+		{Level: "error", Message: "tunnel broke", TunnelSubdomain: "alpha", CreatedAt: now},
+	}
+	for _, event := range events {
+		if err := service.db.Create(&event).Error; err != nil {
+			t.Fatalf("insert event %q: %v", event.Message, err)
+		}
+	}
+
+	service.mu.Lock()
+	service.sessions["alpha"] = &activeSession{connectedAt: now}
+	service.mu.Unlock()
+
+	router := gin.New()
+	service.RegisterRoutes(router)
+
+	request := httptest.NewRequest(http.MethodGet, "/api/v1/snapshot", nil)
+	request.RemoteAddr = "127.0.0.1:4040"
+	recorder := httptest.NewRecorder()
+	router.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("/api/v1/snapshot = %d, want %d", recorder.Code, http.StatusOK)
+	}
+
+	var payload struct {
+		Data OperatorSnapshotResponse `json:"data"`
+		Meta APIMeta                  `json:"meta"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode /api/v1/snapshot response: %v", err)
+	}
+
+	if len(payload.Data.RecentCriticalEvents) != 2 {
+		t.Fatalf("recent_critical_events len = %d, want 2", len(payload.Data.RecentCriticalEvents))
+	}
+	if payload.Data.RecentCriticalEvents[0].Level != "error" {
+		t.Fatalf("first critical event level = %q, want error", payload.Data.RecentCriticalEvents[0].Level)
+	}
+	if payload.Data.RecentCriticalEvents[1].Level != "warn" {
+		t.Fatalf("second critical event level = %q, want warn", payload.Data.RecentCriticalEvents[1].Level)
+	}
+	if payload.Data.TunnelSummary.StatusCounts.Active != 1 {
+		t.Fatalf("active tunnel count = %d, want 1", payload.Data.TunnelSummary.StatusCounts.Active)
+	}
+	if payload.Data.TunnelSummary.StatusCounts.Error != 1 {
+		t.Fatalf("error tunnel count = %d, want 1", payload.Data.TunnelSummary.StatusCounts.Error)
+	}
+	if len(payload.Data.TunnelSummary.Recent) != 2 {
+		t.Fatalf("recent tunnels len = %d, want 2", len(payload.Data.TunnelSummary.Recent))
+	}
+	if payload.Data.TunnelSummary.Recent[0].Subdomain != "alpha" {
+		t.Fatalf("most recent tunnel = %q, want alpha", payload.Data.TunnelSummary.Recent[0].Subdomain)
+	}
+	if !payload.Data.TunnelSummary.Recent[0].ActiveSession {
+		t.Fatal("expected alpha tunnel to be marked active_session")
+	}
+	if payload.Data.TunnelSummary.Recent[1].LastError != "proxy stream failed" {
+		t.Fatalf("beta last_error = %q, want %q", payload.Data.TunnelSummary.Recent[1].LastError, "proxy stream failed")
+	}
+}
+
 func TestTunnelListIncludesQuotaHeaders(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
@@ -979,6 +1180,137 @@ func TestListRequestsSupportsProviderStatusAndQueryFilters(t *testing.T) {
 	}
 }
 
+func TestListRequestsSupportsTimeWindowFilters(t *testing.T) {
+	service := newTestService(t)
+
+	now := time.Now().UTC().Add(-2 * time.Hour)
+	tunnel := TunnelRecord{
+		ID:         "tunnel_time_filter",
+		Subdomain:  "time-filter",
+		Target:     "http://localhost:3000",
+		TargetPort: 3000,
+		Status:     "ACTIVE",
+		Region:     "local",
+		CreatedAt:  now,
+	}
+	if err := service.db.Create(&tunnel).Error; err != nil {
+		t.Fatalf("insert tunnel: %v", err)
+	}
+
+	records := []RequestRecord{
+		{
+			ID:              "req_old",
+			TunnelID:        tunnel.ID,
+			TunnelSubdomain: tunnel.Subdomain,
+			Method:          http.MethodGet,
+			Path:            "/old",
+			Status:          http.StatusOK,
+			CreatedAt:       now,
+		},
+		{
+			ID:              "req_new",
+			TunnelID:        tunnel.ID,
+			TunnelSubdomain: tunnel.Subdomain,
+			Method:          http.MethodGet,
+			Path:            "/new",
+			Status:          http.StatusOK,
+			CreatedAt:       now.Add(90 * time.Minute),
+		},
+	}
+	for _, record := range records {
+		if err := service.db.Create(&record).Error; err != nil {
+			t.Fatalf("insert request %s: %v", record.ID, err)
+		}
+	}
+
+	since := now.Add(time.Hour)
+	filtered, err := service.listRequests(requestAccess{TrustedLocal: true}, requestListOptions{
+		Limit: 20,
+		Since: &since,
+	})
+	if err != nil {
+		t.Fatalf("listRequests with since filter returned error: %v", err)
+	}
+	if len(filtered) != 1 {
+		t.Fatalf("filtered request count = %d, want 1", len(filtered))
+	}
+	if filtered[0].ID != "req_new" {
+		t.Fatalf("filtered request id = %q, want %q", filtered[0].ID, "req_new")
+	}
+}
+
+func TestListRequestsSupportsMethodPathPrefixAndAscendingSort(t *testing.T) {
+	service := newTestService(t)
+
+	now := time.Now().UTC().Add(-time.Hour)
+	tunnel := TunnelRecord{
+		ID:         "tunnel_method_filter",
+		Subdomain:  "method-filter",
+		Target:     "http://localhost:3000",
+		TargetPort: 3000,
+		Status:     "ACTIVE",
+		Region:     "local",
+		CreatedAt:  now,
+	}
+	if err := service.db.Create(&tunnel).Error; err != nil {
+		t.Fatalf("insert tunnel: %v", err)
+	}
+
+	records := []RequestRecord{
+		{
+			ID:              "req_post_older",
+			TunnelID:        tunnel.ID,
+			TunnelSubdomain: tunnel.Subdomain,
+			Method:          http.MethodPost,
+			Path:            "/webhooks/stripe",
+			Status:          http.StatusAccepted,
+			CreatedAt:       now,
+		},
+		{
+			ID:              "req_get_skip",
+			TunnelID:        tunnel.ID,
+			TunnelSubdomain: tunnel.Subdomain,
+			Method:          http.MethodGet,
+			Path:            "/webhooks/stripe",
+			Status:          http.StatusOK,
+			CreatedAt:       now.Add(5 * time.Minute),
+		},
+		{
+			ID:              "req_post_newer",
+			TunnelID:        tunnel.ID,
+			TunnelSubdomain: tunnel.Subdomain,
+			Method:          http.MethodPost,
+			Path:            "/webhooks/stripe/retry",
+			Status:          http.StatusAccepted,
+			CreatedAt:       now.Add(10 * time.Minute),
+		},
+	}
+	for _, record := range records {
+		if err := service.db.Create(&record).Error; err != nil {
+			t.Fatalf("insert request %s: %v", record.ID, err)
+		}
+	}
+
+	filtered, err := service.listRequests(requestAccess{TrustedLocal: true}, requestListOptions{
+		Limit:      20,
+		Method:     "POST",
+		PathPrefix: "/webhooks/stripe",
+		Sort:       "asc",
+	})
+	if err != nil {
+		t.Fatalf("listRequests with method/path_prefix/sort returned error: %v", err)
+	}
+	if len(filtered) != 2 {
+		t.Fatalf("filtered request count = %d, want 2", len(filtered))
+	}
+	if filtered[0].ID != "req_post_older" {
+		t.Fatalf("first filtered request id = %q, want %q", filtered[0].ID, "req_post_older")
+	}
+	if filtered[1].ID != "req_post_newer" {
+		t.Fatalf("second filtered request id = %q, want %q", filtered[1].ID, "req_post_newer")
+	}
+}
+
 func TestCaptureRequestSnapshotInfersWebhookMetadata(t *testing.T) {
 	service := newTestService(t)
 
@@ -1045,6 +1377,98 @@ func TestListEventsSupportsLevelTunnelAndQueryFilters(t *testing.T) {
 	}
 	if filtered[0].ResourceID != "req_beta" {
 		t.Fatalf("filtered resource_id = %q, want %q", filtered[0].ResourceID, "req_beta")
+	}
+}
+
+func TestListEventsSupportsTimeWindowFilters(t *testing.T) {
+	service := newTestService(t)
+
+	now := time.Now().UTC().Add(-2 * time.Hour)
+	events := []EventRecord{
+		{
+			Level:     "info",
+			Message:   "Older event",
+			Action:    "request.replay",
+			CreatedAt: now,
+		},
+		{
+			Level:     "info",
+			Message:   "Newer event",
+			Action:    "request.replay",
+			CreatedAt: now.Add(90 * time.Minute),
+		},
+	}
+	for _, record := range events {
+		if err := service.db.Create(&record).Error; err != nil {
+			t.Fatalf("insert event: %v", err)
+		}
+	}
+
+	since := now.Add(time.Hour)
+	filtered, err := service.listEvents(requestAccess{TrustedLocal: true}, eventListOptions{
+		Limit: 20,
+		Since: &since,
+	})
+	if err != nil {
+		t.Fatalf("listEvents with since filter returned error: %v", err)
+	}
+	if len(filtered) != 1 {
+		t.Fatalf("filtered event count = %d, want 1", len(filtered))
+	}
+	if filtered[0].Message != "Newer event" {
+		t.Fatalf("filtered event message = %q, want %q", filtered[0].Message, "Newer event")
+	}
+}
+
+func TestListEventsSupportsAccessScopeAndAscendingSort(t *testing.T) {
+	service := newTestService(t)
+
+	now := time.Now().UTC().Add(-time.Hour)
+	events := []EventRecord{
+		{
+			Level:       "info",
+			Message:     "First trusted-local event",
+			Action:      "request.replay",
+			AccessScope: "trusted-local",
+			CreatedAt:   now,
+		},
+		{
+			Level:       "info",
+			Message:     "Token event",
+			Action:      "request.replay",
+			AccessScope: "personal-access-token",
+			CreatedAt:   now.Add(5 * time.Minute),
+		},
+		{
+			Level:       "info",
+			Message:     "Second trusted-local event",
+			Action:      "request.replay",
+			AccessScope: "trusted-local",
+			CreatedAt:   now.Add(10 * time.Minute),
+		},
+	}
+	for _, record := range events {
+		if err := service.db.Create(&record).Error; err != nil {
+			t.Fatalf("insert event: %v", err)
+		}
+	}
+
+	filtered, err := service.listEvents(requestAccess{TrustedLocal: true}, eventListOptions{
+		Limit:       20,
+		AccessScope: "trusted-local",
+		Sort:        "asc",
+	})
+	if err != nil {
+		t.Fatalf("listEvents with access_scope/sort returned error: %v", err)
+	}
+	if len(filtered) != 2 {
+		t.Fatalf("filtered event count = %d, want 2", len(filtered))
+	}
+	if filtered[0].Message != "First trusted-local event" {
+		t.Fatalf("first filtered event message = %q, want %q", filtered[0].Message, "First trusted-local event")
+	}
+	if filtered[1].Message != "Second trusted-local event" {
+		t.Fatalf("second filtered event message = %q, want %q", filtered[1].Message, "Second trusted-local event")
 	}
 }
 
@@ -1294,6 +1718,67 @@ func TestHandleExportEventsSupportsGzip(t *testing.T) {
 	body := decodeGzipTestBody(t, recorder.Body.Bytes())
 	if !strings.Contains(body, "\"action\":\"domain.verify\"") {
 		t.Fatalf("gzip export body = %q, want domain.verify payload", body)
+	}
+}
+
+func TestHandleExportEventsSupportsSummaryJSON(t *testing.T) {
+	service := newTestService(t)
+	if err := service.db.Create(&EventRecord{
+		Level:        "info",
+		Message:      "Reserved tunnel alpha",
+		Action:       "tunnel.create",
+		ResourceType: "tunnel",
+		ResourceID:   "tun_alpha",
+		RequestID:    "req-alpha",
+		AccessScope:  "trusted-local",
+		DetailsJSON:  `{"target":"http://localhost:3000"}`,
+	}).Error; err != nil {
+		t.Fatalf("insert event: %v", err)
+	}
+
+	recorder := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(recorder)
+	ctx.Request = httptest.NewRequest(http.MethodGet, "/api/events/export?format=json&summary=true", nil)
+	ctx.Set("binboi.request_access", requestAccess{TrustedLocal: true})
+
+	service.handleExportEvents(ctx)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("export status = %d, want %d", recorder.Code, http.StatusOK)
+	}
+
+	var payload []map[string]any
+	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode event summary export: %v", err)
+	}
+	if len(payload) != 1 {
+		t.Fatalf("summary event count = %d, want 1", len(payload))
+	}
+	if payload[0]["action"] != "tunnel.create" {
+		t.Fatalf("summary action = %v, want %q", payload[0]["action"], "tunnel.create")
+	}
+	if _, ok := payload[0]["details"]; ok {
+		t.Fatalf("summary payload unexpectedly included details: %#v", payload[0]["details"])
+	}
+}
+
+func TestV1ListRequestsRejectsInvalidTimeFilter(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	service := newTestService(t)
+	router := gin.New()
+	service.RegisterRoutes(router)
+
+	request := httptest.NewRequest(http.MethodGet, "/api/v1/requests?since=not-a-timestamp", nil)
+	request.RemoteAddr = "127.0.0.1:4040"
+	recorder := httptest.NewRecorder()
+	router.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusBadRequest {
+		t.Fatalf("/api/v1/requests invalid since = %d, want %d", recorder.Code, http.StatusBadRequest)
+	}
+	if !strings.Contains(recorder.Body.String(), "INVALID_TIME_FILTER") {
+		t.Fatalf("response body = %q, want INVALID_TIME_FILTER", recorder.Body.String())
 	}
 }
 
@@ -2070,6 +2555,67 @@ func TestRequestExportRouteReturnsJSON(t *testing.T) {
 	}
 	if payload[0].Metadata["event_type"] != "push" {
 		t.Fatalf("exported metadata event_type = %v, want %q", payload[0].Metadata["event_type"], "push")
+	}
+}
+
+func TestRequestExportRouteSupportsSummaryJSON(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	service := newTestService(t)
+	tunnel := TunnelRecord{
+		ID:         "tunnel_export_summary",
+		Subdomain:  "export-summary",
+		Target:     "http://localhost:3000",
+		TargetPort: 3000,
+		Status:     "ACTIVE",
+		Region:     "local",
+	}
+	if err := service.db.Create(&tunnel).Error; err != nil {
+		t.Fatalf("insert tunnel: %v", err)
+	}
+
+	if err := service.recordObservedRequest(tunnel, requestObservation{
+		Kind:            "WEBHOOK",
+		Provider:        "GitHub",
+		EventType:       "push",
+		DeliveryID:      "gh-delivery-summary",
+		Method:          http.MethodPost,
+		Path:            "/hook",
+		Status:          http.StatusCreated,
+		RequestPreview:  "POST /hook",
+		PayloadPreview:  `{"event":"summary"}`,
+		ResponsePreview: `{"ok":true}`,
+	}); err != nil {
+		t.Fatalf("recordObservedRequest returned error: %v", err)
+	}
+
+	router := gin.New()
+	service.RegisterRoutes(router)
+
+	request := httptest.NewRequest(http.MethodGet, "/api/requests/export?format=json&summary=true", nil)
+	request.RemoteAddr = "127.0.0.1:4040"
+	recorder := httptest.NewRecorder()
+	router.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("/api/requests/export summary = %d, want %d", recorder.Code, http.StatusOK)
+	}
+
+	var payload []map[string]any
+	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode request summary export: %v", err)
+	}
+	if len(payload) != 1 {
+		t.Fatalf("summary request count = %d, want 1", len(payload))
+	}
+	if payload[0]["delivery_id"] != "gh-delivery-summary" {
+		t.Fatalf("summary delivery_id = %v, want %q", payload[0]["delivery_id"], "gh-delivery-summary")
+	}
+	if _, ok := payload[0]["request_preview"]; ok {
+		t.Fatalf("summary payload unexpectedly included request_preview: %#v", payload[0]["request_preview"])
+	}
+	if _, ok := payload[0]["metadata"]; ok {
+		t.Fatalf("summary payload unexpectedly included metadata: %#v", payload[0]["metadata"])
 	}
 }
 

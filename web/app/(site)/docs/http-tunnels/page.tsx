@@ -55,10 +55,10 @@ export default function HttpTunnelsPage() {
                 <Terminal className="w-4 h-4 text-muted-foreground/60" />
               </div>
               <pre className="p-4 text-sm overflow-x-auto">
-                <code className="text-foreground/90">{`binboi start 3000 marketing-site
+                <code className="text-foreground/90">{`binboi http 3000 marketing-site
 
-# Product-facing alias planned
-binboi http 3000`}</code>
+# Compatibility alias
+binboi start 3000 marketing-site`}</code>
               </pre>
             </div>
           </section>
@@ -131,7 +131,7 @@ binboi http 3000`}</code>
               <p>The relay preserves the original host and adds forwarding headers for upstream context.</p>
               <p>The tunnel is considered active only while a live agent session is attached.</p>
               <p>If the agent disconnects, the route may remain reserved but traffic will fail until the session returns.</p>
-              <p>Request counts and transferred bytes can be aggregated at the tunnel level for dashboard reporting.</p>
+              <p>Request counts, request IDs, and archive metadata can then be surfaced back through metrics, replay, and operator tooling.</p>
             </div>
           </section>
         </ScrollReveal>
@@ -154,13 +154,13 @@ binboi http 3000`}</code>
               </div>
               <pre className="p-4 text-sm overflow-x-auto">
                 <code className="text-foreground/90">{`# Local admin tool
-binboi start 3000 admin-tool
+binboi http 3000 admin-tool
 
 # Express API
-binboi start 8080 internal-api
+binboi http 8080 internal-api
 
 # Webhook receiver
-binboi start 3000 stripe-events`}</code>
+binboi http 3000 stripe-events`}</code>
               </pre>
             </div>
 
@@ -189,9 +189,36 @@ binboi start 3000 stripe-events`}</code>
 
             <div className="rounded-xl border border-border bg-card/50 p-5 space-y-3 text-sm leading-relaxed text-muted-foreground">
               <p>HTTP is the strongest runtime path in the repository today.</p>
+              <p>Custom domains, TLS mode reporting, request archive, and replay now exist, but they still expect an operator to configure rollout carefully.</p>
               <p>Path-based routing across multiple local targets is not yet a polished first-class feature.</p>
               <p>Raw TCP is still planned and should not be treated as equally mature.</p>
-              <p>Structured request inspection is evolving from relay events and tunnel metadata rather than a fully finished replay interface.</p>
+              <p>Broader multi-node routing behavior should not be assumed from the current single-control-plane baseline.</p>
+            </div>
+          </section>
+        </ScrollReveal>
+
+        <ScrollReveal delay={0.28}>
+          <section className="space-y-6">
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-primary/80 uppercase tracking-wider">Related guides</p>
+              <h2 className="text-2xl font-semibold text-foreground">Where to go after the first public URL works</h2>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              {[
+                ["/docs/request-replay", "Request Replay", "Inspect archived traffic and resend failed deliveries."],
+                ["/docs/domains-and-tls", "Domains & TLS", "Attach real hosts and choose the correct TLS owner."],
+                ["/docs/smoke-testing", "Smoke Testing", "Validate forwarding, metrics, and snapshot health together."],
+                ["/docs/operator-snapshot", "Operator Snapshot", "Use one endpoint to read health, readiness, limits, and recent critical events."],
+              ].map(([href, title, description]) => (
+                <Link
+                  key={href}
+                  href={href}
+                  className="rounded-xl border border-border bg-card/50 p-5 transition-colors hover:border-primary/30 hover:bg-primary/5"
+                >
+                  <p className="text-sm font-semibold text-foreground">{title}</p>
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">{description}</p>
+                </Link>
+              ))}
             </div>
           </section>
         </ScrollReveal>

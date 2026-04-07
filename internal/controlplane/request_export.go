@@ -34,6 +34,22 @@ type RequestArchiveResponse struct {
 	ResponseBodyTruncated bool                 `json:"response_body_truncated"`
 }
 
+type RequestExportSummary struct {
+	CreatedAt         time.Time `json:"created_at"`
+	ID                string    `json:"id"`
+	TunnelSubdomain   string    `json:"tunnel_subdomain"`
+	ReplayOfRequestID string    `json:"replay_of_request_id,omitempty"`
+	DeliveryID        string    `json:"delivery_id,omitempty"`
+	Kind              string    `json:"kind"`
+	Provider          string    `json:"provider,omitempty"`
+	EventType         string    `json:"event_type,omitempty"`
+	Method            string    `json:"method"`
+	Path              string    `json:"path"`
+	Status            int       `json:"status"`
+	DurationMs        int64     `json:"duration_ms"`
+	ErrorType         string    `json:"error_type,omitempty"`
+}
+
 func normalizeRequestExportFormat(raw string) string {
 	switch strings.ToLower(strings.TrimSpace(raw)) {
 	case "csv":
@@ -135,6 +151,9 @@ func (s *Service) exportRequests(c *gin.Context, access requestAccess) {
 		Provider:    c.Query("provider"),
 		EventType:   c.Query("event_type"),
 		DeliveryID:  c.Query("delivery_id"),
+		Method:      c.Query("method"),
+		PathPrefix:  c.Query("path_prefix"),
+		Sort:        c.Query("sort"),
 		Since:       since,
 		Until:       until,
 		Query:       c.Query("q"),
@@ -148,7 +167,11 @@ func (s *Service) exportRequests(c *gin.Context, access requestAccess) {
 	}
 
 	format := normalizeRequestExportFormat(c.Query("format"))
+	summary := parseBoolQuery(c.Query("summary"))
 	filename := "binboi-requests-" + time.Now().UTC().Format("20060102T150405Z")
+	if summary {
+		filename += "-summary"
+	}
 	contentType := "application/x-ndjson; charset=utf-8"
 	switch format {
 	case "csv":
@@ -161,7 +184,7 @@ func (s *Service) exportRequests(c *gin.Context, access requestAccess) {
 		filename += ".ndjson"
 	}
 
-	body, err := marshalRequestExportPayload(requests, format)
+	body, err := marshalRequestExportPayload(requests, format, summary)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to build request export"})
 		return
@@ -170,8 +193,88 @@ func (s *Service) exportRequests(c *gin.Context, access requestAccess) {
 	s.writeExportResponse(c, contentType, filename, body)
 }
 
-func marshalRequestExportPayload(requests []RequestResponse, format string) ([]byte, error) {
+func summarizeRequestResponse(record RequestResponse) RequestExportSummary {
+	return RequestExportSummary{
+		CreatedAt:         record.CreatedAt,
+		ID:                record.ID,
+		TunnelSubdomain:   record.TunnelSubdomain,
+		ReplayOfRequestID: record.ReplayOfRequestID,
+		DeliveryID:        record.DeliveryID,
+		Kind:              record.Kind,
+		Provider:          record.Provider,
+		EventType:         record.EventType,
+		Method:            record.Method,
+		Path:              record.Path,
+		Status:            record.Status,
+		DurationMs:        record.DurationMs,
+		ErrorType:         record.ErrorType,
+	}
+}
+
+func marshalRequestExportPayload(requests []RequestResponse, format string, summary bool) ([]byte, error) {
 	var buffer bytes.Buffer
+	if summary {
+		summaries := make([]RequestExportSummary, 0, len(requests))
+		for _, record := range requests {
+			summaries = append(summaries, summarizeRequestResponse(record))
+		}
+
+		switch format {
+		case "csv":
+			writer := csv.NewWriter(&buffer)
+			_ = writer.Write([]string{
+				"created_at",
+				"id",
+				"tunnel_subdomain",
+				"replay_of_request_id",
+				"delivery_id",
+				"kind",
+				"provider",
+				"event_type",
+				"method",
+				"path",
+				"status",
+				"duration_ms",
+				"error_type",
+			})
+			for _, record := range summaries {
+				_ = writer.Write([]string{
+					record.CreatedAt.UTC().Format(time.RFC3339),
+					record.ID,
+					record.TunnelSubdomain,
+					record.ReplayOfRequestID,
+					record.DeliveryID,
+					record.Kind,
+					record.Provider,
+					record.EventType,
+					record.Method,
+					record.Path,
+					strconv.Itoa(record.Status),
+					strconv.FormatInt(record.DurationMs, 10),
+					record.ErrorType,
+				})
+			}
+			writer.Flush()
+			if err := writer.Error(); err != nil {
+				return nil, err
+			}
+			return buffer.Bytes(), nil
+		case "json":
+			if err := json.NewEncoder(&buffer).Encode(summaries); err != nil {
+				return nil, err
+			}
+			return buffer.Bytes(), nil
+		default:
+			encoder := json.NewEncoder(&buffer)
+			for _, record := range summaries {
+				if err := encoder.Encode(record); err != nil {
+					return nil, err
+				}
+			}
+			return buffer.Bytes(), nil
+		}
+	}
+
 	switch format {
 	case "csv":
 		writer := csv.NewWriter(&buffer)

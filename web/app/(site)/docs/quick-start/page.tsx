@@ -1,4 +1,5 @@
 "use client"
+import Link from "next/link";
 import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 
@@ -116,12 +117,13 @@ export default function QuickStartPage() {
             </header>
 
             <CodeBlock 
-              command="binboi start 3000 my-app" 
-              note="Tip: binboi http 3000 is planned"
+              command="binboi http 3000 my-app" 
+              note="Alias: binboi start 3000 my-app"
             />
 
             <InfoBox className="mt-6">
               <p>When the agent connects, Binboi prints a public URL. That URL now behaves like a public front door for your local process.</p>
+              <p className="mt-3 opacity-80">If you are self-hosting, the public hostname depends on your configured base domain and proxy address rather than a managed shared domain.</p>
             </InfoBox>
           </section>
 
@@ -141,8 +143,9 @@ export default function QuickStartPage() {
               <h4 className="text-sm font-bold text-white mb-4 uppercase tracking-tighter">What&lsquo;s happening?</h4>
               <div className="space-y-3 text-sm text-zinc-400">
                 <p>• Client hits the <span className="text-cyan-400">public URL</span>.</p>
-                <p>• Relay matches the host to your <span className="text-zinc-200">reserved tunnel</span>.</p>
+                <p>• The proxy matches the host to your <span className="text-zinc-200">active tunnel</span>.</p>
                 <p>• CLI forwards the request to your <span className="text-emerald-400">localhost:3000</span>.</p>
+                <p>• Request metadata, logs, and replay become available for follow-up debugging.</p>
               </div>
             </div>
 
@@ -156,10 +159,11 @@ export default function QuickStartPage() {
           {/* Section: Step 4 */}
           <section id="what-to-check-next" className="mb-24 scroll-mt-20">
             <h2 className="text-2xl font-bold text-white mb-6">What to check next</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <NextCard title="Webhooks" desc="Set up callbacks from 3rd parties." />
-              <NextCard title="Logs" desc="Explain failures or latency issues." />
-              <NextCard title="Auth" desc="Scale to more machines safely." />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <NextCard href="/docs/http-tunnels" title="HTTP Tunnels" desc="See the routing model behind the public URL you just created." />
+              <NextCard href="/docs/authentication" title="Authentication" desc="Understand tokens, whoami checks, and saved CLI auth state." />
+              <NextCard href="/docs/request-replay" title="Request Replay" desc="Inspect archived traffic and resend failing requests safely." />
+              <NextCard href="/docs/smoke-testing" title="Smoke Testing" desc="Run a fast health, metrics, and forwarding pass before launch." />
             </div>
           </section>
         </main>
@@ -220,12 +224,12 @@ function StepItem({ number, text }: { number: string, text: string }) {
   );
 }
 
-function NextCard({ title, desc }: { title: string, desc: string }) {
+function NextCard({ href, title, desc }: { href: string, title: string, desc: string }) {
   return (
-    <div className="p-5 rounded-xl border border-zinc-800 bg-zinc-900/20 hover:border-zinc-700 transition-all cursor-pointer">
+    <Link href={href} className="block p-5 rounded-xl border border-zinc-800 bg-zinc-900/20 hover:border-zinc-700 transition-all">
       <h4 className="text-white font-semibold text-sm mb-1">{title}</h4>
       <p className="text-xs text-zinc-500">{desc}</p>
-    </div>
+    </Link>
   );
 }
 

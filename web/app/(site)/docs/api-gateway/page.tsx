@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link";
 import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 
@@ -61,8 +62,10 @@ export default function ApiGatewayPage() {
               API Gateway
             </h1>
             <p className="mt-6 text-lg leading-8 text-zinc-400">
-              Before traffic reaches your local machine, it hits the Binboi API Gateway. 
-              This layer handles TLS termination, host routing, rate limiting, and edge security policies.
+              Before traffic reaches your local machine, it hits the Binboi
+              public proxy and control plane edge. This layer handles host
+              routing, request IDs, rate limiting, domain-aware TLS policy, and
+              the handoff to an active CLI tunnel session.
             </p>
           </motion.div>
 
@@ -75,8 +78,8 @@ export default function ApiGatewayPage() {
               </div>
               <div className="h-px bg-zinc-800 flex-1 mx-4 relative"><div className="absolute right-0 top-1/2 -translate-y-1/2 w-2 h-2 rotate-45 border-t border-r border-zinc-600"></div></div>
               <div className="flex flex-col items-center gap-3">
-                <div className="w-16 h-16 rounded-xl bg-cyan-500/10 flex items-center justify-center border border-cyan-500/30 shadow-[0_0_20px_rgba(6,182,212,0.15)] text-cyan-400">GATEWAY</div>
-                <span className="text-cyan-500">BINBOI EDGE</span>
+                <div className="w-16 h-16 rounded-xl bg-cyan-500/10 flex items-center justify-center border border-cyan-500/30 shadow-[0_0_20px_rgba(6,182,212,0.15)] text-cyan-400">PROXY</div>
+                <span className="text-cyan-500">PUBLIC ENTRY</span>
               </div>
               <div className="h-px bg-zinc-800 flex-1 mx-4 relative"><div className="absolute right-0 top-1/2 -translate-y-1/2 w-2 h-2 rotate-45 border-t border-r border-zinc-600"></div></div>
               <div className="flex flex-col items-center gap-3">
@@ -100,10 +103,18 @@ export default function ApiGatewayPage() {
             
             <InfoBox>
               <p>
-                Every inbound request to a <code className="text-cyan-400">*.binboi.link</code> address is intercepted by our globally distributed API Gateway.
+                Every inbound request to a Binboi-managed or verified custom host
+                lands on the public proxy first.
               </p>
               <p className="mt-3">
-                The gateway performs <strong>TLS termination</strong> at the edge. This means the heavy cryptographic handshake happens close to the client, reducing latency before the request is routed through the persistent multiplexed connection to your local CLI.
+                TLS ownership depends on deployment mode. In
+                <strong> external-edge </strong>
+                mode, HTTPS terminates before traffic reaches Binboi. In
+                <strong> acme </strong>
+                mode, Binboi itself can terminate HTTPS for the managed base
+                domain and verified custom domains when
+                <code className="mx-1 text-cyan-400">BINBOI_PROXY_TLS_ADDR</code>
+                is enabled.
               </p>
             </InfoBox>
           </section>
@@ -118,15 +129,15 @@ export default function ApiGatewayPage() {
             <div className="grid gap-4">
               <FeatureCard 
                 title="Exact Host Matching" 
-                desc="Requests to my-app.binboi.link are routed strictly to the agent that reserved 'my-app'." 
+                desc="Requests are matched by managed subdomain or by a verified custom domain record." 
               />
               <FeatureCard 
-                title="Connection Pooling" 
-                desc="If multiple agents authenticate with the same tunnel credentials, the gateway load-balances requests across them (Round Robin)." 
+                title="Single Active Session" 
+                desc="Traffic is handed to the active tunnel session attached to that route. The current baseline should be treated as a focused single-control-plane workflow, not a broad multi-node load-balancer." 
               />
               <FeatureCard 
-                title="Dead-letter Handling" 
-                desc="If a host matches but the agent disconnected unexpectedly, the gateway returns a standard 502 Bad Gateway immediately, without hanging." 
+                title="Offline Route Handling" 
+                desc="If a host resolves to a reserved route but no active agent session exists, traffic fails until the tunnel comes back. Use readiness, snapshot, and recent events to see why." 
                 isWarning
               />
             </div>
@@ -145,10 +156,10 @@ export default function ApiGatewayPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-800/50">
-                  <TableRow cols={["Rate Limiting", "Prevents abuse by capping req/sec per IP.", "Dashboard UI (Pro tier)"]} />
-                  <TableRow cols={["IP Allowlisting", "Drops traffic from IPs not explicitly allowed.", "binboi start --allow-ips=..."]} />
-                  <TableRow cols={["Webhook Signatures", "Rejects payloads lacking valid provider signatures.", "CLI Middleware"]} />
-                  <TableRow cols={["Payload Limits", "Blocks requests larger than 10MB to protect memory.", "Platform default"]} />
+                  <TableRow cols={["API rate limiting", "Protects control-plane endpoints per IP or token.", "BINBOI_API_RATE_LIMIT / BINBOI_API_RATE_BURST"]} />
+                  <TableRow cols={["Proxy rate limiting", "Protects public request traffic before it reaches a tunnel.", "BINBOI_PROXY_RATE_LIMIT / BINBOI_PROXY_RATE_BURST"]} />
+                  <TableRow cols={["Plan quotas", "Enforces limits for tunnels, domains, requests per day, and replays per hour.", "/api/v1/limits"]} />
+                  <TableRow cols={["Observability", "Adds request IDs, audit events, metrics, and operator snapshots for incident work.", "/api/v1/metrics, /api/v1/snapshot"]} />
                 </tbody>
               </table>
             </div>
@@ -158,19 +169,44 @@ export default function ApiGatewayPage() {
           <section id="custom-domains" className="mb-24 scroll-mt-20">
             <h2 className="text-2xl font-bold text-white mb-4">Custom Domains</h2>
             <p className="mb-6 text-zinc-400 leading-relaxed">
-              You can bring your own domain (e.g., <code className="text-cyan-400">api.yourcompany.com</code>) instead of using the default Binboi subdomain.
+              You can bring your own domain (for example,
+              <code className="mx-1 text-cyan-400">api.yourcompany.com</code>)
+              instead of using the managed Binboi subdomain. Verification and
+              TLS readiness are tracked separately in the API.
             </p>
             
             <CodeBlock 
-              title="DNS CNAME Record"
-              code="Type: CNAME\nName: api\nValue: custom.binboi.link"
+              title="Verification and readiness fields"
+              code="status: VERIFIED\nexpected_txt: binboi-verification=<value>\ntls_mode: acme | external-edge\ntls_ready: true"
             />
 
             <Callout 
-              title="Automated Certificate Provisioning" 
-              text="Once your CNAME is detected, the API Gateway automatically provisions and renews a Let's Encrypt TLS certificate for your custom domain. This usually takes less than 60 seconds."
+              title="What to verify before launch" 
+              text="Publish the TXT value returned by Binboi, wait for the background verifier or trigger a manual verify, confirm status=VERIFIED, and only then trust tls_ready plus the selected tls_mode."
               tone="cyan"
             />
+          </section>
+
+          <section className="mb-24">
+            <h2 className="text-2xl font-bold text-white mb-6">Related guides</h2>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Link href="/docs/domains-and-tls" className="rounded-xl border border-zinc-800 bg-zinc-900/20 p-5 transition-colors hover:border-zinc-700">
+                <h4 className="text-sm font-semibold text-white">Domains & TLS</h4>
+                <p className="mt-2 text-sm leading-6 text-zinc-400">Choose the right TLS owner and watch domain verification fields directly.</p>
+              </Link>
+              <Link href="/docs/limits" className="rounded-xl border border-zinc-800 bg-zinc-900/20 p-5 transition-colors hover:border-zinc-700">
+                <h4 className="text-sm font-semibold text-white">Quotas & Limits</h4>
+                <p className="mt-2 text-sm leading-6 text-zinc-400">Understand plan-aware request, replay, and domain limits before public traffic.</p>
+              </Link>
+              <Link href="/docs/operator-snapshot" className="rounded-xl border border-zinc-800 bg-zinc-900/20 p-5 transition-colors hover:border-zinc-700">
+                <h4 className="text-sm font-semibold text-white">Operator Snapshot</h4>
+                <p className="mt-2 text-sm leading-6 text-zinc-400">See health, readiness, metrics, recent critical events, and tunnel summary in one call.</p>
+              </Link>
+              <Link href="/docs/production-domains" className="rounded-xl border border-zinc-800 bg-zinc-900/20 p-5 transition-colors hover:border-zinc-700">
+                <h4 className="text-sm font-semibold text-white">Production Domains</h4>
+                <p className="mt-2 text-sm leading-6 text-zinc-400">Walk each real host through TXT validation, TLS checks, and go/no-go rollout steps.</p>
+              </Link>
+            </div>
           </section>
 
         </main>
