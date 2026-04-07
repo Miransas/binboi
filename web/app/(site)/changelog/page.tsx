@@ -143,7 +143,7 @@ const CHANGELOG_DATA: ChangelogEntryData[] = [
     version: "v1.4.0",
     title: "Local Preview Mode Release",
     description: "Introduced BINBOI_ALLOW_PREVIEW_MODE for developers who want to run the control plane completely locally with SQLite (no Postgres required).",
-    tags: ["cli", "core"],
+    tags: ["cli", ],
   },
 ];
 

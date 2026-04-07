@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useEffect, useRef } from "react";
@@ -7,14 +8,14 @@ import { motion, useScroll, useTransform, useSpring, MotionValue } from "framer-
 // Renkleri dark modda parlayacak şekilde güncelledik.
 
 const ICONS = [
-  { id: "slack",    emoji: "💬", label: "Slack",         color: "#8B5CF6" }, // Purple
-  { id: "gmail",    emoji: "✉️",  label: "Gmail",         color: "#EF4444" }, // Red
-  { id: "youtube",  emoji: "▶️",  label: "YouTube",       color: "#F87171" }, // Lighter Red
-  { id: "sheets",   emoji: "📊", label: "Google Sheets", color: "#10B981" }, // Green
-  { id: "linkedin", emoji: "💼", label: "LinkedIn",      color: "#3B82F6" }, // Blue
-  { id: "drive",    emoji: "☁️",  label: "Google Drive",  color: "#60A5FA" }, // Lighter Blue
-  { id: "figma",    emoji: "🎨", label: "Figma",         color: "#F97316" }, // Orange
-  { id: "notion",   emoji: "📝", label: "Notion",        color: "#FFFFFF" }, // White Notion icon in dark mode
+  { id: "slack", emoji: "💬", label: "Slack", color: "#8B5CF6" }, // Purple
+  { id: "gmail", emoji: "✉️", label: "Gmail", color: "#EF4444" }, // Red
+  { id: "youtube", emoji: "▶️", label: "YouTube", color: "#F87171" }, // Lighter Red
+  { id: "sheets", emoji: "📊", label: "Google Sheets", color: "#10B981" }, // Green
+  { id: "linkedin", emoji: "💼", label: "LinkedIn", color: "#3B82F6" }, // Blue
+  { id: "drive", emoji: "☁️", label: "Google Drive", color: "#60A5FA" }, // Lighter Blue
+  { id: "figma", emoji: "🎨", label: "Figma", color: "#F97316" }, // Orange
+  { id: "notion", emoji: "📝", label: "Notion", color: "#FFFFFF" }, // White Notion icon in dark mode
 ];
 
 // İkonların yüzde (%) koordinatları
@@ -28,13 +29,13 @@ const POSITIONS: [number, number][] = [
 const CARD_POSITIONS = [25, 50, 75];
 
 const FLOAT_VARIANTS = ["A", "B", "C", "A", "B", "C", "A", "B"];
-const FLOAT_DURS     = [3.2, 2.8, 3.6, 3.0, 2.6, 3.4, 2.9, 3.1];
-const FLOAT_DELAYS   = [0.0, 0.4, 0.8, 1.2, 0.2, 0.6, 1.0, 1.4];
+const FLOAT_DURS = [3.2, 2.8, 3.6, 3.0, 2.6, 3.4, 2.9, 3.1];
+const FLOAT_DELAYS = [0.0, 0.4, 0.8, 1.2, 0.2, 0.6, 1.0, 1.4];
 
 const CARDS = [
   { id: "c1", label: "Personalized Outreach", sub: "automated · running", color: "#3B82F6", triggerAt: 0.45, bg: "rgba(59, 130, 246, 0.15)", emoji: "💙" },
-  { id: "c2", label: "Strategy Content",      sub: "automated · running", color: "#8B5CF6", triggerAt: 0.62, bg: "rgba(139, 92, 246, 0.15)", emoji: "💜" },
-  { id: "c3", label: "Auto Reporting",        sub: "automated · running", color: "#10B981", triggerAt: 0.78, bg: "rgba(16, 185, 129, 0.15)", emoji: "💚" },
+  { id: "c2", label: "Strategy Content", sub: "automated · running", color: "#8B5CF6", triggerAt: 0.62, bg: "rgba(139, 92, 246, 0.15)", emoji: "💜" },
+  { id: "c3", label: "Auto Reporting", sub: "automated · running", color: "#10B981", triggerAt: 0.78, bg: "rgba(16, 185, 129, 0.15)", emoji: "💚" },
 ];
 
 const KEYFRAMES = `
@@ -165,13 +166,15 @@ function OutputCard({ card, cardIndex, progress }: OutputCardProps) {
 
   return (
     <motion.div
-      style={{ x, opacity } as unknown as React.CSSProperties}
-      className="absolute z-[8] w-72 overflow-hidden rounded-2xl border border-slate-700/60 bg-slate-900/80 shadow-2xl backdrop-blur-xl"
+      // Tek bir style objesi içinde hepsini topladık
       style={{
+        x,
+        opacity,
         left: "75%",
         top: `${CARD_POSITIONS[cardIndex]}%`,
-        transform: 'translateY(-50%)' 
-      }}
+        transform: 'translateY(-50%)'
+      } as any}
+      className="absolute z-[8] w-72 overflow-hidden rounded-2xl border border-slate-700/60 bg-slate-900/80 shadow-2xl backdrop-blur-xl"
     >
       <div className="flex items-center gap-3 px-4 py-3">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-lg" style={{ background: card.bg }}>
@@ -205,6 +208,7 @@ function OutputCard({ card, cardIndex, progress }: OutputCardProps) {
         />
       </div>
     </motion.div>
+
   );
 }
 
@@ -223,7 +227,7 @@ function Hub({ progress }: { progress: MotionValue<number> }) {
         style={{ opacity: glowOpacity } as unknown as React.CSSProperties}
         className="absolute h-36 w-36 rounded-full bg-blue-500/30 blur-3xl"
       />
-      
+
       {/* Dış halka */}
       <div className="relative flex h-28 w-28 items-center justify-center rounded-full border border-slate-700 bg-slate-900/80 shadow-2xl backdrop-blur-md">
         {/* İç halka */}
@@ -271,13 +275,13 @@ export default function AutomationHero() {
       <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-[#0A0A0A] to-black" />
 
       <div className="relative z-10 flex flex-col flex-1 h-full">
-     
+
 
 
         {/* ── Animasyon sahnesi ── */}
         {/* H-[400vh] ve Sticky kaldırıldı, normal bir bölge yapıldı */}
         <div ref={sectionRef} className="relative mx-auto mt-16 flex w-full max-w-6xl flex-1 items-center justify-center min-h-[500px]">
-          
+
           {/* Sol: icon grid + SVG trail lines */}
           <div className="absolute inset-0">
             {/* SVG trail çizgileri (viewBox 800x600) */}
