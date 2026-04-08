@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -248,6 +249,79 @@ func TestLoadConfigFromEnvParsesTimeoutsAndLimits(t *testing.T) {
 	}
 	if cfg.ACMEEmail != "ops@binboi.test" {
 		t.Fatalf("ACMEEmail = %q, want %q", cfg.ACMEEmail, "ops@binboi.test")
+	}
+}
+
+func TestLoadConfigFromEnvInfersHTTPSWhenTLSListenerEnabled(t *testing.T) {
+	t.Setenv("BINBOI_PROXY_ADDR", ":9082")
+	t.Setenv("BINBOI_PROXY_TLS_ADDR", ":9443")
+	t.Setenv("BINBOI_PUBLIC_SCHEME", "")
+	t.Setenv("BINBOI_PUBLIC_PORT", "")
+
+	cfg := LoadConfigFromEnv()
+
+	if cfg.PublicScheme != "https" {
+		t.Fatalf("PublicScheme = %q, want %q", cfg.PublicScheme, "https")
+	}
+	if cfg.PublicPort != 9443 {
+		t.Fatalf("PublicPort = %d, want %d", cfg.PublicPort, 9443)
+	}
+}
+
+func TestProxyHTTPHandlerRedirectsToConfiguredHTTPSURL(t *testing.T) {
+	service := newTestService(t)
+	service.cfg.ProxyTLSAddr = ":9443"
+	service.cfg.PublicScheme = "https"
+	service.cfg.PublicPort = 9443
+	service.cfg.ACMECacheDir = t.TempDir()
+	service.configureTLSManager()
+
+	req := httptest.NewRequest(http.MethodGet, "http://demo.binboi.localhost:8000/health?full=1", nil)
+	req.Host = "demo.binboi.localhost:8000"
+	rec := httptest.NewRecorder()
+
+	service.ProxyHTTPHandler().ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusPermanentRedirect {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusPermanentRedirect)
+	}
+	if location := rec.Header().Get("Location"); location != "https://demo.binboi.localhost:9443/health?full=1" {
+		t.Fatalf("redirect location = %q, want %q", location, "https://demo.binboi.localhost:9443/health?full=1")
+	}
+}
+
+func TestForwardedProtoAndPortPreferTrustedHeaders(t *testing.T) {
+	service := newTestService(t)
+	service.cfg.PublicScheme = "http"
+	service.cfg.PublicPort = 8000
+
+	req := httptest.NewRequest(http.MethodGet, "http://demo.binboi.localhost/hooks", nil)
+	req.Header.Set("X-Forwarded-Proto", "https")
+	req.Header.Set("X-Forwarded-Port", "443")
+
+	if proto := service.forwardedProtoForRequest(req); proto != "https" {
+		t.Fatalf("forwarded proto = %q, want %q", proto, "https")
+	}
+	if port := service.forwardedPortForRequest(req, "https"); port != "443" {
+		t.Fatalf("forwarded port = %q, want %q", port, "443")
+	}
+}
+
+func TestForwardedProtoFallsBackToTLSListener(t *testing.T) {
+	service := newTestService(t)
+	service.cfg.ProxyTLSAddr = ":8443"
+	service.cfg.PublicScheme = "https"
+	service.cfg.PublicPort = 8443
+
+	req := httptest.NewRequest(http.MethodGet, "https://demo.binboi.localhost/status", nil)
+	req.Host = "demo.binboi.localhost"
+	req.TLS = &tls.ConnectionState{}
+
+	if proto := service.forwardedProtoForRequest(req); proto != "https" {
+		t.Fatalf("forwarded proto = %q, want %q", proto, "https")
+	}
+	if port := service.forwardedPortForRequest(req, "https"); port != "8443" {
+		t.Fatalf("forwarded port = %q, want %q", port, "8443")
 	}
 }
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
+	"fmt"
 	"net"
 	"net/http"
 	"strings"
@@ -79,7 +80,16 @@ func (s *Service) ProxyHTTPHandler() http.Handler {
 	if s.proxyTLSManager == nil {
 		return handler
 	}
-	return s.proxyTLSManager.HTTPHandler(handler)
+
+	acmeHandler := s.proxyTLSManager.HTTPHandler(http.NotFoundHandler())
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if isACMEChallengeRequest(r) {
+			acmeHandler.ServeHTTP(w, r)
+			return
+		}
+
+		http.Redirect(w, r, s.redirectHTTPSURL(r), http.StatusPermanentRedirect)
+	})
 }
 
 func (s *Service) ProxyTLSConfig() *tls.Config {
@@ -93,4 +103,102 @@ func (s *Service) ProxyTLSConfig() *tls.Config {
 	}
 	config.MinVersion = tls.VersionTLS12
 	return config
+}
+
+func isACMEChallengeRequest(r *http.Request) bool {
+	if r == nil {
+		return false
+	}
+	if r.Method != http.MethodGet && r.Method != http.MethodHead {
+		return false
+	}
+	return strings.HasPrefix(r.URL.Path, "/.well-known/acme-challenge/")
+}
+
+func (s *Service) redirectHTTPSURL(r *http.Request) string {
+	host := normalizeTLSHost(r.Host)
+	if host == "" {
+		host = normalizeTLSHost(s.cfg.BaseDomain)
+	}
+
+	requestURI := "/"
+	if r != nil && r.URL != nil {
+		requestURI = r.URL.RequestURI()
+		if requestURI == "" {
+			requestURI = "/"
+		}
+	}
+
+	port := s.cfg.PublicPort
+	if port <= 0 {
+		port = resolvedPublicPort("https", s.cfg.ProxyAddr, s.cfg.ProxyTLSAddr)
+	}
+	if port == 443 {
+		return fmt.Sprintf("https://%s%s", host, requestURI)
+	}
+	return fmt.Sprintf("https://%s:%d%s", host, port, requestURI)
+}
+
+func (s *Service) forwardedProtoForRequest(r *http.Request) string {
+	if proto := forwardedProtoFromHeaders(r); proto != "" {
+		return proto
+	}
+	if r != nil && r.TLS != nil {
+		return "https"
+	}
+	return resolvePublicScheme(s.cfg.PublicScheme, s.cfg.ProxyTLSAddr)
+}
+
+func (s *Service) forwardedPortForRequest(r *http.Request, proto string) string {
+	if r != nil {
+		if headerPort := forwardedPortFromHeaders(r); headerPort != "" {
+			return headerPort
+		}
+		if _, port, err := net.SplitHostPort(strings.TrimSpace(r.Host)); err == nil && port != "" {
+			return port
+		}
+	}
+
+	return fmt.Sprintf("%d", resolvedPublicPort(proto, s.cfg.ProxyAddr, s.cfg.ProxyTLSAddr))
+}
+
+func forwardedProtoFromHeaders(r *http.Request) string {
+	if r == nil {
+		return ""
+	}
+
+	if proto := firstForwardedValue(r.Header.Get("X-Forwarded-Proto")); proto == "http" || proto == "https" {
+		return proto
+	}
+
+	forwarded := strings.TrimSpace(r.Header.Get("Forwarded"))
+	if forwarded == "" {
+		return ""
+	}
+
+	firstEntry := strings.TrimSpace(strings.Split(forwarded, ",")[0])
+	for _, part := range strings.Split(firstEntry, ";") {
+		key, value, ok := strings.Cut(strings.TrimSpace(part), "=")
+		if !ok || !strings.EqualFold(key, "proto") {
+			continue
+		}
+		proto := strings.ToLower(strings.Trim(strings.TrimSpace(value), `"`))
+		if proto == "http" || proto == "https" {
+			return proto
+		}
+	}
+
+	return ""
+}
+
+func forwardedPortFromHeaders(r *http.Request) string {
+	if r == nil {
+		return ""
+	}
+	return firstForwardedValue(r.Header.Get("X-Forwarded-Port"))
+}
+
+func firstForwardedValue(raw string) string {
+	value := strings.ToLower(strings.TrimSpace(strings.Split(raw, ",")[0]))
+	return strings.Trim(value, `"`)
 }

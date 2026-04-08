@@ -116,13 +116,17 @@ type Config struct {
 }
 
 func LoadConfigFromEnv() Config {
+	proxyAddr := envOrDefault("BINBOI_PROXY_ADDR", defaultProxyAddr)
+	proxyTLSAddr := envOrDefault("BINBOI_PROXY_TLS_ADDR", defaultProxyTLSAddr)
+	publicScheme := resolvePublicScheme(strings.TrimSpace(os.Getenv("BINBOI_PUBLIC_SCHEME")), proxyTLSAddr)
+
 	cfg := Config{
 		APIAddr:                envOrDefault("BINBOI_API_ADDR", defaultAPIAddr),
 		TunnelAddr:             envOrDefault("BINBOI_TUNNEL_ADDR", defaultTunnelAddr),
-		ProxyAddr:              envOrDefault("BINBOI_PROXY_ADDR", defaultProxyAddr),
-		ProxyTLSAddr:           envOrDefault("BINBOI_PROXY_TLS_ADDR", defaultProxyTLSAddr),
+		ProxyAddr:              proxyAddr,
+		ProxyTLSAddr:           proxyTLSAddr,
 		BaseDomain:             envOrDefault("BINBOI_BASE_DOMAIN", defaultBaseDomain),
-		PublicScheme:           envOrDefault("BINBOI_PUBLIC_SCHEME", "http"),
+		PublicScheme:           publicScheme,
 		DatabasePath:           envOrDefault("BINBOI_DATABASE_PATH", defaultDatabase),
 		InstanceName:           envOrDefault("BINBOI_INSTANCE_NAME", defaultInstance),
 		DefaultRegion:          envOrDefault("BINBOI_DEFAULT_REGION", defaultRegion),
@@ -153,13 +157,39 @@ func LoadConfigFromEnv() Config {
 		ProxyRateBurst:         nonNegativeIntEnvOrDefault("BINBOI_PROXY_RATE_BURST", defaultProxyRateBurst),
 	}
 
-	if port, err := strconv.Atoi(envOrDefault("BINBOI_PUBLIC_PORT", strconv.Itoa(portFromAddr(cfg.ProxyAddr, 8000)))); err == nil {
+	defaultPublicPort := resolvedPublicPort(cfg.PublicScheme, cfg.ProxyAddr, cfg.ProxyTLSAddr)
+	if port, err := strconv.Atoi(envOrDefault("BINBOI_PUBLIC_PORT", strconv.Itoa(defaultPublicPort))); err == nil {
 		cfg.PublicPort = port
 	} else {
-		cfg.PublicPort = 8000
+		cfg.PublicPort = defaultPublicPort
 	}
 
 	return cfg
+}
+
+func resolvePublicScheme(rawScheme string, proxyTLSAddr string) string {
+	switch strings.ToLower(strings.TrimSpace(rawScheme)) {
+	case "http":
+		return "http"
+	case "https":
+		return "https"
+	}
+
+	if strings.TrimSpace(proxyTLSAddr) != "" {
+		return "https"
+	}
+	return "http"
+}
+
+func resolvedPublicPort(publicScheme, proxyAddr, proxyTLSAddr string) int {
+	if strings.EqualFold(strings.TrimSpace(publicScheme), "https") {
+		if strings.TrimSpace(proxyTLSAddr) != "" {
+			return portFromAddr(proxyTLSAddr, 443)
+		}
+		return 443
+	}
+
+	return portFromAddr(proxyAddr, 8000)
 }
 
 func envOrDefault(key, fallback string) string {
@@ -946,8 +976,10 @@ func (s *Service) ServeProxy() http.Handler {
 				req.URL.Scheme = "http"
 				req.URL.Host = r.Host
 				req.Host = r.Host
+				proto := s.forwardedProtoForRequest(r)
 				req.Header.Set(requestIDHeader, r.Header.Get(requestIDHeader))
-				req.Header.Set("X-Forwarded-Proto", s.cfg.PublicScheme)
+				req.Header.Set("X-Forwarded-Proto", proto)
+				req.Header.Set("X-Forwarded-Port", s.forwardedPortForRequest(r, proto))
 				req.Header.Set("X-Forwarded-Host", r.Host)
 				req.Header.Set("X-Binboi-Subdomain", subdomain)
 			},
