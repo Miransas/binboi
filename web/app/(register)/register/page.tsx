@@ -1,8 +1,7 @@
-
 import { redirectAuthenticatedUser } from "@/lib/auth-session";
 import { sanitizeRedirectTarget } from "@/lib/auth-routing";
 import { authDatabaseEnabled, previewAuthEnabled } from "@/lib/auth-system";
-import { RegisterForm } from "../_components/register-form";
+import { RegisterForm } from "../../(auth)/_components/register-form";
 
 export default async function RegisterPage({
   searchParams,
@@ -11,9 +10,7 @@ export default async function RegisterPage({
 }) {
   const resolvedSearchParams = await searchParams;
   const callbackUrl = sanitizeRedirectTarget(resolvedSearchParams.callbackUrl, "/dashboard");
-  await redirectAuthenticatedUser(
-    callbackUrl,
-  );
+  await redirectAuthenticatedUser(callbackUrl);
 
   return (
     <RegisterForm

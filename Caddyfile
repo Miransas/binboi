@@ -1,42 +1,4 @@
-# Binboi — Caddy reverse proxy and TLS configuration
-#
-# USAGE
-#   Local dev:   caddy run --config Caddyfile
-#   Docker:      BINBOI_UPSTREAM_HOST is set to "core" by the caddy service in docker-compose.yml
-#   Production:  remove the local_certs line below, add:  email {$ACME_EMAIL}
-#                wildcard *.{domain} certs require a DNS-01 challenge module — build Caddy with
-#                your DNS provider plugin (https://caddyserver.com/docs/automatic-https#dns-challenge)
-#
-# ENV VARS (all optional — defaults shown)
-#   BINBOI_BASE_DOMAIN     base domain for the API and tunnel subdomains  (binboi.localhost)
-#   BINBOI_UPSTREAM_HOST   upstream Go server host; set to "core" in Docker  (localhost)
-#   ACME_EMAIL             email address for Let's Encrypt (production only)
-
-{
-	# ACME email for Let's Encrypt certificate registration.
-	# Set ACME_EMAIL in your environment / .env file for production.
-	email {$ACME_EMAIL:}
-
-	# on_demand_tls lets Caddy issue individual Let's Encrypt certificates for
-	# wildcard tunnel subdomains (e.g. abc123.binboi.miransas.com) on first
-	# request, without needing a DNS-01 challenge or a custom Caddy build.
-	# Requires a wildcard A record: *.binboi.miransas.com → server IP.
-	# ask is required; the health endpoint always returns 200, approving all subdomains.
-	on_demand_tls {
-		ask http://{$BINBOI_UPSTREAM_HOST:localhost}:8080/api/health
-	}
-}
-
-# Control-plane API — routes to the Go server
-{$BINBOI_BASE_DOMAIN:binboi.localhost} {
-	reverse_proxy {$BINBOI_UPSTREAM_HOST:localhost}:8080
-}
-
-# Public tunnel proxy — wildcard subdomains route to the proxy listener.
-# on_demand issues individual LE certs per subdomain on first access.
-*.{$BINBOI_BASE_DOMAIN:binboi.localhost} {
-	tls {
-		on_demand
-	}
-	reverse_proxy {$BINBOI_UPSTREAM_HOST:localhost}:8000
+binboi.miransas.com {
+	tls sardor@miransas.com
+	reverse_proxy core:8080
 }

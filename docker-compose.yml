@@ -60,7 +60,8 @@ services:
       retries: 5
 
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
 
     networks:
       - binboi-net
@@ -77,6 +78,12 @@ services:
 
     volumes:
       - pg-data:/var/lib/postgresql/data
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U binboi -d binboi"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
     networks:
       - binboi-net

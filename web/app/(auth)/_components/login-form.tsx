@@ -1,21 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { motion, type Variants } from "framer-motion";
-import { signIn, signOut, useSession } from "next-auth/react";
-import {
-  AlertTriangle,
-  ArrowLeft,
-  CheckCircle2,
-  Copy,
-  ExternalLink,
-  Loader2,
-  LogOut,
-  Mail,
-  RefreshCcw,
-} from "lucide-react";
+import { motion } from "framer-motion";
+import { signIn } from "next-auth/react";
+import { ArrowLeft, Loader2, RefreshCcw } from "lucide-react";
 
 import {
   buildForgotPasswordHref,
@@ -24,6 +14,16 @@ import {
   sanitizeRedirectTarget,
 } from "@/lib/auth-routing";
 import { cn } from "@/lib/utils";
+import {
+  AuthCard,
+  AuthField,
+  AuthStatus,
+  authInputClass,
+  authPrimaryButtonClass,
+  authSecondaryButtonClass,
+} from "./auth-primitives";
+
+// ── helpers ───────────────────────────────────────────────────────────────────
 
 type JsonResponse = {
   ok?: boolean;
@@ -31,19 +31,12 @@ type JsonResponse = {
   code?: string;
   message?: string;
   redirectTo?: string;
-  email?: string;
-  delivery?: {
-    mode: "preview";
-    previewUrl: string;
-  } | null;
-  alreadyVerified?: boolean;
 };
 
 class AuthApiError extends Error {
   code?: string;
   status: number;
   payload: JsonResponse;
-
   constructor(message: string, status: number, payload: JsonResponse) {
     super(message);
     this.code = payload.code;
@@ -53,118 +46,25 @@ class AuthApiError extends Error {
 }
 
 async function postJson(url: string, body: unknown) {
-  const response = await fetch(url, {
+  const res = await fetch(url, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-
-  const payload = (await response.json().catch(() => ({}))) as JsonResponse;
-  if (!response.ok) {
-    throw new AuthApiError(
-      payload.error || "Something went wrong.",
-      response.status,
-      payload,
-    );
+  const payload = (await res.json().catch(() => ({}))) as JsonResponse;
+  if (!res.ok) {
+    throw new AuthApiError(payload.error ?? "Something went wrong.", res.status, payload);
   }
-
   return payload;
 }
 
-const containerVariants: Variants = {
-  hidden: { opacity: 0, y: 18 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: {
-      duration: 0.45,
-      ease: [0.22, 1, 0.36, 1],
-      staggerChildren: 0.08,
-      delayChildren: 0.03,
-    },
-  },
-};
-
-const itemVariants: Variants = {
-  hidden: { opacity: 0, y: 12 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: {
-      duration: 0.35,
-      ease: [0.22, 1, 0.36, 1],
-    },
-  },
-};
-
-const surfaceClass =
-  "rounded-[28px] border border-white/10 bg-white/[0.03] px-5 py-6 shadow-[0_24px_80px_rgba(0,0,0,0.22)] backdrop-blur-sm sm:px-7 sm:py-7";
-
-const pillClass =
-  "inline-flex items-center rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-zinc-400";
-
-const labelClass =
-  "text-[11px] font-medium uppercase tracking-[0.18em] text-zinc-500";
-
-const inputClass =
-  "mt-2 w-full rounded-[18px] border border-white/10 bg-[#0b0e14] px-4 py-3.5 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-white/20 focus:bg-[#0f131c] disabled:cursor-not-allowed disabled:opacity-60";
-
-const primaryButtonClass =
-  "inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-[18px] bg-white px-4 py-3 text-sm font-medium text-black transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-60";
-
-const secondaryButtonClass =
-  "inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-[18px] border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-medium text-white transition hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-60";
-
-
-function authUnavailableCode(previewEnabled: boolean) {
-  return previewEnabled ? "AUTH_PREVIEW_ONLY" : "AUTH_UNAVAILABLE";
-}
-
-function authFallbackLabel(authConfigured: boolean, previewEnabled: boolean) {
-  if (authConfigured) {
-    return "Database auth enabled";
-  }
-  return previewEnabled ? "Preview only" : "Auth unavailable";
-}
-
-function authUnavailableMessage(previewEnabled: boolean, capability: string) {
+function unavailableMsg(previewEnabled: boolean, cap: string) {
   return previewEnabled
-    ? `Database-backed auth is not configured for this deployment. ${capability} is disabled until DATABASE_URL is available, but local preview mode can still be used intentionally.`
-    : `Database-backed auth is not configured for this deployment, so ${capability} is unavailable.`;
+    ? `Database auth is not configured. ${cap} is unavailable until DATABASE_URL is set, but preview mode can still be used.`
+    : `Database auth is not configured for this deployment, so ${cap} is unavailable.`;
 }
 
-function statusClass(tone: "neutral" | "success" | "warning" | "error") {
-  return tone === "success"
-    ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-100"
-    : tone === "warning"
-      ? "border-amber-300/20 bg-amber-400/10 text-amber-100"
-      : tone === "error"
-        ? "border-rose-400/20 bg-rose-500/10 text-rose-100"
-        : "border-white/10 bg-white/[0.03] text-zinc-300";
-}
-
-function passwordChecks(password: string, confirmPassword?: string) {
-  return [
-    {
-      label: "8+ characters",
-      passed: password.length >= 8,
-    },
-    {
-      label: "Letters + numbers",
-      passed: /[a-z]/i.test(password) && /\d/.test(password),
-    },
-    {
-      label: "Passwords match",
-      passed:
-        typeof confirmPassword === "string"
-          ? confirmPassword.length > 0 && password === confirmPassword
-          : true,
-    },
-  ];
-}
-
+// ── component ─────────────────────────────────────────────────────────────────
 
 export function LoginForm({
   authConfigured,
@@ -183,6 +83,7 @@ export function LoginForm({
 }) {
   const router = useRouter();
   const redirectTo = sanitizeRedirectTarget(callbackUrl, "/dashboard");
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -192,243 +93,208 @@ export function LoginForm({
   const [resending, setResending] = useState(false);
 
   const notice = useMemo(() => {
-    if (verified) {
-      return "Your email is verified. You can sign in now.";
-    }
-    if (reset) {
-      return "Your password was updated. Sign in with the new password.";
-    }
+    if (verified) return "Email verified — you can sign in now.";
+    if (reset) return "Password updated — sign in with your new password.";
     return null;
-  }, [reset, verified]);
+  }, [verified, reset]);
 
-  const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    if (!email.trim()) {
-      setError("Enter your email address.");
-      setErrorCode(null);
-      return;
-    }
-
-    if (!password) {
-      setError("Enter your password.");
-      setErrorCode(null);
-      return;
-    }
-
+  const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!email.trim()) { setError("Enter your email address."); setErrorCode(null); return; }
+    if (!password) { setError("Enter your password."); setErrorCode(null); return; }
     if (!authConfigured) {
-      setError(authUnavailableMessage(previewEnabled, "sign-in"));
-      setErrorCode(authUnavailableCode(previewEnabled));
+      setError(unavailableMsg(previewEnabled, "sign-in"));
+      setErrorCode(previewEnabled ? "AUTH_PREVIEW_ONLY" : "AUTH_UNAVAILABLE");
       return;
     }
-
-    setLoading(true);
-    setError(null);
-    setErrorCode(null);
-
+    setLoading(true); setError(null); setErrorCode(null);
     try {
-      const payload = await postJson("/api/auth/login", {
-        email,
-        password,
-        callbackUrl: redirectTo,
-      });
-      router.push(payload.redirectTo || redirectTo);
+      const payload = await postJson("/api/auth/login", { email, password, callbackUrl: redirectTo });
+      router.push(payload.redirectTo ?? redirectTo);
       router.refresh();
-    } catch (submitError) {
-      if (submitError instanceof AuthApiError) {
-        setError(submitError.message);
-        setErrorCode(submitError.code || null);
-      } else {
-        setError("Could not sign in right now.");
-        setErrorCode(null);
-      }
+    } catch (err) {
+      if (err instanceof AuthApiError) { setError(err.message); setErrorCode(err.code ?? null); }
+      else { setError("Could not sign in right now."); setErrorCode(null); }
     } finally {
       setLoading(false);
     }
   };
 
   const resendVerification = async () => {
-    if (!email.trim()) {
-      setError("Enter the email address that needs verification first.");
-      return;
-    }
-
-    setResending(true);
-    setError(null);
-
+    if (!email.trim()) { setError("Enter the email address to resend verification."); return; }
+    setResending(true); setError(null);
     try {
-      const payload = await postJson("/api/auth/resend-verification", {
-        email,
-        callbackUrl: redirectTo,
-      });
-      router.push(payload.redirectTo || buildLoginHref(redirectTo));
-    } catch (submitError) {
-      setError(
-        submitError instanceof Error
-          ? submitError.message
-          : "Could not resend the verification link.",
-      );
+      const payload = await postJson("/api/auth/resend-verification", { email, callbackUrl: redirectTo });
+      router.push(payload.redirectTo ?? buildLoginHref(redirectTo));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not resend the verification link.");
     } finally {
       setResending(false);
     }
   };
 
+  const busy = loading || oauthLoading;
+
   return (
-    <motion.section
-      initial="hidden"
-      animate="visible"
-      variants={containerVariants}
-      className="space-y-5"
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.38, ease: [0.22, 1, 0.36, 1] }}
+      className="space-y-4"
     >
-      <motion.div variants={itemVariants}>
-        <Link
-          href="/"
-          className="inline-flex items-center gap-2 text-sm text-zinc-500 transition hover:text-white"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to home
-        </Link>
-      </motion.div>
+      <Link
+        href="/"
+        className="inline-flex items-center gap-1.5 text-sm text-zinc-500 transition hover:text-white"
+      >
+        <ArrowLeft className="h-3.5 w-3.5" />
+        Home
+      </Link>
 
-      <motion.section variants={itemVariants} className={surfaceClass}>
-        <div className="space-y-6">
-          <div className="space-y-3">
-            <span className={pillClass}>Sign in</span>
-            <div className="space-y-2">
-              <h1 className="text-3xl font-semibold tracking-[-0.04em] text-white">
-                Access the Binboi control plane
-              </h1>
-              <p className="text-sm leading-7 text-zinc-400">
-                Use your email and password, or continue with GitHub when OAuth is configured for this deployment.
-              </p>
-            </div>
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-3">
-            {[
-              { label: "Session", value: "Protected dashboard access" },
-              { label: "Identity", value: "Email verification enforced" },
-              { label: "Fallback", value: authFallbackLabel(authConfigured, previewEnabled) },
-            ].map((item) => (
-              <div
-                key={item.label}
-                className="rounded-[18px] border border-white/10 bg-white/[0.02] px-4 py-3"
-              >
-                <p className="text-[11px] uppercase tracking-[0.18em] text-zinc-500">
-                  {item.label}
-                </p>
-                <p className="mt-2 text-sm text-white">{item.value}</p>
-              </div>
-            ))}
-          </div>
-
-          <div className="space-y-3">
-            {notice ? (
-              <div className={cn("rounded-[18px] border px-4 py-3 text-sm", statusClass("success"))}>
-                {notice}
-              </div>
-            ) : null}
-            {!authConfigured ? (
-              <div className={cn("rounded-[18px] border px-4 py-3 text-sm", statusClass("warning"))}>
-                {authUnavailableMessage(previewEnabled, "sign-in")}
-              </div>
-            ) : null}
-            {error ? (
-              <div className={cn("rounded-[18px] border px-4 py-3 text-sm", statusClass("error"))}>
-                {error}
-              </div>
-            ) : null}
-            {errorCode === "EMAIL_NOT_VERIFIED" ? (
-              <div className={cn("rounded-[18px] border px-4 py-3 text-sm", statusClass("warning"))}>
-                Your account exists, but email verification has not been completed yet.
-              </div>
-            ) : null}
-          </div>
-
-          <motion.form variants={itemVariants} onSubmit={onSubmit} className="space-y-4">
-            <div>
-              <label className={labelClass}>Email</label>
-              <input
-                type="email"
-                autoComplete="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                className={inputClass}
-                placeholder="you@company.com"
+      <AuthCard>
+        {/* Logo mark */}
+        <div className="mb-7 flex justify-center">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/[0.09] bg-white/[0.05]">
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" className="text-white/75">
+              <path
+                d="M2 9h14M9 2l7 7-7 7"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
               />
-            </div>
+            </svg>
+          </div>
+        </div>
 
-            <div>
-              <label className={labelClass}>Password</label>
-              <input
-                type="password"
-                autoComplete="current-password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                className={inputClass}
-                placeholder="Enter your password"
-              />
-            </div>
+        {/* Heading */}
+        <div className="mb-6 text-center">
+          <h1 className="text-[1.65rem] font-semibold tracking-[-0.03em] text-white">
+            Sign in to Binboi
+          </h1>
+          <p className="mt-1.5 text-sm text-zinc-500">Access your tunnel control plane</p>
+        </div>
 
-            <button
-              type="submit"
-              disabled={loading || oauthLoading || !authConfigured}
-              className={primaryButtonClass}
+        {/* Status banners */}
+        {(notice || !authConfigured || error || errorCode === "EMAIL_NOT_VERIFIED") ? (
+          <div className="mb-5 space-y-2.5">
+            {notice && <AuthStatus tone="success">{notice}</AuthStatus>}
+            {!authConfigured && (
+              <AuthStatus tone="warning">{unavailableMsg(previewEnabled, "sign-in")}</AuthStatus>
+            )}
+            {error && <AuthStatus tone="error">{error}</AuthStatus>}
+            {errorCode === "EMAIL_NOT_VERIFIED" && (
+              <AuthStatus tone="warning">
+                Email verification pending — check your inbox or resend below.
+              </AuthStatus>
+            )}
+          </div>
+        ) : null}
+
+        {/* Form */}
+        <form onSubmit={(e) => void onSubmit(e)} className="space-y-4">
+          <AuthField label="Email">
+            <input
+              type="email"
+              autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className={authInputClass}
+              placeholder="you@company.com"
+            />
+          </AuthField>
+
+          <AuthField label="Password">
+            <input
+              type="password"
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className={authInputClass}
+              placeholder="••••••••"
+            />
+          </AuthField>
+
+          <div className="flex justify-end -mt-1">
+            <Link
+              href={buildForgotPasswordHref(redirectTo)}
+              className="text-xs text-zinc-500 transition hover:text-white"
             >
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Sign in"}
-            </button>
-          </motion.form>
+              Forgot password?
+            </Link>
+          </div>
 
-          {errorCode === "EMAIL_NOT_VERIFIED" ? (
-            <button
-              type="button"
-              onClick={() => void resendVerification()}
-              disabled={resending}
-              className={secondaryButtonClass}
-            >
-              {resending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <RefreshCcw className="h-4 w-4" />
-              )}
-              Resend verification email
-            </button>
-          ) : null}
+          <button
+            type="submit"
+            disabled={busy || !authConfigured}
+            className={authPrimaryButtonClass}
+          >
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Sign in"}
+          </button>
+        </form>
 
-          {githubEnabled ? (
+        {/* Resend verification */}
+        {errorCode === "EMAIL_NOT_VERIFIED" && (
+          <button
+            type="button"
+            onClick={() => void resendVerification()}
+            disabled={resending}
+            className={cn(authSecondaryButtonClass, "mt-3")}
+          >
+            {resending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCcw className="h-4 w-4" />
+            )}
+            Resend verification email
+          </button>
+        )}
+
+        {/* GitHub OAuth */}
+        {githubEnabled && (
+          <>
+            <div className="my-5 flex items-center gap-3">
+              <div className="h-px flex-1 bg-white/[0.07]" />
+              <span className="text-xs text-zinc-600">or</span>
+              <div className="h-px flex-1 bg-white/[0.07]" />
+            </div>
             <button
               type="button"
               onClick={() => {
                 setOauthLoading(true);
                 void signIn("github", { callbackUrl: redirectTo });
               }}
-              disabled={loading || oauthLoading}
-              className={secondaryButtonClass}
+              disabled={busy}
+              className={authSecondaryButtonClass}
             >
-              {oauthLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              {oauthLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <GitHubIcon />
+              )}
               Continue with GitHub
             </button>
-          ) : null}
+          </>
+        )}
 
-          <div className="flex flex-wrap items-center justify-between gap-4 border-t border-white/10 pt-2">
-            <p className="text-sm text-zinc-400">
-              Need an account?{" "}
-              <Link
-                href={buildRegisterHref(redirectTo)}
-                className="text-white underline underline-offset-4 decoration-white/20 transition hover:decoration-white/50"
-              >
-                Create one
-              </Link>
-            </p>
-            <Link
-              href={buildForgotPasswordHref(redirectTo)}
-              className="text-sm text-zinc-400 transition hover:text-white"
-            >
-              Forgot password
-            </Link>
-          </div>
-        </div>
-      </motion.section>
-    </motion.section>
+        {/* Footer */}
+        <p className="mt-6 text-center text-sm text-zinc-500">
+          Need an account?{" "}
+          <Link
+            href={buildRegisterHref(redirectTo)}
+            className="font-medium text-white underline underline-offset-4 decoration-white/20 transition hover:decoration-white/50"
+          >
+            Create one
+          </Link>
+        </p>
+      </AuthCard>
+    </motion.div>
+  );
+}
+
+function GitHubIcon() {
+  return (
+    <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" className="text-white/70">
+      <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" />
+    </svg>
   );
 }

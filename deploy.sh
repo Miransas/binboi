@@ -45,6 +45,24 @@ REMOTE
 echo "==> Building and starting services …"
 ssh "$SERVER" "cd $REMOTE_DIR && docker-compose pull --ignore-buildable && docker-compose up -d --build 2>&1"
 
+echo "==> Waiting for core to become healthy …"
+for i in $(seq 1 24); do
+  STATUS=$(ssh "$SERVER" "curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/api/health 2>/dev/null || true")
+  if [ "$STATUS" = "200" ]; then
+    echo "    core is healthy (attempt $i)"
+    break
+  fi
+  echo "    attempt $i — status=${STATUS:-timeout}, retrying in 5s …"
+  sleep 5
+done
+
+if [ "$STATUS" != "200" ]; then
+  echo ""
+  echo "ERROR: core did not become healthy after 2 minutes."
+  echo "       Run: ssh $SERVER 'cd $REMOTE_DIR && docker-compose logs core'"
+  exit 1
+fi
+
 echo ""
 echo "==> Deployment complete."
 echo "    API:     https://$DOMAIN"
