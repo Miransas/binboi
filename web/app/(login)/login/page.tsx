@@ -1,8 +1,7 @@
-
 import { redirectAuthenticatedUser } from "@/lib/auth-session";
 import { sanitizeRedirectTarget } from "@/lib/auth-routing";
 import { authDatabaseEnabled, githubAuthEnabled, previewAuthEnabled } from "@/lib/auth-system";
-import { LoginForm } from "../_components/login-form";
+import { LoginForm } from "../../(auth)/_components/login-form";
 
 export default async function LoginPage({
   searchParams,
@@ -11,9 +10,7 @@ export default async function LoginPage({
 }) {
   const resolvedSearchParams = await searchParams;
   const callbackUrl = sanitizeRedirectTarget(resolvedSearchParams.callbackUrl, "/dashboard");
-  await redirectAuthenticatedUser(
-    callbackUrl,
-  );
+  await redirectAuthenticatedUser(callbackUrl);
 
   return (
     <LoginForm

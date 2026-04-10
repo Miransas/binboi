@@ -89,6 +89,7 @@ type Config struct {
 	InstanceName           string
 	DefaultRegion          string
 	AuthDatabaseURL        string
+	JWTSecret              string
 	ACMECacheDir           string
 	ACMEEmail              string
 	ReadHeaderTimeout      time.Duration
@@ -131,6 +132,7 @@ func LoadConfigFromEnv() Config {
 		InstanceName:           envOrDefault("BINBOI_INSTANCE_NAME", defaultInstance),
 		DefaultRegion:          envOrDefault("BINBOI_DEFAULT_REGION", defaultRegion),
 		AuthDatabaseURL:        envOrDefault("BINBOI_AUTH_DATABASE_URL", strings.TrimSpace(os.Getenv("DATABASE_URL"))),
+		JWTSecret:              envOrDefault("BINBOI_JWT_SECRET", strings.TrimSpace(os.Getenv("JWT_SECRET"))),
 		ACMECacheDir:           envOrDefault("BINBOI_ACME_CACHE_DIR", defaultACMECacheDir),
 		ACMEEmail:              strings.TrimSpace(os.Getenv("BINBOI_ACME_EMAIL")),
 		ReadHeaderTimeout:      durationEnvOrDefault("BINBOI_READ_HEADER_TIMEOUT", defaultReadHeaderTimeout),
@@ -639,6 +641,10 @@ func (s *Service) RegisterRoutes(r *gin.Engine) {
 	api.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
+
+	// Public auth endpoints — no token required, rate-limited by the api group.
+	api.POST("/auth/register", s.handleAuthRegister)
+	api.POST("/auth/login", s.handleAuthLogin)
 	api.GET("/ready", s.handleReady)
 	api.GET("/instance", func(c *gin.Context) {
 		c.JSON(http.StatusOK, s.instanceResponse())

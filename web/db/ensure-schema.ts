@@ -19,6 +19,8 @@ const schemaStatements = [
   `ALTER TABLE "user" ADD COLUMN IF NOT EXISTS "plan" text DEFAULT 'FREE' NOT NULL`,
   `ALTER TABLE "user" ADD COLUMN IF NOT EXISTS "is_active" boolean DEFAULT true`,
   `ALTER TABLE "user" ADD COLUMN IF NOT EXISTS "paddle_customer_id" text`,
+  `ALTER TABLE "user" ADD COLUMN IF NOT EXISTS "created_at" timestamp DEFAULT now() NOT NULL`,
+  `ALTER TABLE "user" ADD COLUMN IF NOT EXISTS "updated_at" timestamp DEFAULT now() NOT NULL`,
   `CREATE UNIQUE INDEX IF NOT EXISTS "user_email_unique" ON "user" ("email")`,
   `CREATE UNIQUE INDEX IF NOT EXISTS "user_paddle_customer_id_unique" ON "user" ("paddle_customer_id")`,
   `CREATE TABLE IF NOT EXISTS "account" (

@@ -1,11 +1,21 @@
-import { neon } from '@neondatabase/serverless';
-import { drizzle } from 'drizzle-orm/neon-http';
-import * as schema from './schema';
+import postgres from "postgres";
+import { drizzle } from "drizzle-orm/postgres-js";
+import * as schema from "./schema";
 
 const databaseUrl = process.env.DATABASE_URL;
 
 export const dbAvailable = Boolean(databaseUrl);
 
-export const db = dbAvailable
-  ? drizzle(neon(databaseUrl as string), { schema })
+// Migration client — disables prefetch (required for drizzle-kit push/migrate)
+export const migrationClient = databaseUrl
+  ? postgres(databaseUrl, { max: 1 })
+  : null;
+
+// Query client — pooled for app use
+const queryClient = databaseUrl
+  ? postgres(databaseUrl, { max: 10, idle_timeout: 30 })
+  : null;
+
+export const db = queryClient
+  ? drizzle(queryClient, { schema })
   : null;

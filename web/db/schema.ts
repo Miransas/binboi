@@ -30,6 +30,8 @@ export const users = pgTable("user", {
   plan: text("plan").$type<UserPlan>().notNull().default("FREE"),
   isActive: boolean("is_active").default(true),
   paddleCustomerId: text("paddle_customer_id").unique(),
+  createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
 });
 
 export const accounts = pgTable(

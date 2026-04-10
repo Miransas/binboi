@@ -1,16 +1,20 @@
+import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
-import { signIn } from "@/auth";
-import { buildPathWithQuery, sanitizeRedirectTarget } from "@/lib/auth-routing";
-import {
-  AuthRouteError,
-  authDatabaseEnabled,
-  previewAuthEnabled,
-  registerCredentialsUser,
-} from "@/lib/auth-system";
+import { sanitizeRedirectTarget } from "@/lib/auth-routing";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+const GO_API_URL = process.env.BINBOI_GO_API_URL ?? "http://localhost:8080";
+const JWT_COOKIE_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
+
+type GoAuthResponse = {
+  token?: string;
+  user?: { id: string; email: string; name: string; plan: string };
+  error?: string;
+  code?: string;
+};
 
 export async function POST(request: Request) {
   const body = (await request.json().catch(() => ({}))) as {
@@ -22,96 +26,59 @@ export async function POST(request: Request) {
     callbackUrl?: string;
   };
 
+  const callbackUrl = sanitizeRedirectTarget(body.callbackUrl, "/dashboard");
+
+  // ── Proxy to Go auth backend ───────────────────────────────────────────────
+  let goRes: Response;
   try {
-    if (!authDatabaseEnabled) {
-      throw new AuthRouteError(
-        503,
-        previewAuthEnabled ? "AUTH_PREVIEW_ONLY" : "AUTH_UNAVAILABLE",
-        previewAuthEnabled
-          ? "Database-backed auth is not configured for this deployment. Use local preview mode instead."
-          : "Database-backed auth is not configured for this deployment.",
-      );
-    }
-
-    const password = String(body.password ?? "");
-    const confirmPassword = String(body.confirmPassword ?? "");
-    if (password !== confirmPassword) {
-      throw new AuthRouteError(
-        400,
-        "PASSWORD_MISMATCH",
-        "Password confirmation does not match.",
-      );
-    }
-
-    const result = await registerCredentialsUser({
-      name: String(body.name ?? ""),
-      email: String(body.email ?? ""),
-      password,
-      inviteToken: body.inviteToken ?? null,
-    });
-
-    const callbackUrl = sanitizeRedirectTarget(body.callbackUrl, "/dashboard");
-
-    if (result.verified) {
-      const redirectTo = await signIn("credentials", {
-        email: result.email,
-        password,
-        redirect: false,
-        redirectTo: callbackUrl,
-      });
-
-      return NextResponse.json({
-        ok: true,
-        message: result.inviteAccepted
-          ? "Invite accepted. You are now signed in."
-          : "Account created successfully.",
-        redirectTo:
-          typeof redirectTo === "string"
-            ? sanitizeRedirectTarget(redirectTo, callbackUrl)
-            : callbackUrl,
-        email: result.email,
-        requiresVerification: false,
-        inviteAccepted: result.inviteAccepted,
-      });
-    }
-
-    const previewUrl = new URL(
-      buildPathWithQuery("/verify-email", {
-        token: result.verificationToken ?? "",
-        email: result.email,
-        callbackUrl,
+    goRes = await fetch(`${GO_API_URL}/api/auth/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: String(body.name ?? ""),
+        email: String(body.email ?? ""),
+        password: String(body.password ?? ""),
+        confirm_password: String(body.confirmPassword ?? ""),
       }),
-      request.url,
-    ).toString();
-    const redirectTo = buildPathWithQuery("/check-email", {
-      flow: "verify-email",
-      email: result.email,
-      callbackUrl,
-      previewUrl,
     });
-
-    return NextResponse.json({
-      ok: true,
-      message: "Account created. Verify your email to continue.",
-      redirectTo,
-      email: result.email,
-      requiresVerification: true,
-      delivery: {
-        mode: "preview",
-        previewUrl,
-      },
-    });
-  } catch (error) {
-    if (error instanceof AuthRouteError) {
-      return NextResponse.json(
-        { error: error.message, code: error.code },
-        { status: error.status },
-      );
-    }
-
+  } catch {
     return NextResponse.json(
-      { error: "Could not create your account right now." },
-      { status: 500 },
+      { error: "Could not reach the auth server. Make sure the Go backend is running." },
+      { status: 503 },
     );
   }
+
+  const data = (await goRes.json().catch(() => ({}))) as GoAuthResponse;
+
+  if (!goRes.ok) {
+    return NextResponse.json(
+      { error: data.error ?? "Could not create your account right now.", code: data.code },
+      { status: goRes.status },
+    );
+  }
+
+  if (!data.token) {
+    return NextResponse.json(
+      { error: "Auth server did not return a token." },
+      { status: 502 },
+    );
+  }
+
+  // ── Set JWT in httpOnly cookie ─────────────────────────────────────────────
+  const cookieStore = await cookies();
+  cookieStore.set("binboi_token", data.token, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: JWT_COOKIE_MAX_AGE,
+  });
+
+  return NextResponse.json({
+    ok: true,
+    message: "Account created successfully.",
+    redirectTo: callbackUrl,
+    user: data.user,
+    requiresVerification: false,
+  });
 }
