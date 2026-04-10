@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+# deploy.sh — push binboi to production and start Docker Compose
+# Usage: ./deploy.sh
+# Requires: ssh key access to sardor_stack@34.40.95.17
+set -euo pipefail
+
+SERVER="sardor_stack@34.40.95.17"
+REMOTE_DIR="/home/sardor_stack/binboi"
+DOMAIN="binboi.miransas.com"
+ACME_EMAIL="${ACME_EMAIL:-admin@miransas.com}"
+
+echo "==> Syncing project to $SERVER:$REMOTE_DIR …"
+rsync -az --delete \
+  --exclude='.git' \
+  --exclude='rust/target' \
+  --exclude='web/node_modules' \
+  --exclude='web/.next' \
+  --exclude='.gocache' \
+  --exclude='*.db' \
+  --exclude='.DS_Store' \
+  . "$SERVER:$REMOTE_DIR"
+
+echo "==> Writing production .env …"
+ssh "$SERVER" "cat > $REMOTE_DIR/.env" <<EOF
+BINBOI_BASE_DOMAIN=$DOMAIN
+ACME_EMAIL=$ACME_EMAIL
+BINBOI_PUBLIC_SCHEME=https
+BINBOI_PUBLIC_PORT=443
+BINBOI_ALLOW_PREVIEW_MODE=false
+EOF
+
+echo "==> Ensuring Docker is installed …"
+ssh "$SERVER" bash <<'REMOTE'
+set -euo pipefail
+if ! command -v docker &>/dev/null; then
+  echo "Installing Docker …"
+  curl -fsSL https://get.docker.com | sh
+  sudo usermod -aG docker "$USER"
+  echo "Docker installed. You may need to log out and back in for group changes."
+fi
+docker --version
+docker-compose --version
+REMOTE
+
+echo "==> Building and starting services …"
+ssh "$SERVER" "cd $REMOTE_DIR && docker-compose pull --ignore-buildable && docker-compose up -d --build 2>&1"
+
+echo ""
+echo "==> Deployment complete."
+echo "    API:     https://$DOMAIN"
+echo "    Tunnel:  <id>.$DOMAIN"
+echo "    Verify:  curl -s https://$DOMAIN/api/health"
+echo ""
+echo "    DNS required (if not already set):"
+echo "      A  $DOMAIN          -> 34.40.95.17"
+echo "      A  *.$DOMAIN        -> 34.40.95.17"

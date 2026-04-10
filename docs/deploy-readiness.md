@@ -67,6 +67,25 @@ Recommended structure:
 - proxy/ingress in front of the public Binboi URL
 - `BINBOI_API_BASE` points from Next.js to the private Go API address
 
+### Docker Compose (recommended for self-hosted)
+
+Use `docker-compose.yml` at the repo root. It runs three services:
+
+- `caddy` — Caddy reverse proxy, terminates HTTPS on ports 80 and 443
+- `core` — Go control plane (API, tunnel listener, proxy)
+- `postgres` — Postgres database
+
+Caddy reads the `Caddyfile` in the repo root. For `.localhost` domains it uses self-signed
+certificates (`local_certs`). For production domains, remove `local_certs` from the global block
+and add `email {$ACME_EMAIL}`; wildcard certs require a DNS-01 provider plugin built into Caddy.
+
+Set these env vars before `docker compose up`:
+
+```bash
+BINBOI_BASE_DOMAIN=binboi.example.com   # your real domain
+BINBOI_ALLOW_PREVIEW_MODE=false
+```
+
 ### Production-like
 
 Expected posture:
@@ -75,6 +94,7 @@ Expected posture:
 - Postgres-backed auth enabled
 - DNS for the base domain and any custom domains points at the proxy
 - either external edge TLS is configured or `BINBOI_PROXY_TLS_ADDR` + ACME storage is configured
+- `BINBOI_PUBLIC_SCHEME=https` and `BINBOI_PUBLIC_PORT=443` set so the control plane emits correct public URLs
 - real email delivery configured
 - OAuth configured if exposed in the UI
 - billing configured if pricing/checkout is live

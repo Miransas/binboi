@@ -51,6 +51,30 @@ Postgres backs account-oriented SaaS data:
 - The stable external control plane surface is versioned under `/api/v1/*`.
 - The Next.js app proxies browser-safe control plane reads and writes through `app/api/controlplane/*`.
 
+## TLS and ingress architecture
+
+TLS termination happens outside the Go process. Two supported approaches:
+
+### External edge TLS (recommended)
+
+Caddy (or Nginx / Traefik / cloud LB) sits in front of the Go server and terminates TLS.
+
+- `{BASE_DOMAIN}` → Go API on `:8080`
+- `*.{BASE_DOMAIN}` → Go proxy on `:8000`
+- CLI tunnel connections reach `:8081` directly (raw TCP, not proxied through Caddy)
+- `BINBOI_PUBLIC_SCHEME=https` and `BINBOI_PUBLIC_PORT=443` tell the control plane what public URLs to emit
+
+The project `Caddyfile` is the reference configuration. For local dev it uses `local_certs` (self-signed). For production, wildcard certs require a DNS-01 challenge module.
+
+### Binboi ACME TLS
+
+The Go server can terminate TLS itself using ACME (Let's Encrypt):
+
+- set `BINBOI_PROXY_TLS_ADDR` (e.g. `:443`) to activate the TLS listener
+- set `BINBOI_ACME_CACHE_DIR` to a persistent directory for certificate storage
+- set `BINBOI_ACME_EMAIL` for Let's Encrypt account registration
+- HTTP-01 challenge requires the proxy to be reachable on port 80
+
 ## Recommended reading order
 
 1. [`../README.md`](../README.md)

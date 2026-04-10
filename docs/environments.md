@@ -102,20 +102,48 @@ Production expectations:
 
 ## Stable control plane contract
 
-The Go service now exposes a stable product surface under `/api/v1/*`:
+The Go service exposes a stable product surface under `/api/v1/*`:
 
-- `GET /api/v1/health`
-- `GET /api/v1/instance`
-- `GET /api/v1/nodes`
+### Health and readiness
+
+- `GET /api/v1/health` — liveness check (no auth required)
+- `GET /api/v1/ready` — readiness check (no auth required)
+- `GET /api/v1/instance` — instance metadata (no auth required)
+- `GET /api/v1/nodes` — node list (no auth required)
+
+### Metrics and limits (auth required)
+
+- `GET /api/v1/metrics` — JSON operational counters
+- `GET /api/v1/limits` — quota and rate limit config
+- `GET /api/v1/snapshot` — combined health, readiness, metrics, and limits in one response
+
+Prometheus metrics are also available at `GET /metrics` (auth required).
+
+### Tunnels (auth required)
+
 - `GET /api/v1/tunnels?scope=all|active|inactive`
 - `POST /api/v1/tunnels`
 - `DELETE /api/v1/tunnels/:id`
-- `GET /api/v1/events?limit=50`
+
+### Events and requests (auth required)
+
+- `GET /api/v1/events?limit=50&action=<action>`
+- `GET /api/v1/events/export?format=ndjson&limit=200`
 - `GET /api/v1/requests?limit=200&kind=REQUEST|WEBHOOK`
+- `GET /api/v1/requests/export?format=ndjson&limit=200`
+- `GET /api/v1/requests/:id/archive` — full request/response body archive
+- `POST /api/v1/requests/:id/replay` — replay a captured request to the upstream
+
+### Domains (auth required)
+
 - `GET /api/v1/domains`
 - `POST /api/v1/domains`
+- `DELETE /api/v1/domains/:name`
 - `POST /api/v1/domains/verify`
-- `GET /api/v1/auth/me`
+
+### Auth
+
+- `GET /api/v1/auth/me` — resolve the current token's identity
 
 All `/api/v1/*` endpoints except `GET /api/v1/auth/me` return an envelope shaped like:
 

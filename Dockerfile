@@ -20,6 +20,8 @@ RUN apk add --no-cache ca-certificates curl && \
 
 COPY --from=builder /bin/binboi-server /usr/local/bin/binboi-server
 
+RUN mkdir -p /data && chown binboi:binboi /data
+
 EXPOSE 8000 8080 8081
 
 USER binboi

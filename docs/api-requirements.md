@@ -15,18 +15,31 @@ Primary responsibilities:
 
 Stable versioned product endpoints:
 
-- `GET /api/v1/health`
-- `GET /api/v1/instance`
-- `GET /api/v1/nodes`
-- `GET /api/v1/tunnels`
-- `POST /api/v1/tunnels`
-- `DELETE /api/v1/tunnels/:id`
-- `GET /api/v1/events`
-- `GET /api/v1/requests`
-- `GET /api/v1/domains`
-- `POST /api/v1/domains`
-- `POST /api/v1/domains/verify`
+- `GET /api/v1/health` — liveness (no auth)
+- `GET /api/v1/ready` — readiness (no auth)
+- `GET /api/v1/instance` — instance metadata (no auth)
+- `GET /api/v1/nodes` — node list (no auth)
+- `GET /api/v1/metrics` — JSON operational counters (auth required)
+- `GET /api/v1/limits` — quota and rate limit config (auth required)
+- `GET /api/v1/snapshot` — combined health, readiness, metrics, and limits (auth required)
+- `GET /api/v1/tunnels?scope=all|active|inactive` (auth required)
+- `POST /api/v1/tunnels` (auth required)
+- `DELETE /api/v1/tunnels/:id` (auth required)
+- `GET /api/v1/events?limit=50&action=<action>` (auth required)
+- `GET /api/v1/events/export?format=ndjson&limit=200` (auth required)
+- `GET /api/v1/requests?limit=200&kind=REQUEST|WEBHOOK` (auth required)
+- `GET /api/v1/requests/export?format=ndjson&limit=200` (auth required)
+- `GET /api/v1/requests/:id/archive` (auth required)
+- `POST /api/v1/requests/:id/replay` (auth required)
+- `GET /api/v1/domains` (auth required)
+- `POST /api/v1/domains` (auth required)
+- `DELETE /api/v1/domains/:name` (auth required)
+- `POST /api/v1/domains/verify` (auth required)
 - `GET /api/v1/auth/me`
+
+Prometheus metrics endpoint at root level:
+
+- `GET /metrics` (auth required)
 
 Legacy or operational endpoints still used internally or for preview administration:
 
