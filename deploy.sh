@@ -20,14 +20,29 @@ rsync -az --delete \
   --exclude='.DS_Store' \
   . "$SERVER:$REMOTE_DIR"
 
-echo "==> Writing production .env …"
-ssh "$SERVER" "cat > $REMOTE_DIR/.env" <<EOF
-BINBOI_BASE_DOMAIN=$DOMAIN
-ACME_EMAIL=$ACME_EMAIL
-BINBOI_PUBLIC_SCHEME=https
-BINBOI_PUBLIC_PORT=443
-BINBOI_ALLOW_PREVIEW_MODE=false
-EOF
+echo "==> Patching production .env (preserving existing secrets) …"
+# set_env KEY VALUE — writes the key only if it is not already present in .env
+ssh "$SERVER" bash <<REMOTE
+set -euo pipefail
+ENV_FILE="$REMOTE_DIR/.env"
+touch "\$ENV_FILE"
+
+set_env() {
+  local key=\$1 value=\$2
+  if grep -qE "^\s*\${key}\s*=" "\$ENV_FILE" 2>/dev/null; then
+    echo "    [keep]  \$key"
+  else
+    echo "\${key}=\${value}" >> "\$ENV_FILE"
+    echo "    [set]   \$key"
+  fi
+}
+
+set_env BINBOI_BASE_DOMAIN      "$DOMAIN"
+set_env ACME_EMAIL              "$ACME_EMAIL"
+set_env BINBOI_PUBLIC_SCHEME    "https"
+set_env BINBOI_PUBLIC_PORT      "443"
+set_env BINBOI_ALLOW_PREVIEW_MODE "false"
+REMOTE
 
 echo "==> Ensuring Docker is installed …"
 ssh "$SERVER" bash <<'REMOTE'

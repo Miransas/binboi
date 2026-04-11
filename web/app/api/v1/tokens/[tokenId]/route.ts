@@ -1,23 +1,33 @@
+import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
-import { AccessTokenRouteError, revokeAccessToken } from "@/lib/access-tokens";
+import { buildApiUrl } from "@/lib/binboi";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function DELETE(
-  _request: Request,
+  _req: Request,
   { params }: { params: Promise<{ tokenId: string }> },
 ) {
+  const { tokenId } = await params;
+
+  const jar = await cookies();
+  const token = jar.get("binboi_token")?.value;
+  const h = new Headers();
+  if (token) h.set("authorization", `Bearer ${token}`);
+
+  let upstream: Response;
   try {
-    const { tokenId } = await params;
-    const response = await revokeAccessToken(tokenId);
-    return NextResponse.json(response);
-  } catch (error) {
-    if (error instanceof AccessTokenRouteError) {
-      return NextResponse.json({ error: error.message }, { status: error.status });
-    }
-    console.error("DELETE /api/v1/tokens/:tokenId failed", error);
-    return NextResponse.json({ error: "Could not revoke access token." }, { status: 500 });
+    upstream = await fetch(buildApiUrl(`/api/v1/tokens/${encodeURIComponent(tokenId)}`), {
+      method: "DELETE",
+      headers: h,
+      cache: "no-store",
+    });
+  } catch {
+    return NextResponse.json({ error: "Could not reach the Binboi control plane." }, { status: 502 });
   }
+
+  const data = await upstream.json().catch(() => ({}));
+  return NextResponse.json(data, { status: upstream.status });
 }

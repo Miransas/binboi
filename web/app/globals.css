@@ -10,12 +10,14 @@
   --color-miransas-cyan: #00ffd1;
   --color-miransas-dark: #050505;
   --color-miransas-pink: #ff2056;
-  --font-sans:
-    "Avenir Next", "Segoe UI", "Helvetica Neue", "Arial", sans-serif;
 
-  /* Yazı Tipleri */
-  --font-mono:
-    "JetBrains Mono", "ui-monospace", "SFMono-Regular", "Menlo", "monospace";
+
+/* --- Space Grotesk Entegrasyonu --- */
+  --font-sans: var(--font-space-grotesk), "Avenir Next", "Segoe UI", sans-serif;
+  --font-heading: var(--font-space-grotesk);
+
+  /* --- Space Mono Entegrasyonu --- */
+  --font-mono: var(--font-space-mono), "JetBrains Mono", "monospace";
 
   /* Özel Animasyonlar */
   --animate-pulse-slow: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
@@ -273,4 +275,9 @@
 }
 .page-exit {
   animation: page-exit 0.25s ease both;
+}
+@layer base {
+  h1, h2, h3 {
+    @apply tracking-tighter; /* Başlıkları biraz daraltmak Space Grotesk'i çok şık gösterir */
+  }
 }

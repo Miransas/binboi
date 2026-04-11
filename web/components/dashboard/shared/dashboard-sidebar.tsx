@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { signOut, useSession } from "next-auth/react";
 import { usePathname } from "next/navigation";
+
+import { signOut, useSession } from "@/components/provider/session-provider";
 import type { ComponentType, MouseEvent as ReactMouseEvent } from "react";
 import { BookOpen, LogOut } from "lucide-react";
 

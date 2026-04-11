@@ -2,7 +2,7 @@
 "use client";
 
 import React from "react";
-import { useSession } from "next-auth/react";
+import { useSession } from "@/components/provider/session-provider";
 import { motion } from "framer-motion";
 import { Activity, Shield, Waypoints, Terminal, Zap, CheckCircle2, Clock } from "lucide-react";
 

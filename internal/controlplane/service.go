@@ -706,6 +706,13 @@ func (s *Service) RegisterRoutes(r *gin.Engine) {
 	apiV1Operator.DELETE("/domains/:name", s.handleV1DeleteDomain)
 	apiV1Operator.POST("/domains/verify", s.handleV1VerifyDomain)
 	apiV1.GET("/auth/me", s.handleAuthMe)
+
+	// Personal access token management — JWT auth required.
+	apiV1Tokens := apiV1.Group("/tokens")
+	apiV1Tokens.Use(s.requireJWT())
+	apiV1Tokens.GET("", s.handleV1ListTokens)
+	apiV1Tokens.POST("", s.handleV1CreateToken)
+	apiV1Tokens.DELETE("/:id", s.handleV1DeleteToken)
 }
 
 func (s *Service) apiMeta(access requestAccess) APIMeta {

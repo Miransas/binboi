@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent as ReactMouseEvent } from "react";
 import { Menu, Search, Sparkles } from "lucide-react";
-import { useSession } from "next-auth/react";
+import { useSession } from "@/components/provider/session-provider";
 
 import { useAssistantContext } from "@/components/shared/assistant-context";
 import { DASHBOARD_LINKS } from "@/constants";

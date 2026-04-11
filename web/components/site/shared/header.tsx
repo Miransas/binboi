@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useSession } from "next-auth/react";
+import { useSession } from "@/components/provider/session-provider";
 import { LayoutDashboard, Loader2 } from "lucide-react";
 
 import { NAV_LINKS } from "@/constants";
