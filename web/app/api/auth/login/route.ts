@@ -1,48 +1,22 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
-import { sanitizeRedirectTarget } from "@/lib/auth-routing";
-import { getCurrentSession } from "@/lib/auth-session";
-import { authDeploymentMode, authDatabaseEnabled, githubAuthEnabled } from "@/lib/auth-system";
-
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const GO_API_URL = process.env.BINBOI_GO_API_URL ?? "http://localhost:8080";
-const JWT_COOKIE_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
+const GO_API = process.env.BINBOI_GO_API_URL ?? "http://localhost:8080";
+const COOKIE_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 
-type GoAuthResponse = {
-  token?: string;
-  user?: { id: string; email: string; name: string; plan: string };
-  error?: string;
-  code?: string;
-};
-
-export async function GET() {
-  const session = await getCurrentSession();
-
-  return NextResponse.json({
-    authenticated: Boolean(session?.user?.id),
-    mode: authDeploymentMode,
-    credentialsEnabled: authDatabaseEnabled,
-    githubEnabled: githubAuthEnabled,
-    user: session?.user ?? null,
-  });
-}
-
-export async function POST(request: Request) {
-  const body = (await request.json().catch(() => ({}))) as {
+export async function POST(req: Request) {
+  const body = (await req.json().catch(() => ({}))) as {
     email?: string;
     password?: string;
     callbackUrl?: string;
   };
 
-  const callbackUrl = sanitizeRedirectTarget(body.callbackUrl, "/dashboard");
-
-  // ── Proxy to Go auth backend ───────────────────────────────────────────────
-  let goRes: Response;
+  let res: Response;
   try {
-    goRes = await fetch(`${GO_API_URL}/api/auth/login`, {
+    res = await fetch(`${GO_API}/api/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -51,41 +25,35 @@ export async function POST(request: Request) {
       }),
     });
   } catch {
-    return NextResponse.json(
-      { error: "Could not reach the auth server. Make sure the Go backend is running." },
-      { status: 503 },
-    );
+    return NextResponse.json({ error: "Auth sunucusuna ulaşılamıyor." }, { status: 503 });
   }
 
-  const data = (await goRes.json().catch(() => ({}))) as GoAuthResponse;
+  const data = (await res.json().catch(() => ({}))) as {
+    token?: string;
+    user?: { id: string; email: string; name: string; plan: string };
+    error?: string;
+    code?: string;
+  };
 
-  if (!goRes.ok) {
-    return NextResponse.json(
-      { error: data.error ?? "Could not sign in right now.", code: data.code },
-      { status: goRes.status },
-    );
+  if (!res.ok) {
+    return NextResponse.json({ error: data.error ?? "Giriş yapılamadı.", code: data.code }, { status: res.status });
   }
 
   if (!data.token) {
-    return NextResponse.json(
-      { error: "Auth server did not return a token." },
-      { status: 502 },
-    );
+    return NextResponse.json({ error: "Sunucu token döndürmedi." }, { status: 502 });
   }
 
-  // ── Set JWT in httpOnly cookie ─────────────────────────────────────────────
-  const cookieStore = await cookies();
-  cookieStore.set("binboi_token", data.token, {
+  const jar = await cookies();
+  jar.set("binboi_token", data.token, {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
     path: "/",
-    maxAge: JWT_COOKIE_MAX_AGE,
+    maxAge: COOKIE_MAX_AGE,
   });
 
-  return NextResponse.json({
-    ok: true,
-    redirectTo: callbackUrl,
-    user: data.user,
-  });
+  const cb = body.callbackUrl;
+  const redirectTo = cb && cb.startsWith("/") && !cb.startsWith("//") ? cb : "/dashboard";
+
+  return NextResponse.json({ ok: true, redirectTo, user: data.user });
 }

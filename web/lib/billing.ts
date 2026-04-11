@@ -2,7 +2,6 @@ import "server-only";
 
 import { and, desc, eq } from "drizzle-orm";
 
-import { auth, authEnabled } from "@/auth";
 import { db, dbAvailable } from "@/db";
 import { ensureAppDatabaseSchema } from "@/db/ensure-schema";
 import {
@@ -21,7 +20,10 @@ import {
   verifyPaddleWebhookSignature,
 } from "@/lib/paddle";
 import { normalizeBillingPlan, type BillingPlan } from "@/lib/pricing";
-import { previewAuthEnabled } from "@/lib/auth-system";
+
+const authEnabled = false;
+const auth = async () => null;
+const previewAuthEnabled = false;
 
 export class BillingRouteError extends Error {
   status: number;

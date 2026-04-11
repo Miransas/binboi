@@ -1,17 +1,20 @@
 import { createHash, randomBytes, randomUUID } from "crypto";
 import { and, desc, eq } from "drizzle-orm";
 
-import { auth, authEnabled } from "@/auth";
 import { db, dbAvailable } from "@/db";
 import { ensureAppDatabaseSchema } from "@/db/ensure-schema";
-import { buildApiUrl } from "@/lib/binboi";
-import { previewAuthEnabled } from "@/lib/auth-system";
 import {
   accessTokens,
   users,
   type AccessTokenStatus,
   type UserPlan,
 } from "@/db/schema";
+import { buildApiUrl } from "@/lib/binboi";
+
+const authEnabled = false;
+const auth = async () => null;
+const previewAuthEnabled = false;
+
 
 type Viewer = {
   mode: "account" | "preview";

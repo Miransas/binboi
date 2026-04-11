@@ -1,48 +1,18 @@
-export function sanitizeRedirectTarget(
-  value: string | null | undefined,
-  fallback = "/dashboard",
-) {
-  if (!value) {
-    return fallback;
-  }
-
-  if (value.startsWith("/") && !value.startsWith("//")) {
-    return value;
-  }
-
-  return fallback;
-}
-
-export function buildPathWithQuery(
-  path: string,
-  params: Record<string, string | null | undefined>,
-) {
-  const search = new URLSearchParams();
-
-  for (const [key, value] of Object.entries(params)) {
-    if (typeof value === "string" && value.length > 0) {
-      search.set(key, value);
-    }
-  }
-
-  const query = search.toString();
-  return query ? `${path}?${query}` : path;
+function safePath(value: string | null | undefined, fallback = "/dashboard") {
+  if (!value) return fallback;
+  return value.startsWith("/") && !value.startsWith("//") ? value : fallback;
 }
 
 export function buildLoginHref(callbackUrl?: string | null) {
-  return buildPathWithQuery("/login", {
-    callbackUrl: callbackUrl ? sanitizeRedirectTarget(callbackUrl) : null,
-  });
+  if (!callbackUrl) return "/login";
+  return `/login?callbackUrl=${encodeURIComponent(safePath(callbackUrl))}`;
 }
 
 export function buildRegisterHref(callbackUrl?: string | null) {
-  return buildPathWithQuery("/register", {
-    callbackUrl: callbackUrl ? sanitizeRedirectTarget(callbackUrl) : null,
-  });
+  if (!callbackUrl) return "/register";
+  return `/register?callbackUrl=${encodeURIComponent(safePath(callbackUrl))}`;
 }
 
-export function buildForgotPasswordHref(callbackUrl?: string | null) {
-  return buildPathWithQuery("/forgot-password", {
-    callbackUrl: callbackUrl ? sanitizeRedirectTarget(callbackUrl) : null,
-  });
+export function sanitizeRedirectTarget(value: string | null | undefined, fallback = "/dashboard") {
+  return safePath(value, fallback);
 }
