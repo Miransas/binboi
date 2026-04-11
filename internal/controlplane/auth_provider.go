@@ -52,8 +52,83 @@ func newAuthProvider(databaseURL string) (*authProvider, error) {
 		return nil, fmt.Errorf("ping auth database: %w", err)
 	}
 
-	return &authProvider{pool: pool}, nil
+	ap := &authProvider{pool: pool}
+
+	migrateCtx, migrateCancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer migrateCancel()
+	if err := ap.migrateSchema(migrateCtx); err != nil {
+		pool.Close()
+		return nil, fmt.Errorf("migrate auth schema: %w", err)
+	}
+
+	return ap, nil
 }
+
+// migrateSchema creates the auth tables if they don't already exist.
+// All statements are idempotent (IF NOT EXISTS / IF column does not exist).
+func (p *authProvider) migrateSchema(ctx context.Context) error {
+	statements := []string{
+		// ── users ──────────────────────────────────────────────────────────────
+		`CREATE TABLE IF NOT EXISTS "user" (
+			id               text        PRIMARY KEY,
+			name             text,
+			email            text        NOT NULL,
+			"emailVerified"  timestamp,
+			image            text,
+			password_hash    text,
+			plan             text        NOT NULL DEFAULT 'FREE',
+			is_active        boolean              DEFAULT true,
+			paddle_customer_id text,
+			created_at       timestamp   NOT NULL DEFAULT now(),
+			updated_at       timestamp   NOT NULL DEFAULT now(),
+			CONSTRAINT user_email_unique             UNIQUE (email),
+			CONSTRAINT user_paddle_customer_id_unique UNIQUE (paddle_customer_id)
+		)`,
+
+		// ── access tokens ──────────────────────────────────────────────────────
+		`CREATE TABLE IF NOT EXISTS access_token (
+			id           text      PRIMARY KEY,
+			user_id      text      NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+			name         text      NOT NULL,
+			prefix       text      NOT NULL,
+			token_hash   text      NOT NULL,
+			status       text      NOT NULL DEFAULT 'ACTIVE',
+			last_used_at timestamp,
+			revoked_at   timestamp,
+			created_at   timestamp NOT NULL DEFAULT now(),
+			CONSTRAINT access_token_prefix_unique UNIQUE (prefix)
+		)`,
+
+		// ── billing subscriptions ──────────────────────────────────────────────
+		`CREATE TABLE IF NOT EXISTS billing_subscriptions (
+			id                       serial    PRIMARY KEY,
+			user_id                  text      NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+			provider                 text      NOT NULL DEFAULT 'PADDLE',
+			plan                     text      NOT NULL DEFAULT 'FREE',
+			status                   text      NOT NULL DEFAULT 'FREE',
+			paddle_subscription_id   text,
+			paddle_customer_id       text,
+			paddle_price_id          text,
+			renews_at                timestamp,
+			cancel_at_period_end     boolean   NOT NULL DEFAULT false,
+			created_at               timestamp NOT NULL DEFAULT now(),
+			updated_at               timestamp NOT NULL DEFAULT now(),
+			CONSTRAINT billing_subscriptions_paddle_subscription_id_unique UNIQUE (paddle_subscription_id)
+		)`,
+
+		// ── indexes ────────────────────────────────────────────────────────────
+		`CREATE INDEX IF NOT EXISTS access_token_user_id_idx          ON access_token          (user_id)`,
+		`CREATE INDEX IF NOT EXISTS billing_subscriptions_user_id_idx  ON billing_subscriptions (user_id)`,
+	}
+
+	for _, stmt := range statements {
+		if _, err := p.pool.Exec(ctx, stmt); err != nil {
+			return fmt.Errorf("exec migration: %w\nstatement: %s", err, stmt[:min(80, len(stmt))])
+		}
+	}
+	return nil
+}
+
 
 func (p *authProvider) Enabled() bool {
 	return p != nil && p.pool != nil

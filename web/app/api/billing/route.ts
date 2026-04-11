@@ -13,7 +13,6 @@ export async function GET() {
     if (error instanceof BillingRouteError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
     }
-
-    return NextResponse.json({ error: "Could not load billing state." }, { status: 500 });
+    return NextResponse.json({ error: "Billing durumu alınamadı." }, { status: 500 });
   }
 }

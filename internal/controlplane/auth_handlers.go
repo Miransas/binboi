@@ -2,7 +2,11 @@ package controlplane
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/subtle"
+	"encoding/base64"
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -11,7 +15,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/miransas/binboi/internal/auth"
-	"golang.org/x/crypto/bcrypt"
+	"golang.org/x/crypto/argon2"
 )
 
 const jwtTokenTTL = 7 * 24 * time.Hour
@@ -104,7 +108,7 @@ func (s *Service) handleAuthRegister(c *gin.Context) {
 		return
 	}
 
-	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	hash, err := argon2idHash(password)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not create account"})
 		return
@@ -201,7 +205,7 @@ func (s *Service) handleAuthLogin(c *gin.Context) {
 		return
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(passwordHash), []byte(req.Password)); err != nil {
+	if !argon2idVerify(req.Password, passwordHash) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "the email or password you entered is incorrect", "code": "INVALID_CREDENTIALS"})
 		return
 	}
@@ -224,4 +228,55 @@ func (s *Service) handleAuthLogin(c *gin.Context) {
 		Token: token,
 		User:  authUserPayload{ID: userID, Email: email, Name: name, Plan: strings.ToUpper(plan)},
 	})
+}
+
+// ── Argon2id helpers ──────────────────────────────────────────────────────────
+
+const (
+	argon2Time    = 1
+	argon2Memory  = 64 * 1024 // 64 MiB
+	argon2Threads = 4
+	argon2KeyLen  = 32
+	argon2SaltLen = 16
+)
+
+// argon2idHash returns a self-contained encoded string:
+// $argon2id$v=19$m=65536,t=1,p=4$<salt_b64>$<hash_b64>
+func argon2idHash(password string) (string, error) {
+	salt := make([]byte, argon2SaltLen)
+	if _, err := rand.Read(salt); err != nil {
+		return "", err
+	}
+	hash := argon2.IDKey([]byte(password), salt, argon2Time, argon2Memory, argon2Threads, argon2KeyLen)
+	encoded := fmt.Sprintf(
+		"$argon2id$v=19$m=%d,t=%d,p=%d$%s$%s",
+		argon2Memory, argon2Time, argon2Threads,
+		base64.RawStdEncoding.EncodeToString(salt),
+		base64.RawStdEncoding.EncodeToString(hash),
+	)
+	return encoded, nil
+}
+
+// argon2idVerify verifies password against a hash produced by argon2idHash.
+func argon2idVerify(password, encoded string) bool {
+	parts := strings.Split(encoded, "$")
+	// expected: ["", "argon2id", "v=19", "m=...,t=...,p=...", "<salt>", "<hash>"]
+	if len(parts) != 6 || parts[1] != "argon2id" {
+		return false
+	}
+	var m, t uint32
+	var p uint8
+	if _, err := fmt.Sscanf(parts[3], "m=%d,t=%d,p=%d", &m, &t, &p); err != nil {
+		return false
+	}
+	salt, err := base64.RawStdEncoding.DecodeString(parts[4])
+	if err != nil {
+		return false
+	}
+	want, err := base64.RawStdEncoding.DecodeString(parts[5])
+	if err != nil {
+		return false
+	}
+	got := argon2.IDKey([]byte(password), salt, t, m, p, uint32(len(want)))
+	return subtle.ConstantTimeCompare(got, want) == 1
 }
