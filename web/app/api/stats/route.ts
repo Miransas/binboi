@@ -1,12 +1,20 @@
+import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { buildApiUrl } from "@/lib/binboi";
 import type { ControlPlaneEnvelope, ControlPlaneInstance, ControlPlaneTunnel } from "@/lib/controlplane";
 
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+
 export async function GET() {
+  const jar = await cookies();
+  const token = jar.get("binboi_token")?.value;
+  const authHeaders: HeadersInit = token ? { authorization: `Bearer ${token}` } : {};
+
   try {
     const [instanceRes, tunnelsRes] = await Promise.all([
-      fetch(buildApiUrl("/api/v1/instance"), { cache: "no-store" }),
-      fetch(buildApiUrl("/api/v1/tunnels"), { cache: "no-store" }),
+      fetch(buildApiUrl("/api/v1/instance"), { headers: authHeaders, cache: "no-store" }),
+      fetch(buildApiUrl("/api/v1/tunnels"), { headers: authHeaders, cache: "no-store" }),
     ]);
 
     if (!instanceRes.ok || !tunnelsRes.ok) {

@@ -12,6 +12,7 @@ ACME_EMAIL="${ACME_EMAIL:-admin@miransas.com}"
 echo "==> Syncing project to $SERVER:$REMOTE_DIR …"
 rsync -az --delete \
   --exclude='.git' \
+  --exclude='.env' \
   --exclude='rust/target' \
   --exclude='web/node_modules' \
   --exclude='web/.next' \
@@ -37,11 +38,13 @@ set_env() {
   fi
 }
 
-set_env BINBOI_BASE_DOMAIN      "$DOMAIN"
-set_env ACME_EMAIL              "$ACME_EMAIL"
-set_env BINBOI_PUBLIC_SCHEME    "https"
-set_env BINBOI_PUBLIC_PORT      "443"
+set_env BINBOI_BASE_DOMAIN        "$DOMAIN"
+set_env ACME_EMAIL                "$ACME_EMAIL"
+set_env BINBOI_PUBLIC_SCHEME      "https"
+set_env BINBOI_PUBLIC_PORT        "443"
 set_env BINBOI_ALLOW_PREVIEW_MODE "false"
+set_env BINBOI_JWT_SECRET         "cb7935600dd8574c2bc4e3effaffa2dd5efcd7b83a59f6dd513f60657efd7de6"
+set_env BINBOI_AUTH_DATABASE_URL  "postgres://binboi:binboi@binboi-postgres:5432/miransas_db"
 REMOTE
 
 echo "==> Ensuring Docker is installed …"
