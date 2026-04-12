@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import { Activity, RadioTower, ShieldAlert } from "lucide-react";
 
 import { DashboardSurface, DashboardTimeline } from "@/components/dashboard/shared/dashboard-primitives";
-import { useRegisterAssistantContext } from "@/components/shared/assistant-context";
 import { buildWsUrl } from "@/lib/binboi";
 
 export default function TerminalLog() {
@@ -35,19 +34,6 @@ export default function TerminalLog() {
     });
     return Array.from(new Set(levels));
   }, [logs]);
-
-  useRegisterAssistantContext("dashboard-relay-logs", {
-    logContext: {
-      summary:
-        status === "live"
-          ? "Relay event stream is live and receiving WebSocket log entries."
-          : status === "connecting"
-            ? "Relay log stream is still connecting."
-            : "Relay log stream is offline or the control plane is unreachable.",
-      levels: logLevels,
-      recent: logs.slice(0, 5),
-    },
-  });
 
   const timelineItems = [
     {

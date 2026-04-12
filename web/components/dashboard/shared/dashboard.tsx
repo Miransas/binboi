@@ -4,10 +4,9 @@
 import React from "react";
 import { useSession } from "@/components/provider/session-provider";
 import { motion } from "framer-motion";
-import { Activity, Shield, Waypoints, Terminal, Zap, CheckCircle2, Clock } from "lucide-react";
+import { Activity, Shield, Waypoints, Terminal, CheckCircle2 } from "lucide-react";
 
 import BandwidthChart from "@/components/dashboard/shared/BandwidthChart";
-import { useRegisterAssistantContext } from "@/components/shared/assistant-context";
 import { useRequests } from "@/hooks/useRequests";
 import { useTunnels } from "@/hooks/useTunnels";
 
@@ -39,22 +38,6 @@ export default function DashboardPage() {
   const requestVolume = tunnels
     ? tunnels.reduce((sum: number, tunnel: any) => sum + (tunnel.request_count || 0), 0)
     : 0;
-
-  useRegisterAssistantContext("dashboard-overview-metrics", {
-    currentPage: {
-      path: "/dashboard",
-      title: "Dashboard overview",
-      area: "dashboard",
-      summary: isError
-        ? "The overview is in a degraded state because the control plane is currently unreachable."
-        : `The overview reports ${activeCount} active tunnels, ${(totalBandwidth / (1024 * 1024)).toFixed(1)} MB of observed throughput, and ${requests.length} recent request records.`,
-    },
-    logContext: {
-      summary: isError
-        ? "The main dashboard could not load tunnel data from the control plane."
-        : "The overview is connected to tunnel metrics, recent request inspection, and relay stream visibility.",
-    },
-  });
 
   const statusCards = [
     { label: "Active tunnels", value: activeCount.toString().padStart(2, "0"), icon: Activity, accent: "text-cyan-400", bg: "bg-cyan-400/5", border: "border-cyan-400/20" },

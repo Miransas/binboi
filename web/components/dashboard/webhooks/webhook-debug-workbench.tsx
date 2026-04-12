@@ -6,7 +6,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Filter,
   Search,
   Sparkles,
   TriangleAlert,
@@ -21,7 +20,6 @@ import {
   AlertCircle
 } from "lucide-react";
 
-import { useRegisterAssistantContext } from "@/components/shared/assistant-context";
 import { WebhookDeliveryCard } from "@/components/dashboard/webhooks/webhook-delivery-card";
 import { WebhookDeliveryDrawer } from "@/components/dashboard/webhooks/webhook-delivery-drawer";
 import {
@@ -117,10 +115,6 @@ export function WebhookDebugWorkbench() {
       status: selected.deliveryStatus === "SUCCESS" ? "complete" : selected.deliveryStatus === "RETRYING" ? "active" : "error"
     }
   ] : [];
-
-  useRegisterAssistantContext("dashboard-webhook-debug", {
-    currentPage: { path: pathname, title: "Webhooks", area: "dashboard" }
-  });
 
   return (
     <motion.main 

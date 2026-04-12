@@ -22,52 +22,52 @@ export type ChangelogEntry = {
 
 export const blogPosts: BlogPostSummary[] = [
   {
-    slug: "webhook-debugging-without-redeploys",
-    title: "Webhook debugging without redeploys",
-    category: "Product",
-    publishedAt: "March 30, 2026",
-    readTime: "6 min read",
-    excerpt:
-      "Why Binboi treats webhooks as a first-class workflow: public URLs, request inspection, and faster answers when signatures or payloads go sideways.",
-    highlights: [
-      "Stabilize one public endpoint for local development.",
-      "Capture headers and payload previews before the failure disappears.",
-      "Move from guessing to a repeatable debugging loop across Stripe, Clerk, Supabase, and GitHub.",
-    ],
-    searchBody:
-      "Binboi helps debug webhook deliveries by exposing localhost, keeping request metadata visible, and guiding developers through signature, routing, and timeout failures without redeploying preview apps.",
-  },
-  {
-    slug: "why-binboi-separates-users-and-cli-tokens",
-    title: "Why Binboi separates users and CLI tokens",
-    category: "Security",
-    publishedAt: "March 24, 2026",
-    readTime: "5 min read",
-    excerpt:
-      "Operator accounts belong in the dashboard. Machines belong behind revocable access tokens. That split makes the MVP safer and easier to reason about.",
-    highlights: [
-      "Full tokens are shown once and only stored as hashes plus prefixes.",
-      "Each machine can be rotated independently without changing dashboard access.",
-      "The same model scales from local self-hosting to a future multi-user product.",
-    ],
-    searchBody:
-      "Binboi authentication uses dashboard-issued personal access tokens for the CLI, stores only token hashes in the database, and keeps account access separate from machine access.",
-  },
-  {
-    slug: "designing-an-honest-tunnel-dashboard",
-    title: "Designing an honest tunnel dashboard",
-    category: "Design",
-    publishedAt: "March 18, 2026",
+    slug: "10-tunnel-tips-for-local-development",
+    title: "10 tunnel tips for faster local development",
+    category: "Tips",
+    publishedAt: "April 10, 2026",
     readTime: "7 min read",
     excerpt:
-      "A control plane earns trust by being clear about what is live, what is mocked, and what still needs backend work. Binboi now leans into that discipline.",
+      "Practical habits that make tunneling a seamless part of your dev workflow — from naming conventions and token rotation to keeping your public URL stable across restarts.",
     highlights: [
-      "Useful empty states beat beautiful dead ends.",
-      "Logs, tokens, and tunnel state are more valuable than speculative AI panels.",
-      "A premium UI still has to tell the operational truth.",
+      "Name tunnels by feature, not port, so URLs stay readable in logs.",
+      "Use one long-lived token per machine and rotate on offboarding.",
+      "Pair binboi http with a local HTTPS proxy to match production TLS exactly.",
     ],
     searchBody:
-      "The Binboi dashboard focuses on tunnel state, access tokens, logs, and practical setup guidance. It intentionally labels MVP features and avoids pretending that unfinished flows are ready.",
+      "Tips for using Binboi tunnels efficiently: stable naming, token management, TLS matching, reconnect behaviour, webhook replay, and local development workflow improvements.",
+  },
+  {
+    slug: "self-hosting-binboi-on-a-vps",
+    title: "Self-hosting Binboi on a €5/month VPS",
+    category: "Guide",
+    publishedAt: "April 3, 2026",
+    readTime: "9 min read",
+    excerpt:
+      "A step-by-step walkthrough for deploying the full Binboi stack — Go relay, Next.js control plane, Caddy, and Postgres — on any cheap Linux box with a domain you control.",
+    highlights: [
+      "docker compose up gets the whole stack running in under five minutes.",
+      "Caddy handles wildcard TLS automatically via DNS-01 challenge.",
+      "A single JWT secret and a Postgres database are the only real configuration requirements.",
+    ],
+    searchBody:
+      "How to self-host Binboi: VPS setup, docker-compose, Caddy wildcard TLS, DNS configuration, Postgres database, JWT secret, environment variables, and production checklist.",
+  },
+  {
+    slug: "debugging-webhooks-stripe-clerk-supabase",
+    title: "Debugging webhooks from Stripe, Clerk, and Supabase",
+    category: "Debugging",
+    publishedAt: "March 27, 2026",
+    readTime: "8 min read",
+    excerpt:
+      "Each provider fails differently. Here is how to use Binboi request inspection to diagnose signature errors, payload mismatches, and silent delivery failures before they reach production.",
+    highlights: [
+      "Stripe signature failures are almost always a raw-body vs parsed-body mismatch.",
+      "Clerk's svix-id header doubles as an idempotency key — useful for replaying events.",
+      "Supabase realtime webhooks time out at 5 s — keep handler latency low.",
+    ],
+    searchBody:
+      "Debugging webhooks with Binboi: Stripe signature verification, Clerk svix headers, Supabase timeout behaviour, payload inspection, request replay, and common failure patterns.",
   },
 ];
 

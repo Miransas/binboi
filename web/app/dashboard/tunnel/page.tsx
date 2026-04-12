@@ -17,7 +17,6 @@ import {
   Terminal
 } from "lucide-react";
 import { usePricingPlan } from "@/components/provider/pricing-plan-provider";
-import { useRegisterAssistantContext } from "@/components/shared/assistant-context";
 import { UpgradePrompt } from "@/components/shared/upgrade-prompt";
 import { fetchControlPlane, type ControlPlaneTunnel } from "@/lib/controlplane";
 
@@ -96,15 +95,6 @@ export default function TunnelPage() {
       setError(err.message || "Deletion failed.");
     }
   };
-
-  useRegisterAssistantContext("dashboard-tunnel-page", {
-    currentPage: {
-      path: "/dashboard/tunnel",
-      title: "Tunnels",
-      area: "dashboard",
-      summary: `Inventory: ${tunnels.length} reserved, ${metrics.active} active.`,
-    },
-  });
 
   return (
     <motion.main 

@@ -1,151 +1,135 @@
-import { ArrowRight } from "lucide-react";
+import Link from "next/link";
+import { ArrowRight, Clock, Tag } from "lucide-react";
+
 import { Footer } from "@/components/site/shared/footer";
 import { blogPosts } from "@/content/site-content";
-import { cn } from "@/lib/utils";
+
+const CATEGORY_COLORS: Record<string, { text: string; bg: string; border: string }> = {
+  Tips:      { text: "text-miransas-cyan",    bg: "bg-miransas-cyan/10",    border: "border-miransas-cyan/20" },
+  Guide:     { text: "text-[#86a9ff]",        bg: "bg-[#86a9ff]/10",        border: "border-[#86a9ff]/20" },
+  Debugging: { text: "text-[#ff00ff]",        bg: "bg-[#ff00ff]/10",        border: "border-[#ff00ff]/20" },
+  Security:  { text: "text-amber-400",        bg: "bg-amber-400/10",        border: "border-amber-400/20" },
+  Product:   { text: "text-emerald-400",      bg: "bg-emerald-400/10",      border: "border-emerald-400/20" },
+  Design:    { text: "text-rose-400",         bg: "bg-rose-400/10",         border: "border-rose-400/20" },
+};
+
+function categoryStyle(category: string) {
+  return CATEGORY_COLORS[category] ?? {
+    text: "text-zinc-400",
+    bg: "bg-zinc-400/10",
+    border: "border-zinc-400/20",
+  };
+}
+
+export const metadata = {
+  title: "Blog | Binboi",
+  description: "Tunnel tips, self-hosting guides, and webhook debugging deep dives from the Binboi team.",
+};
 
 export default function BlogPage() {
-  const [featured, ...rest] = blogPosts;
-  const categoryCount = new Set(blogPosts.map((post) => post.category)).size;
-
   return (
-    <div className="min-h-screen bg-[#000000] text-white selection:bg-[#00ffd1]/30">
-      <main className="mx-auto max-w-7xl px-6 py-24 sm:py-32 lg:px-8">
-        
-        {/* ── Page Header ────────────────────────────────────────── */}
-        <header className="mb-16 max-w-3xl">
-          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#00ffd1]">
+    <div className="min-h-screen bg-[#000000] text-white">
+      {/* ── Hero ─────────────────────────────────────────────────── */}
+      <div className="relative overflow-hidden border-b border-white/[0.06]">
+        {/* subtle grid bg */}
+        <div
+          className="pointer-events-none absolute inset-0 opacity-[0.03]"
+          style={{
+            backgroundImage:
+              "linear-gradient(rgba(255,255,255,0.6) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.6) 1px, transparent 1px)",
+            backgroundSize: "40px 40px",
+          }}
+        />
+        <div className="mx-auto max-w-6xl px-6 py-24 lg:px-8 lg:py-32">
+          <div className="inline-flex items-center gap-2 rounded-full border border-miransas-cyan/20 bg-miransas-cyan/8 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-miransas-cyan">
+            <Tag className="h-3 w-3" />
             Blog
-          </p>
-          <h1 className="mt-4 text-4xl font-black tracking-[-0.04em] text-white sm:text-5xl">
-            Shipping notes from the tunnel control plane
+          </div>
+          <h1 className="mt-5 text-4xl font-black tracking-[-0.04em] text-white sm:text-5xl lg:text-6xl">
+            Tunnel tips, guides,
+            <br />
+            <span className="bg-gradient-to-r from-miransas-cyan to-[#86a9ff] bg-clip-text text-transparent">
+              and debugging notes.
+            </span>
           </h1>
-          <p className="mt-4 text-base leading-7 text-zinc-400">
-            The Binboi blog follows product decisions, security tradeoffs, and the operational realities of building a developer tunnel and webhook debugging platform that stays honest about its MVP boundaries.
+          <p className="mt-5 max-w-xl text-base leading-8 text-zinc-400">
+            Practical writing on self-hosting Binboi, getting the most out of tunnels,
+            and diagnosing webhook failures before they reach production.
           </p>
-        </header>
+        </div>
+      </div>
 
-        {/* ── Top Section: Featured & Rail ───────────────────────── */}
-        <section className="grid gap-6 lg:grid-cols-[1fr_320px] xl:grid-cols-[1fr_360px]">
-          
-          {/* Featured Post */}
-          <article className="relative overflow-hidden rounded-2xl border border-white/[0.08] bg-[#060a10]/50 p-8 backdrop-blur-sm transition-colors hover:bg-white/[0.02]">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#86a9ff]">
-              Featured note
-            </p>
-            <h2 className="mt-4 text-3xl font-black tracking-[-0.04em] text-white sm:text-4xl">
-              {featured.title}
-            </h2>
-            <div className="mt-4 flex flex-wrap items-center gap-3 text-xs uppercase tracking-[0.22em] text-zinc-500">
-              <span className="text-[#00ffd1]/80">{featured.category}</span>
-              <span>•</span>
-              <span>{featured.publishedAt}</span>
-              <span>•</span>
-              <span>{featured.readTime}</span>
-            </div>
-            <p className="mt-5 max-w-2xl text-base leading-8 text-zinc-400">
-              {featured.excerpt}
-            </p>
+      {/* ── Post Grid ────────────────────────────────────────────── */}
+      <main className="mx-auto max-w-6xl px-6 py-16 lg:px-8 lg:py-20">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {blogPosts.map((post) => {
+            const style = categoryStyle(post.category);
+            return (
+              <article
+                key={post.slug}
+                className="group flex flex-col rounded-2xl border border-white/[0.08] bg-[#07080c] transition-all duration-200 hover:border-white/[0.16] hover:bg-[#0c0d12]"
+              >
+                {/* top accent line */}
+                <div className={`h-px w-full rounded-t-2xl ${style.bg}`} />
 
-            <div className="mt-8 grid gap-3 sm:grid-cols-3">
-              {featured.highlights.map((highlight) => (
-                <div
-                  key={highlight}
-                  className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 text-sm leading-7 text-zinc-300 transition-colors hover:bg-white/[0.04]"
-                >
-                  {highlight}
-                </div>
-              ))}
-            </div>
-          </article>
-
-          {/* Right Rail (Sidebar) */}
-          <aside className="flex flex-col gap-6">
-            
-            {/* About Box */}
-            <div className="rounded-2xl border border-white/[0.08] bg-[#060a10]/50 p-6 backdrop-blur-sm">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#00ffd1]">
-                Why this exists
-              </p>
-              <h3 className="mt-2 text-lg font-bold tracking-tight text-white">
-                A product log, not content filler
-              </h3>
-              <div className="mt-4 space-y-4 text-sm leading-7 text-zinc-400">
-                <p>Binboi is still early, which makes product writing more important, not less.</p>
-                <p>These notes explain the security model, the UX decisions around honesty and fallback states, and the practical workflow around tunnels, tokens, and request debugging.</p>
-                <p>As the project matures, the blog becomes the narrative layer between changelog entries and full documentation guides.</p>
-              </div>
-            </div>
-
-            {/* Stats Box */}
-            <div className="rounded-2xl border border-white/[0.08] bg-[#060a10]/50 p-6 backdrop-blur-sm">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#86a9ff]">
-                Coverage snapshot
-              </p>
-              <div className="mt-5 grid gap-3">
-                <div className="flex items-center justify-between rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3">
-                  <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-zinc-400">
-                    Published notes
-                  </p>
-                  <p className="text-xl font-black text-white">
-                    {String(blogPosts.length).padStart(2, "0")}
-                  </p>
-                </div>
-                <div className="flex items-center justify-between rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3">
-                  <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-zinc-400">
-                    Topics covered
-                  </p>
-                  <p className="text-xl font-black text-white">
-                    {String(categoryCount).padStart(2, "0")}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-          </aside>
-        </section>
-
-        {/* ── Bottom Section: Rest of Posts ──────────────────────── */}
-        <section className="mt-6 grid gap-6 md:grid-cols-2">
-          {rest.map((post) => (
-            <article 
-              key={post.slug} 
-              className="group flex h-full cursor-pointer flex-col rounded-2xl border border-white/[0.08] bg-[#060a10]/30 p-6 transition-all hover:bg-white/[0.03] hover:border-white/[0.15]"
-            >
-              <div className="flex flex-wrap items-center gap-3 text-[11px] uppercase tracking-[0.2em] text-zinc-500">
-                <span className="text-[#00ffd1]/70">{post.category}</span>
-                <span>•</span>
-                <span>{post.publishedAt}</span>
-                <span>•</span>
-                <span>{post.readTime}</span>
-              </div>
-              
-              <h2 className="mt-4 text-xl font-semibold tracking-tight text-white transition-colors group-hover:text-[#00ffd1]">
-                {post.title}
-              </h2>
-              <p className="mt-3 text-sm leading-7 text-zinc-400 line-clamp-3">
-                {post.excerpt}
-              </p>
-
-              <div className="mt-6 flex-1 space-y-2">
-                {post.highlights.slice(0, 2).map((highlight) => (
-                  <div
-                    key={highlight}
-                    className="rounded-lg border border-white/[0.04] bg-white/[0.01] px-3 py-2 text-xs leading-6 text-zinc-400"
-                  >
-                    {highlight}
+                <div className="flex flex-1 flex-col p-6">
+                  {/* category + read time */}
+                  <div className="flex items-center gap-3">
+                    <span
+                      className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] ${style.text} ${style.bg} ${style.border}`}
+                    >
+                      {post.category}
+                    </span>
+                    <span className="flex items-center gap-1 text-[11px] text-zinc-500">
+                      <Clock className="h-3 w-3" />
+                      {post.readTime}
+                    </span>
                   </div>
-                ))}
-              </div>
 
-              <div className="mt-6 flex items-center gap-2 text-sm font-medium text-[#00ffd1] opacity-80 transition-opacity group-hover:opacity-100">
-                Read note
-                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-              </div>
-            </article>
-          ))}
-        </section>
+                  {/* title */}
+                  <h2 className="mt-4 text-lg font-bold leading-snug tracking-tight text-white transition-colors group-hover:text-miransas-cyan">
+                    {post.title}
+                  </h2>
 
+                  {/* date */}
+                  <p className="mt-2 text-[11px] uppercase tracking-[0.18em] text-zinc-600">
+                    {post.publishedAt}
+                  </p>
+
+                  {/* excerpt */}
+                  <p className="mt-4 flex-1 text-sm leading-7 text-zinc-400 line-clamp-3">
+                    {post.excerpt}
+                  </p>
+
+                  {/* read more */}
+                  <Link
+                    href={`/blog/${post.slug}`}
+                    className="mt-6 inline-flex items-center gap-1.5 text-sm font-medium text-miransas-cyan opacity-70 transition-all group-hover:gap-2.5 group-hover:opacity-100"
+                  >
+                    Read more
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+
+        {/* ── Bottom note ──────────────────────────────────────────── */}
+        <p className="mt-16 text-center text-sm text-zinc-600">
+          More posts coming soon — follow{" "}
+          <a
+            href="https://github.com/miransas/binboi"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-zinc-400 underline underline-offset-4 transition hover:text-white"
+          >
+            the repo
+          </a>{" "}
+          for updates.
+        </p>
       </main>
+
       <Footer />
     </div>
   );

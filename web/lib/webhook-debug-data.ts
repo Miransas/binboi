@@ -1,5 +1,7 @@
 import type { ControlPlaneRequest } from "@/lib/controlplane";
-import type { AssistantContext } from "@/lib/assistant-types";
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AssistantContext = Record<string, any>;
 
 export type WebhookDeliveryStatus = "SUCCESS" | "FAILED" | "RETRYING";
 

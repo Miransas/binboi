@@ -9,7 +9,7 @@ import { LayoutDashboard, Loader2 } from "lucide-react";
 import { NAV_LINKS } from "@/constants";
 import { buildLoginHref, buildRegisterHref } from "@/lib/auth-routing";
 
-import { AssistantLauncher } from "./assistant-launcher";
+
 
 const primaryNav = NAV_LINKS.slice(0, 5);
 
@@ -74,7 +74,7 @@ export default function Header() {
 
         <div className="flex items-center gap-3">
           <div className="hidden md:block md:w-[18rem] xl:w-[22rem]">
-            <AssistantLauncher variant="site" storageKey="site-global" />
+            {/* <AssistantLauncher variant="site" storageKey="site-global" /> */}
           </div>
 
           {status === "loading" ? (

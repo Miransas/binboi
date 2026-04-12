@@ -1,5 +1,7 @@
-import type { AssistantContext } from "@/lib/assistant-types";
 import type { ControlPlaneRequest } from "@/lib/controlplane";
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AssistantContext = Record<string, any>;
 
 export type RequestInspectionRecord = ControlPlaneRequest;
 

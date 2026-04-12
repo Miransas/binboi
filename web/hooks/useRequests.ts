@@ -22,7 +22,7 @@ export function useRequests(options?: UseRequestsOptions) {
   const path = buildRequestsPath(options);
   const { data, error, mutate } = useSWR(path, (requestPath: string) =>
     fetchControlPlane<ControlPlaneRequest[]>(requestPath), {
-    refreshInterval: 4000,
+    refreshInterval: 3000,
     revalidateOnFocus: false,
   });
 

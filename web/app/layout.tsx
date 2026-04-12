@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { ThemeProvider } from "../components/provider/theme-provider";
 import SessionProvider from "../components/provider/session-provider";
 import { PricingPlanProvider } from "../components/provider/pricing-plan-provider";
+import AiChatWidget from "@/components/shared/ai-chat-widget";
 
 const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
@@ -48,7 +49,10 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <SessionProvider>
-            <PricingPlanProvider>{children}</PricingPlanProvider>
+            <PricingPlanProvider>
+              {children}
+              <AiChatWidget />
+            </PricingPlanProvider>
           </SessionProvider>
         </ThemeProvider>
       </body>

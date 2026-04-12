@@ -7,8 +7,8 @@ import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEve
 import { Menu, Search, Sparkles } from "lucide-react";
 import { useSession } from "@/components/provider/session-provider";
 
-import { useAssistantContext } from "@/components/shared/assistant-context";
 import { DASHBOARD_LINKS } from "@/constants";
+
 import { cn } from "@/lib/utils";
 
 type HeaderProps = {
@@ -37,7 +37,6 @@ export default function DashboardHeader({
   onNavigate,
 }: HeaderProps) {
   const pathname = usePathname();
-  const { pageLabel, context } = useAssistantContext();
   const { data: session } = useSession();
   const [query, setQuery] = useState("");
   const [focused, setFocused] = useState(false);
@@ -79,9 +78,7 @@ export default function DashboardHeader({
     .map((part) => part.charAt(0).toUpperCase())
     .join("");
 
-  const summary =
-    context.currentPage?.summary ||
-    "Manage tunnels, traffic, auth, and billing from one stable workspace.";
+  const summary = "Manage tunnels, traffic, auth, and billing from one stable workspace.";
 
   const handleNavigate = (href: string) => {
     setFocused(false);
@@ -147,7 +144,7 @@ export default function DashboardHeader({
                   Dashboard
                 </p>
                 <h1 className="mt-2 truncate text-2xl font-semibold tracking-tight text-white">
-                  {pageLabel}
+                  Dashboard
                 </h1>
                 <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400">
                   {summary}

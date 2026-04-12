@@ -4,7 +4,6 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import DashboardHeader from "../../components/dashboard/shared/dashboard-header";
 import { SidebarDocs } from "../../components/dashboard/shared/dashboard-sidebar";
-import { AssistantContextProvider } from "../../components/shared/assistant-context";
 
 export default function DashboardLayout({
   children,
@@ -42,25 +41,23 @@ export default function DashboardLayout({
   }, [pathname]);
 
   return (
-    <AssistantContextProvider>
-      <div className="flex h-screen overflow-hidden bg-[#09090b] text-zinc-100">
-        <SidebarDocs
-          collapsed={collapsed}
-          onNavigate={handleNavigate}
-        />
-        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-          <div className="flex-1 overflow-y-auto scroll-smooth">
-            <DashboardHeader
-              collapsed={collapsed}
-              onToggle={() => setCollapsed((value) => !value)}
-              onNavigate={handleNavigate}
-            />
-            <main ref={contentRef} className="min-h-full page-enter">
-              {children}
-            </main>
-          </div>
+    <div className="flex h-screen overflow-hidden bg-[#09090b] text-zinc-100">
+      <SidebarDocs
+        collapsed={collapsed}
+        onNavigate={handleNavigate}
+      />
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+        <div className="flex-1 overflow-y-auto scroll-smooth">
+          <DashboardHeader
+            collapsed={collapsed}
+            onToggle={() => setCollapsed((value) => !value)}
+            onNavigate={handleNavigate}
+          />
+          <main ref={contentRef} className="min-h-full page-enter">
+            {children}
+          </main>
         </div>
       </div>
-    </AssistantContextProvider>
+    </div>
   );
 }

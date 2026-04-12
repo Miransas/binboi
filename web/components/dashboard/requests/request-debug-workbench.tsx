@@ -3,16 +3,14 @@
 
 import React, { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  Activity, 
-  Filter, 
-  Search, 
-  Sparkles, 
-  TriangleAlert, 
-  Waypoints, 
-  Terminal, 
-  Zap, 
-  Clock, 
+import {
+  Activity,
+  Search,
+  Sparkles,
+  TriangleAlert,
+  Terminal,
+  Zap,
+  Clock,
   ChevronRight,
   Database,
   SearchCode
@@ -21,8 +19,6 @@ import {
 import { usePricingPlan } from "@/components/provider/pricing-plan-provider";
 import { RequestInspectionCard } from "@/components/dashboard/requests/request-inspection-card";
 import { RequestInspectionDrawer } from "@/components/dashboard/requests/request-inspection-drawer";
-import { UpgradePrompt } from "@/components/shared/upgrade-prompt";
-import { useRegisterAssistantContext } from "@/components/shared/assistant-context";
 import { useRequests } from "@/hooks/useRequests";
 import {
   buildAssistantContextForRequest,
@@ -83,10 +79,6 @@ export default function RequestDebugWorkbench() {
   const avgLatency = sourceRecords.length > 0 
     ? Math.round(sourceRecords.reduce((t, r) => t + r.duration_ms, 0) / sourceRecords.length) 
     : 0;
-
-  useRegisterAssistantContext("dashboard-request-debug", {
-    currentPage: { path: "/dashboard/requests", title: "Requests", area: "dashboard" }
-  });
 
   return (
     <motion.main 
