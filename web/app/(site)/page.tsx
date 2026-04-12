@@ -1,10 +1,8 @@
 import SaaSPage from "@/components/site/shared/SaaSPage";
-
 import LandingSaas from "../../components/site/shared/landing-saas";
 import { SmoothScroll } from "../../components/site/shared/smooth-scroll";
 import { Footer } from "../../components/site/shared/footer";
-import AdvancedHero from "../../components/hero/AdvancedHero";
-import AnimatedHero from "../../components/site/shared/animated-hero";
+import { HowItWorks, FaqSection, CtaSection } from "../../components/site/shared/landing-sections";
 
 export default function Home() {
   return (
@@ -12,8 +10,9 @@ export default function Home() {
       <SmoothScroll>
         <LandingSaas />
         <SaaSPage />
-        {/* <AdvancedHero/> */}
-        {/* <AnimatedHero/> */}
+        <HowItWorks />
+        <FaqSection />
+        <CtaSection />
         <Footer/>
       </SmoothScroll>
     </main>

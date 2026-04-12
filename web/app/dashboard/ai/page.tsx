@@ -95,21 +95,21 @@ export default function AiGatewaysPage() {
   const [error, setError] = useState<string | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
 
-  // LATEST RESPONSE DATA (Shell'in sağ tarafına basacağız)
+  // Latest assistant response (rendered in shell right panel)
   const latestAssistantMessage = useMemo(
     () => [...messages].reverse().find((m) => m.role === "assistant"),
     [messages]
   );
   const latestResponse = latestAssistantMessage?.response ?? null;
 
-  // SHELL İÇİN SOL TARAF (Highlights)
+  // Shell left column highlights
   const highlights = [
     { label: "Status", value: loading ? "Searching..." : "Read only", note: "System status" },
     { label: "Fallback", value: "Docs first", note: "Primary logic path" },
     { label: "Security", value: "Server-side", note: "Encrypted context" },
   ];
 
-  // SHELL İÇİN SAĞ TARAF (Panels)
+  // Shell right column panels
   const panels = [
     {
       title: "What works today",
@@ -168,7 +168,7 @@ export default function AiGatewaysPage() {
       highlights={highlights}
       panels={panels}
     >
-      {/* CHAT AREA (Sadece merkez kolon) */}
+      {/* Chat area */}
       <div className="max-w-3xl mx-auto space-y-8">
         
         {/* Messages List */}

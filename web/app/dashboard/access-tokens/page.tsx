@@ -244,7 +244,7 @@ export default function AccessTokensPage() {
                 <tbody className="divide-y divide-white/5">
                   {loading ? (
                     <tr><td colSpan={4} className="px-8 py-20 text-center text-sm text-zinc-600 animate-pulse">Establishing connection to control plane...</td></tr>
-                  ) : !data || data.tokens.length === 0 ? (
+                  ) : !data?.tokens?.length ? (
                     <tr><td colSpan={4} className="px-8 py-20 text-center text-sm text-zinc-600 font-mono">NO ACTIVE TOKENS FOUND</td></tr>
                   ) : (
                     data.tokens.map((token) => (

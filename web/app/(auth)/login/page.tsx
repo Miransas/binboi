@@ -67,7 +67,7 @@ function FlowDot({ color }: { color: string }) {
   return (
     <div className="relative flex w-full items-center justify-center py-1.5">
       <div className="absolute left-1/2 h-full w-px -translate-x-1/2 bg-white/[0.06]" />
-      {/* Animasyon Düzeltmesi: Veri akışı efekti (Yukarıdan aşağı kayma + parlama) */}
+      {/* Data flow effect: top-to-bottom slide + glow */}
       <motion.div
         className={`relative z-10 h-1.5 w-1.5 rounded-full ${color}`}
         animate={{ 

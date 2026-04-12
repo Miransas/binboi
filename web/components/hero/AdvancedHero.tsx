@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
-// Renkleri dark modda parlayacak şekilde güncelledik.
+// Updated colors to glow in dark mode.
 
 const ICONS = [
   { id: "slack",    emoji: "💬", label: "Slack",         color: "#4A154B" },
@@ -13,7 +13,7 @@ const ICONS = [
   { id: "linkedin", emoji: "💼", label: "LinkedIn",      color: "#0A66C2" },
   { id: "drive",    emoji: "☁️",  label: "Google Drive",  color: "#1E88E5" },
   { id: "figma",    emoji: "🎨", label: "Figma",         color: "#F24E1E" },
-  { id: "notion",   emoji: "📝", label: "Notion",        color: "#FFFFFF" }, // Dark modda beyaz Notion ikonu
+  { id: "notion",   emoji: "📝", label: "Notion",        color: "#FFFFFF" }, // White Notion icon in dark mode
 ];
 
 const CARDS = [
@@ -30,26 +30,26 @@ interface IconNodeProps {
 }
 
 function IconNode({ icon, index }: IconNodeProps) {
-  // Başlangıç pozisyonu (sol taraftaki grid)
+  // Initial position (left-side grid)
   const startX = -340 + (index % 3) * 80;
   const startY = 80 + Math.floor(index / 3) * 90;
 
   return (
     <motion.div
-      // Başlangıç durumu: Görünmez ve grid yerinde
+      // Initial state: invisible at grid position
       initial={{ x: startX, y: startY, scale: 0, opacity: 0 }}
-      // Döngüsel Animasyon: Merkeze git, büyü, kaybol, başa dön
+      // Cyclic animation: move to center, enlarge, disappear, reset
       animate={{
-        x: [startX, startX, 0, 0],       // Bekle, merkeze git
-        y: [startY, startY, 0, 0],       // Bekle, merkeze git
-        scale: [0, 1, 1.15, 0],          // Ortaya çık, büyü, kaybol
-        opacity: [0, 1, 1, 0],           // Ortaya çık, görünür kal, kaybol
+        x: [startX, startX, 0, 0],       // Wait, move to center
+        y: [startY, startY, 0, 0],       // Wait, move to center
+        scale: [0, 1, 1.15, 0],          // Appear, enlarge, disappear
+        opacity: [0, 1, 1, 0],           // Appear, stay visible, disappear
       }}
       transition={{
-        duration: 4,                     // Tüm döngü süresi
-        repeat: Infinity,                 // Sonsuz döngü
-        delay: index * 0.25,             // Her ikon sırayla başlasın
-        times: [0, 0.15, 0.85, 1],        // Animasyon aşamalarının zamanlaması
+        duration: 4,                     // Total cycle duration
+        repeat: Infinity,                 // Infinite loop
+        delay: index * 0.25,             // Each icon starts sequentially
+        times: [0, 0.15, 0.85, 1],        // Animation phase timing
         ease: "easeInOut",
       }}
       className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
@@ -57,9 +57,9 @@ function IconNode({ icon, index }: IconNodeProps) {
       <div
         className="flex h-14 w-14 flex-col items-center justify-center rounded-2xl backdrop-blur-md shadow-xl"
         style={{
-          backgroundColor: `${icon.color}15`, // Hafif renkli şeffaf arka plan
-          border: `1px solid ${icon.color}40`,  // Renkli kenarlık
-          boxShadow: `0 4px 20px ${icon.color}20`, // Renkli parlama (glow)
+          backgroundColor: `${icon.color}15`, // Subtle tinted background
+          border: `1px solid ${icon.color}40`,  // Tinted border
+          boxShadow: `0 4px 20px ${icon.color}20`, // Colored glow
         }}
       >
         <span className="text-2xl leading-none">{icon.emoji}</span>
@@ -77,7 +77,7 @@ function Trail({ index }: { index: number }) {
   const startX = -340 + (index % 3) * 80;
   const startY = 80 + Math.floor(index / 3) * 90;
 
-  const x1 = 400 + startX; // SVG koordinat sistemine göre offset
+  const x1 = 400 + startX; // Offset relative to SVG coordinate system
   const y1 = 300 + startY;
   const x2 = 400;
   const y2 = 300;
@@ -88,13 +88,13 @@ function Trail({ index }: { index: number }) {
       y1={y1}
       x2={x2}
       y2={y2}
-      stroke="#334155" // Dark mode çizgisi
+      stroke="#334155" // Dark mode line
       strokeWidth="1.5"
-      strokeDasharray="6 5" // Kesikli çizgi
+      strokeDasharray="6 5" // Dashed line
       initial={{ strokeDashoffset: 300, opacity: 0 }}
       animate={{
-        strokeDashoffset: [300, 300, 0, 0], // Çizgi çizilsin
-        opacity: [0, 0.4, 0.4, 0],           // Ortaya çıkıp kaybolsun
+        strokeDashoffset: [300, 300, 0, 0], // Draw line
+        opacity: [0, 0.4, 0.4, 0],           // Fade in and out
       }}
       transition={{
         duration: 4,
@@ -117,12 +117,12 @@ interface OutputCardProps {
 function OutputCard({ card, cardIndex }: OutputCardProps) {
   return (
     <motion.div
-      // Giriş animasyonu (sağdan gelme)
+      // Entry animation (from right)
       initial={{ x: 60, opacity: 0 }}
       animate={{ x: 0, opacity: 1 }}
       transition={{
         duration: 0.8,
-        delay: 2.5 + cardIndex * 0.3, // İkonlar merkeze ulaştıktan sonra başlasın
+        delay: 2.5 + cardIndex * 0.3, // Start after icons reach center
         type: "spring",
         stiffness: 100,
       }}
@@ -140,7 +140,7 @@ function OutputCard({ card, cardIndex }: OutputCardProps) {
           <p className="text-xs text-slate-400">automated · running</p>
         </div>
         <div className="ml-auto flex gap-1">
-          {/* Animasyonlu durum noktaları */}
+          {/* Animated status dots */}
           {[...Array(3)].map((_, i) => (
             <motion.div
               key={i}
@@ -156,7 +156,7 @@ function OutputCard({ card, cardIndex }: OutputCardProps) {
           ))}
         </div>
       </div>
-      {/* Alt taraftaki renkli bar */}
+      {/* Bottom color bar */}
       <div
         className="h-1 w-full"
         style={{
@@ -167,27 +167,27 @@ function OutputCard({ card, cardIndex }: OutputCardProps) {
   );
 }
 
-// ─── Hub (merkez) ─────────────────────────────────────────────────────────────
+// ─── Hub (center) ─────────────────────────────────────────────────────────────
 
 function Hub() {
   return (
     <div className="relative flex items-center justify-center z-10">
-      {/* Parlama ve Pulse Efekti */}
+      {/* Glow and Pulse Effect */}
       <motion.div
         animate={{ scale: [1, 1.1, 1], opacity: [0.3, 0.6, 0.3] }}
         transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
         className="absolute h-36 w-36 rounded-full bg-blue-500/30 blur-3xl"
       />
       
-      {/* Dış halka */}
+      {/* Outer ring */}
       <div className="relative flex h-28 w-28 items-center justify-center rounded-full border border-slate-700 bg-slate-900/80 shadow-2xl backdrop-blur-md">
-        {/* İç halka */}
+        {/* Inner ring */}
         <motion.div
           animate={{ rotate: 360 }}
           transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
           className="flex h-16 w-16 items-center justify-center rounded-full border border-blue-500/50 bg-gradient-to-b from-blue-600 to-blue-900 shadow-inner"
         >
-          {/* Merkez nokta */}
+          {/* Center point */}
           <div className="h-6 w-6 rounded-full border-2 border-white/20 bg-white/10" />
         </motion.div>
       </div>
@@ -199,9 +199,9 @@ function Hub() {
 
 export default function AutomationHero() {
   return (
-    // Tüm sahneyi kaplayan Dark Arka Plan
+    // Dark background covering the full scene
     <div className="relative min-h-screen flex flex-col overflow-hidden bg-[#050509]">
-      {/* Hafif degrade arka plan */}
+      {/* Subtle gradient background */}
       <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-[#050509] to-black" />
 
       <div className="relative z-10 flex flex-col flex-1 h-full">
@@ -252,13 +252,13 @@ export default function AutomationHero() {
           </div>
         </motion.div>
 
-        {/* ── Animasyon sahnesi ── */}
-        {/* H-[400vh] ve Sticky kaldırıldı, normal bir bölge yapıldı */}
+        {/* ── Animation scene ── */}
+        {/* H-[400vh] and Sticky removed, normal section */}
         <div className="relative mx-auto mt-16 flex w-full max-w-6xl flex-1 items-center justify-center min-h-[500px]">
           
-          {/* Sol: icon grid + SVG trail lines */}
+          {/* Left: icon grid + SVG trail lines */}
           <div className="absolute inset-0">
-            {/* SVG trail çizgileri */}
+            {/* SVG trail lines */}
             <svg
               className="absolute inset-0 h-full w-full"
               viewBox="0 0 800 600"
@@ -275,10 +275,10 @@ export default function AutomationHero() {
             ))}
           </div>
 
-          {/* Merkez Hub */}
+          {/* Center Hub */}
           <Hub />
 
-          {/* Sağ: output cards */}
+          {/* Right: output cards */}
           <div className="absolute right-0 top-1/2 w-72 -translate-y-1/2 translate-x-4 z-20">
             {CARDS.map((card, i) => (
               <OutputCard key={card.id} card={card} cardIndex={i} />

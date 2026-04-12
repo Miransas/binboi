@@ -5,7 +5,7 @@ import { useEffect, useRef } from "react";
 import { motion, useScroll, useTransform, useSpring, MotionValue } from "framer-motion";
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
-// Renkleri dark modda parlayacak şekilde güncelledik.
+// Updated colors to glow in dark mode.
 
 const ICONS = [
   { id: "slack", emoji: "💬", label: "Slack", color: "#8B5CF6" }, // Purple
@@ -18,14 +18,14 @@ const ICONS = [
   { id: "notion", emoji: "📝", label: "Notion", color: "#FFFFFF" }, // White Notion icon in dark mode
 ];
 
-// İkonların yüzde (%) koordinatları
+// Icon percentage (%) coordinates
 const POSITIONS: [number, number][] = [
   [12, 18], [28, 12], [16, 38],
   [32, 34], [10, 62], [26, 58],
   [15, 85], [30, 82],
 ];
 
-// Kartların yüzde (%) koordinatları
+// Card percentage (%) coordinates
 const CARD_POSITIONS = [25, 50, 75];
 
 const FLOAT_VARIANTS = ["A", "B", "C", "A", "B", "C", "A", "B"];
@@ -55,24 +55,24 @@ function useSmoothProgress(raw: MotionValue<number>) {
   return useSpring(raw, { stiffness: 60, damping: 20 });
 }
 
-// ─── Trail (İkon Girişi) ─────────────────────────────────────────────────────────
+// ─── Trail (Icon Entry) ─────────────────────────────────────────────────────────
 
 function Trail({ index, progress, color }: { index: number; progress: MotionValue<number>; color: string }) {
-  // SVG koordinatları (merkez = 400,300)
+  // SVG coordinates (center = 400,300)
   const x1 = (POSITIONS[index][0] / 100) * 800;
   const y1 = (POSITIONS[index][1] / 100) * 600;
-  const x2 = 400; // Hub'ın tam ortası
+  const x2 = 400; // Hub center
   const y2 = 300;
 
-  // Çizgi animasyonunu sürekli akış yap (repeatCount="indefinite")
+  // Make line animation a continuous flow
   return (
     <motion.line
       x1={x1} y1={y1} x2={x2} y2={y2}
       stroke={color}
       strokeWidth="2"
-      strokeDasharray="10 10" // Kesikli çizgi deseni
+      strokeDasharray="10 10" // Dashed pattern
       initial={{ opacity: 0 }}
-      animate={{ opacity: 0.6, strokeDashoffset: [-20, 0] }} // Sürekli akış
+      animate={{ opacity: 0.6, strokeDashoffset: [-20, 0] }} // Continuous flow
       transition={{
         opacity: { delay: 0.5 + index * 0.1, duration: 1 },
         strokeDashoffset: { repeat: Infinity, duration: 1.5, ease: "linear" }
@@ -81,16 +81,16 @@ function Trail({ index, progress, color }: { index: number; progress: MotionValu
   );
 }
 
-// ─── CardTrail (Kart Çıkışı) - Yeni Ekleniyor ────────────────────────────────────
+// ─── CardTrail (Card Exit) ────────────────────────────────────
 
 function CardTrail({ index, progress, color }: { index: number; progress: MotionValue<number>; color: string }) {
-  // SVG koordinatları (merkez = 400,300, Kartlar = ~600,Y)
-  const x1 = 400; // Hub'ın tam ortası
+  // SVG coordinates (center = 400,300, Cards = ~600,Y)
+  const x1 = 400; // Hub center
   const y1 = 300;
-  const x2 = 600; // Kartların sol kenarı
+  const x2 = 600; // Left edge of cards
   const y2 = (CARD_POSITIONS[index] / 100) * 600;
 
-  // Zamanlama: İkon trails bittikten sonra başlasın, kartların trigger At değerinde tam görünür olsun
+  // Timing: start after icon trails finish, fully visible at card trigger point
   const triggerAt = CARDS[index].triggerAt;
   const opacity = useTransform(progress, [0.4, triggerAt], [0, 0.8]);
 
@@ -99,10 +99,10 @@ function CardTrail({ index, progress, color }: { index: number; progress: Motion
       x1={x1} y1={y1} x2={x2} y2={y2}
       stroke={color}
       strokeWidth="2"
-      strokeDasharray="10 10" // Kesikli çizgi deseni
+      strokeDasharray="10 10" // Dashed pattern
       initial={{ opacity: 0 }}
       style={{ opacity } as unknown as React.CSSProperties}
-      animate={{ strokeDashoffset: [20, 0] }} // Sürekli akış (yön dışarı doğru)
+      animate={{ strokeDashoffset: [20, 0] }} // Continuous outward flow
       transition={{
         strokeDashoffset: { repeat: Infinity, duration: 1.2, ease: "linear" }
       }}
@@ -118,7 +118,7 @@ interface IconNodeProps {
 }
 
 function IconNode({ icon, index }: IconNodeProps) {
-  // Yüzde (%) koordinatlarını tam sayı SVG koordinatlarına dönüştürün
+  // Convert percentage (%) coordinates to SVG integer coordinates
   const x = (POSITIONS[index][0] / 100) * 800;
   const y = (POSITIONS[index][1] / 100) * 600;
 
@@ -131,7 +131,7 @@ function IconNode({ icon, index }: IconNodeProps) {
       style={{
         left: x,
         top: y,
-        transform: 'translate(-50%, -50%)' // Tam merkezden hizalama
+        transform: 'translate(-50%, -50%)' // Centered alignment
       }}
     >
       <div
@@ -160,13 +160,13 @@ interface OutputCardProps {
 
 function OutputCard({ card, cardIndex, progress }: OutputCardProps) {
   const { triggerAt } = card;
-  // Kartın görünürlüğü ve konumu progress'e bağlı
+  // Card visibility and position driven by scroll progress
   const x = useTransform(progress, [triggerAt, triggerAt + 0.12], [40, 0]);
   const opacity = useTransform(progress, [triggerAt, triggerAt + 0.1], [0, 1]);
 
   return (
     <motion.div
-      // Tek bir style objesi içinde hepsini topladık
+      // Combined into a single style object
       style={{
         x,
         opacity,
@@ -185,7 +185,7 @@ function OutputCard({ card, cardIndex, progress }: OutputCardProps) {
           <p className="text-[10px] text-slate-400">{card.sub}</p>
         </div>
         <div className="ml-auto flex items-end gap-1">
-          {/* Animasyonlu durum noktaları */}
+          {/* Animated status dots */}
           {[...Array(3)].map((_, i) => (
             <motion.div
               key={i}
@@ -212,15 +212,15 @@ function OutputCard({ card, cardIndex, progress }: OutputCardProps) {
   );
 }
 
-// ─── Hub (merkez) ─────────────────────────────────────────────────────────────
+// ─── Hub (center) ─────────────────────────────────────────────────────────────
 
 function Hub({ progress }: { progress: MotionValue<number> }) {
-  // Hub'ın parlaması progress'e bağlı
+  // Hub glow driven by scroll progress
   const glowOpacity = useTransform(progress, [0.3, 0.45], [0, 1]);
 
   return (
     <div className="absolute left-1/2 top-1/2 z-[5] flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full">
-      {/* Parlama ve Pulse Efekti */}
+      {/* Glow and Pulse Effect */}
       <motion.div
         animate={{ scale: [1, 1.1, 1], opacity: [0.3, 0.6, 0.3] }}
         transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
@@ -228,15 +228,15 @@ function Hub({ progress }: { progress: MotionValue<number> }) {
         className="absolute h-36 w-36 rounded-full bg-blue-500/30 blur-3xl"
       />
 
-      {/* Dış halka */}
+      {/* Outer ring */}
       <div className="relative flex h-28 w-28 items-center justify-center rounded-full border border-slate-700 bg-slate-900/80 shadow-2xl backdrop-blur-md">
-        {/* İç halka */}
+        {/* Inner ring */}
         <motion.div
           animate={{ rotate: 360 }}
           transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
           className="flex h-16 w-16 items-center justify-center rounded-full border border-blue-500/50 bg-gradient-to-b from-blue-600 to-blue-900 shadow-inner"
         >
-          {/* Merkez nokta */}
+          {/* Center point */}
           <div className="h-6 w-6 rounded-full border-2 border-white/20 bg-white/10" />
         </motion.div>
       </div>
@@ -257,7 +257,7 @@ export default function AutomationHero() {
 
   const progress = useSmoothProgress(scrollYProgress);
 
-  // useParticles'i ve diğer useEffect'leri koruyun (canvasRef, stageRef gerekli)
+  // Preserve useParticles and other useEffects (canvasRef, stageRef required)
   // useParticles(canvasRef, stageRef);
 
   useEffect(() => {
@@ -269,7 +269,7 @@ export default function AutomationHero() {
   }, []);
 
   return (
-    // Tüm sahneyi kaplayan Dark Arka Plan
+    // Dark background covering the full scene
     <div className="relative min-h-screen flex flex-col overflow-hidden bg-[#0A0A0A]">
       {/* Hafif degrade arka plan */}
       <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-[#0A0A0A] to-black" />
@@ -278,46 +278,46 @@ export default function AutomationHero() {
 
 
 
-        {/* ── Animasyon sahnesi ── */}
-        {/* H-[400vh] ve Sticky kaldırıldı, normal bir bölge yapıldı */}
+        {/* ── Animation scene ── */}
+        {/* H-[400vh] and Sticky removed, normal section */}
         <div ref={sectionRef} className="relative mx-auto mt-16 flex w-full max-w-6xl flex-1 items-center justify-center min-h-[500px]">
 
-          {/* Sol: icon grid + SVG trail lines */}
+          {/* Left: icon grid + SVG trail lines */}
           <div className="absolute inset-0">
-            {/* SVG trail çizgileri (viewBox 800x600) */}
+            {/* SVG trail lines (viewBox 800x600) */}
             <svg
               className="absolute inset-0 h-full w-full"
               viewBox="0 0 800 600"
               preserveAspectRatio="xMidYMid meet"
             >
-              {/* Giriş Trails (İkonlardan Hub'a) */}
+              {/* Input Trails (Icons to Hub) */}
               {ICONS.map((icon, i) => (
                 <Trail key={`in-${icon.id}`} index={i} progress={progress} color={icon.color} />
               ))}
 
-              {/* Çıkış Trails (Hub'dan Kartlara) - Yeni Ekleniyor */}
+              {/* Output Trails (Hub to Cards) */}
               {CARDS.map((card, i) => (
                 <CardTrail key={`out-${card.id}`} index={i} progress={progress} color={card.color} />
               ))}
             </svg>
 
-            {/* Icon'lar */}
+            {/* Icons */}
             {ICONS.map((icon, i) => (
               <IconNode key={icon.id} icon={icon} index={i} />
             ))}
           </div>
 
-          {/* Merkez Hub */}
+          {/* Center Hub */}
           <Hub progress={progress} />
 
-          {/* Sağ: output cards */}
+          {/* Right: output cards */}
           <div className="relative w-full h-full">
             {CARDS.map((card, i) => (
               <OutputCard key={card.id} card={card} cardIndex={i} progress={progress} />
             ))}
           </div>
 
-          {/* Particles (Opsiyonel, stageRef gerekli) */}
+          {/* Particles (optional) */}
           {/* <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none z-[4]" /> */}
         </div>
       </div>

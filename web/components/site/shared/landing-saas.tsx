@@ -436,15 +436,86 @@ const LandingSaas = () => {
   }, []);
   return (
     <>
-      <section className="relative ">
+      <section className="relative pt-32">
         <div className="mx-auto max-w-full">
 
+          {/* Hero headline */}
+          <motion.div
+            variants={fadeUp}
+            initial="hidden"
+            animate="visible"
+            transition={{ ...transition, delay: 0 }}
+            className="mb-10 px-4 text-center"
+          >
+            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-1.5">
+              <span className="h-1.5 w-1.5 rounded-full bg-miransas-cyan" />
+              <span className="text-xs font-medium uppercase tracking-[0.18em] text-zinc-400">
+                Self-hosted tunnel platform
+              </span>
+            </div>
+            <h1 className="mx-auto max-w-4xl text-5xl font-black tracking-[-0.04em] text-white sm:text-6xl lg:text-7xl">
+              Expose local.
+              <br />
+              <span className="bg-gradient-to-r from-miransas-cyan to-miransas-magenta bg-clip-text text-transparent">
+                Debug faster.
+              </span>
+            </h1>
+            <p className="mx-auto mt-6 max-w-2xl text-base leading-8 text-zinc-400 sm:text-lg">
+              Binboi gives your localhost a stable public URL, captures every inbound request,
+              and surfaces webhook failures before you touch a redeploy.
+            </p>
+          </motion.div>
 
           <motion.div
             variants={fadeUp}
             initial="hidden"
             animate="visible"
-            transition={{ ...transition, delay: 0.36 }}
+            transition={{ ...transition, delay: 0.14 }}
+            className="flex flex-col items-center justify-center gap-3 sm:flex-row"
+          >
+            <Link
+              href="/dashboard"
+              className="inline-flex items-center justify-center gap-2 rounded-full bg-miransas-cyan px-6 py-3.5 text-sm font-semibold text-black transition hover:brightness-110"
+            >
+              Open dashboard
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+            <Link
+              href="/docs/quick-start"
+              className="inline-flex items-center justify-center rounded-full border border-white/12 bg-white/[0.04] px-6 py-3.5 text-sm font-semibold text-white transition hover:border-white/20 hover:bg-white/[0.07]"
+            >
+              Read quick start
+            </Link>
+            <Link
+              href="/dashboard/access-tokens"
+              className="inline-flex items-center justify-center rounded-full border border-miransas-magenta/18 bg-miransas-magenta/8 px-6 py-3.5 text-sm font-semibold text-white transition hover:brightness-110"
+            >
+              Create access token
+            </Link>
+          </motion.div>
+
+          <motion.div
+            variants={fadeUp}
+            initial="hidden"
+            animate="visible"
+            transition={{ ...transition, delay: 0.22 }}
+            className="mt-6 flex flex-wrap items-center justify-center gap-3"
+          >
+            {heroSignals.map((signal) => (
+              <span
+                key={signal}
+                className="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-xs font-medium uppercase tracking-[0.18em] text-zinc-300"
+              >
+                {signal}
+              </span>
+            ))}
+          </motion.div>
+
+          <motion.div
+            variants={fadeUp}
+            initial="hidden"
+            animate="visible"
+            transition={{ ...transition, delay: 0.32 }}
             className="mt-12"
           >
             <PremiumSurface accent="magenta" contentClassName="p-0" className="overflow-hidden">
@@ -452,10 +523,9 @@ const LandingSaas = () => {
                 <div className=" px-5 py-5 sm:px-7">
                   <div className="grid gap-5 lg:grid-cols-[1.02fr_0.98fr] lg:items-end">
                     <div>
-                      <AccentBadge accent={scenario.module.accent}>Hero engine</AccentBadge>
+                      <AccentBadge accent={scenario.module.accent}>Tunnel engine</AccentBadge>
                       <h2 className="mt-4 text-2xl font-black tracking-tight text-white sm:text-3xl">
-                        The hero inherits the uploaded engine scene and uses it as the landing
-                        system, not as decoration.
+                        Full request visibility from public webhook to local response.
                       </h2>
                       <p className="mt-4 max-w-2xl text-sm leading-7 text-zinc-400 sm:text-base">
                         Active focus: <span className="text-white">{scenario.module.label}</span>.
@@ -638,57 +708,13 @@ const LandingSaas = () => {
                   </div>
 
                   <div className="pointer-events-none absolute bottom-5 left-5 rounded-full border border-white/10 bg-black/35 px-4 py-2 text-xs font-medium text-zinc-300 backdrop-blur">
-                    Every bordered surface uses the same beam language as the hero engine.
+                    Captures headers, payload, timing, and status — without touching your app.
                   </div>
                 </div>
               </div>
             </PremiumSurface>
           </motion.div>
         </div>
-        <motion.div
-          variants={fadeUp}
-          initial="hidden"
-          animate="visible"
-          transition={{ ...transition, delay: 0.22 }}
-          className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row"
-        >
-          <Link
-            href="/dashboard"
-            className="inline-flex items-center justify-center gap-2 rounded-full bg-miransas-cyan px-6 py-3.5 text-sm font-semibold text-black transition hover:brightness-110"
-          >
-            Open dashboard
-            <ArrowRight className="h-4 w-4" />
-          </Link>
-          <Link
-            href="/docs/quick-start"
-            className="inline-flex items-center justify-center rounded-full border border-white/12 bg-white/[0.04] px-6 py-3.5 text-sm font-semibold text-white transition hover:border-white/20 hover:bg-white/[0.07]"
-          >
-            Read quick start
-          </Link>
-          <Link
-            href="/dashboard/access-tokens"
-            className="inline-flex items-center justify-center rounded-full border border-miransas-magenta/18 bg-miransas-magenta/8 px-6 py-3.5 text-sm font-semibold text-white transition hover:brightness-110"
-          >
-            Create access token
-          </Link>
-        </motion.div>
-
-        <motion.div
-          variants={fadeUp}
-          initial="hidden"
-          animate="visible"
-          transition={{ ...transition, delay: 0.3 }}
-          className="mt-8 flex flex-wrap items-center justify-center gap-3"
-        >
-          {heroSignals.map((signal) => (
-            <span
-              key={signal}
-              className="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-xs font-medium uppercase tracking-[0.18em] text-zinc-300"
-            >
-              {signal}
-            </span>
-          ))}
-        </motion.div>
       </section>
     </>
   )

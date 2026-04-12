@@ -12,16 +12,15 @@ type AnimatedFrameworksProps = {
 }
 
 const AnimatedFrameworks = ({
-  cardTitle = "Her Dille Uyumlu",
-  cardDescription = "Go, Rust, TypeScript, C++ veya Python fark etmez. Localhost'unuzda koşan her servisi tek komutla dünyaya açın.",
+  cardTitle = "Language Agnostic",
+  cardDescription = "Go, Rust, TypeScript, C++, or Python—it doesn't matter. Expose any service running on your localhost with a single command.",
 }: AnimatedFrameworksProps) => {
   return (
     <div
       className={cn(
         "relative flex flex-col justify-between",
         "h-[20rem] space-y-4 rounded-xl border shadow-sm",
-        // Karanlık tema ve binboi arkaplanına tam uyum
-        "border-white/10 bg-[#080808]" 
+        "border-white/10 bg-[#080808]"
       )}
     >
       <FrameworkCard />
@@ -37,7 +36,7 @@ const AnimatedFrameworks = ({
   )
 }
 
-export { AnimatedFrameworks } // Hatalı export düzeltildi
+export { AnimatedFrameworks }
 
 const FrameworkCard = () => {
   const [nextJsTransform, setNextJsTransform] = useState("none")
@@ -80,12 +79,11 @@ const FrameworkCard = () => {
     cycleAnimations()
   }, [])
 
-  // Kartların iç tasarımını tam karanlık, gölgeli ve neon border yapısına uygun hale getirdim
   const cardClasses =
     "flex aspect-square items-center justify-center rounded-xl border p-4 " +
     "bg-gradient-to-b from-[#111] to-[#080808] border-white/10 " +
-    "shadow-[0_8px_30px_rgb(0,217,255,0.05)] " + // Hafif neon gölge
-    "[@media(min-width:320px)]:h-20 [@media(min-width:500px)]:h-28 " + // Kart boyutlarını biraz optimize ettim
+    "shadow-[0_8px_30px_rgb(0,217,255,0.05)] " +
+    "[@media(min-width:320px)]:h-20 [@media(min-width:500px)]:h-28 " +
     "transition-transform duration-1000 ease-out will-change-transform"
 
   return (
@@ -106,7 +104,7 @@ const FrameworkCard = () => {
               viewBox="0 0 100 100"
               fill="none"
             >
-              {/* Arka plandaki sönük hat */}
+              {/* Background track */}
               <g
                 stroke="currentColor"
                 strokeWidth="0.1"
@@ -115,7 +113,7 @@ const FrameworkCard = () => {
                 <path d="M 1 0 v 5 q 0 5 5 5 h 39 q 5 0 5 5 v 71 q 0 5 5 5 h 39 q 5 0 5 5 v 5" />
               </g>
               
-              {/* Animasyonlu akışın olduğu hat (Cyan) */}
+              {/* Animated flow line (Cyan) */}
               <g mask="url(#framework-mask)">
                 <circle
                   className="frameworkline framework-line"
@@ -134,7 +132,7 @@ const FrameworkCard = () => {
                   />
                 </mask>
                 <radialGradient id="framework-cyan-grad" fx="1">
-                  {/* Renk binboi neon mavisine (#00d9ff) çevrildi */}
+                  {/* Binboi neon blue (#00d9ff) */}
                   <stop offset="0%" stopColor={"#00d9ff"} />
                   <stop offset="100%" stopColor="transparent" />
                 </radialGradient>
@@ -149,7 +147,7 @@ const FrameworkCard = () => {
             "[perspective:1000px] [transform-style:preserve-3d]"
           )}
         >
-          {/* İkonlarını terminal, server, veritabanı gibi şeylerle veya dil logolarıyla değiştirebilirsin */}
+          {/* Icons */}
           <div className={cardClasses} style={{ transform: reactTransform }}>
             <BsGithub className="size-6 text-white [@media(min-width:500px)]:size-9" />
           </div>
@@ -161,7 +159,7 @@ const FrameworkCard = () => {
           </div>
         </div>
 
-        {/* Alt kısımdaki fade efekti, siyah temaya uygun hale getirildi */}
+        {/* Bottom fade */}
         <div className="absolute bottom-0 left-0 h-16 w-full bg-gradient-to-t from-[#080808] to-transparent pointer-events-none" />
       </div>
     </>

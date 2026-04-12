@@ -1,12 +1,11 @@
 import type { Metadata } from "next";
-import { Space_Grotesk, Space_Mono } from "next/font/google"; // Fontları ekledik
+import { Space_Grotesk, Space_Mono } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { ThemeProvider } from "../components/provider/theme-provider";
 import SessionProvider from "../components/provider/session-provider";
 import { PricingPlanProvider } from "../components/provider/pricing-plan-provider";
 
-// Font Konfigürasyonu
 const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
   variable: "--font-space-grotesk",
@@ -31,22 +30,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html 
-      lang="en" 
-      suppressHydrationWarning 
-      // Değişkenleri buraya ekledik ki CSS'ten erişebilelim
+    <html
+      lang="en"
+      suppressHydrationWarning
       className={cn(
         "selection:text-white selection:bg-red-700",
-        spaceGrotesk.variable, 
+        spaceGrotesk.variable,
         spaceMono.variable
       )}
     >
       <head />
-      <body
-        className={cn(
-          "min-h-screen bg-[#000000] text-white antialiased font-sans", // font-sans artık Space Grotesk olacak
-        )}
-      >
+      <body className={cn("min-h-screen bg-[#000000] text-white antialiased font-sans")}>
         <ThemeProvider
           attribute="class"
           defaultTheme="dark"

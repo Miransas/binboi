@@ -2,3 +2,8 @@ binboi.miransas.com {
 	tls sardor@miransas.com
 	reverse_proxy core:8080
 }
+
+# Wildcard subdomain — tunnel proxy (HTTP only until wildcard DNS-01 TLS is configured)
+http://*.binboi.miransas.com {
+	reverse_proxy core:8000
+}

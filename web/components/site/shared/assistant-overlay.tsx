@@ -7,7 +7,7 @@ import {
   type RefObject,
 } from "react";
 import { createPortal } from "react-dom";
-import { Command, Search, X } from "lucide-react";
+import { Search, X } from "lucide-react";
 
 type AssistantOverlayProps = {
   open: boolean;
@@ -98,12 +98,8 @@ export function AssistantOverlay({
       >
         <div className="mb-3 flex items-center justify-between px-1">
           <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-[#070709]/94 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-zinc-400 shadow-[0_18px_48px_rgba(0,0,0,0.34)]">
-            {variant === "dashboard" ? (
-              <Command className="h-3.5 w-3.5 text-miransas-cyan" />
-            ) : (
-              <Search className="h-3.5 w-3.5 text-miransas-cyan" />
-            )}
-            {variant === "dashboard" ? "Dashboard search" : "Header search"}
+            <Search className="h-3.5 w-3.5 text-miransas-cyan" />
+            Binboi Assistant
           </div>
 
           <button

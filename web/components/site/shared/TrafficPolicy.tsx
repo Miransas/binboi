@@ -36,7 +36,7 @@ export default function NeuralFlowSection() {
             </div>
           </div>
 
-          {/* Animasyonlu Yol 1 (Public -> Relay) */}
+          {/* Animated path 1 (Public -> Relay) */}
           <div className="hidden lg:block flex-1 relative h-2 mx-4">
             <svg width="100%" height="20" className="overflow-visible">
               <path d="M 0 10 L 200 10" stroke="#1a1a1a" strokeWidth="2" fill="none" />
@@ -70,7 +70,7 @@ export default function NeuralFlowSection() {
              </div>
           </div>
 
-          {/* Animasyonlu Yol 2 (Relay -> Local) */}
+          {/* Animated path 2 (Relay -> Local) */}
           <div className="hidden lg:block flex-1 relative h-2 mx-4">
             <svg width="100%" height="20" className="overflow-visible">
               <path d="M 0 10 L 200 10" stroke="#1a1a1a" strokeWidth="2" fill="none" />
@@ -104,7 +104,7 @@ export default function NeuralFlowSection() {
 
         </div>
 
-        {/* Bilgi Kartları Alt Bölüm */}
+        {/* Info cards section */}
         <div className="mt-24 grid grid-cols-1 md:grid-cols-4 gap-4">
           {[
             { title: "INITIATE", desc: "User hits public endpoint", icon: <Globe size={14} /> },
