@@ -1,5 +1,6 @@
+import Link from "next/link";
 import type { RefObject } from "react";
-import { History, Loader2, MessageSquareMore } from "lucide-react";
+import { BookOpen, History, Loader2, MessageSquareMore } from "lucide-react";
 
 import { AssistantEmptyState } from "@/components/shared/assistant/assistant-empty-state";
 import type { AssistantResponsePayload } from "@/lib/assistant-types";
@@ -12,12 +13,22 @@ type AssistantTranscriptMessage = {
   response?: AssistantResponsePayload;
 };
 
+type DocSearchResult = {
+  id: string;
+  title: string;
+  href: string;
+  kind: string;
+  excerpt: string;
+};
+
 type AssistantTranscriptProps = {
   mode: "idle" | "conversation";
   messages: AssistantTranscriptMessage[];
   loading: boolean;
   transcriptRef: RefObject<HTMLDivElement | null>;
   endRef: RefObject<HTMLDivElement | null>;
+  searchResults?: DocSearchResult[];
+  searching?: boolean;
 };
 
 export function AssistantTranscript({
@@ -26,6 +37,8 @@ export function AssistantTranscript({
   loading,
   transcriptRef,
   endRef,
+  searchResults,
+  searching,
 }: AssistantTranscriptProps) {
   const conversationActive = mode === "conversation";
 
@@ -52,7 +65,33 @@ export function AssistantTranscript({
         className="custom-scrollbar min-h-0 space-y-4 overflow-y-auto overscroll-y-contain px-5 py-5"
       >
         {messages.length === 0 ? (
-          <AssistantEmptyState />
+          searching ? (
+            <div className="flex items-center gap-2 text-sm text-zinc-500 px-1">
+              <Loader2 className="h-3.5 w-3.5 animate-spin text-miransas-cyan" />
+              Searching docs...
+            </div>
+          ) : searchResults && searchResults.length > 0 ? (
+            <div className="space-y-2">
+              <p className="px-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
+                Docs results
+              </p>
+              {searchResults.map((result) => (
+                <Link
+                  key={result.id}
+                  href={result.href}
+                  className="flex items-start gap-3 rounded-2xl border border-white/8 bg-white/[0.02] px-4 py-3 text-sm transition hover:border-white/16 hover:bg-white/[0.05]"
+                >
+                  <BookOpen className="mt-0.5 h-4 w-4 shrink-0 text-miransas-cyan" />
+                  <div className="min-w-0">
+                    <p className="font-medium text-zinc-200 truncate">{result.title}</p>
+                    <p className="mt-0.5 text-xs leading-5 text-zinc-500 line-clamp-2">{result.excerpt}</p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <AssistantEmptyState />
+          )
         ) : (
           messages.map((message) => (
             <div

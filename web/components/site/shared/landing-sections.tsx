@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { motion, Variants } from "framer-motion";
 import { ArrowRight, Download, KeyRound, Zap, ChevronDown } from "lucide-react";
 import { useState } from "react";
 
@@ -11,12 +11,16 @@ import LaserFlow from "./laser-flow";
 
 // ─── shared fade-up variant ───────────────────────────────────────────────────
 
-const fadeUp = {
+const fadeUp: Variants = {
   hidden: { opacity: 0, y: 24 },
-  visible: (delay: number) => ({
+  visible: (i: number) => ({
     opacity: 1,
     y: 0,
-    transition: { duration: 0.55, ease: [0.22, 1, 0.36, 1], delay },
+    transition: { 
+      duration: 0.55, 
+      ease: [0.22, 1, 0.36, 1], 
+      delay: i // custom prop'tan gelen değer
+    },
   }),
 };
 

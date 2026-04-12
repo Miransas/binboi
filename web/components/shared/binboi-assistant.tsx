@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { usePricingPlan } from "@/components/provider/pricing-plan-provider";
 import { useAssistantContext } from "@/components/shared/assistant-context";
@@ -111,10 +111,16 @@ export function BinboiAssistant({
   const [error, setError] = useState<string | null>(null);
   const [limitReached, setLimitReached] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [aiAvailable, setAiAvailable] = useState<boolean | null>(null);
+  const [searchResults, setSearchResults] = useState<
+    Array<{ id: string; title: string; href: string; kind: string; excerpt: string }>
+  >([]);
+  const [searching, setSearching] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const transcriptRef = useRef<HTMLDivElement>(null);
   const transcriptEndRef = useRef<HTMLDivElement>(null);
   const previousMessageCountRef = useRef(0);
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const activeTitle =
     title ||
@@ -135,6 +141,30 @@ export function BinboiAssistant({
       inputRef.current?.focus();
     }
   }, [autoFocus]);
+
+  useEffect(() => {
+    fetch("/api/ai/config")
+      .then((r) => r.json())
+      .then((data: { available?: boolean }) => setAiAvailable(data.available ?? false))
+      .catch(() => setAiAvailable(false));
+  }, []);
+
+  const runSearch = useCallback((value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed || trimmed.length < 2) {
+      setSearchResults([]);
+      setSearching(false);
+      return;
+    }
+    setSearching(true);
+    fetch(`/api/search?q=${encodeURIComponent(trimmed)}`)
+      .then((r) => r.json())
+      .then((data: { results?: typeof searchResults }) => {
+        setSearchResults(data.results ?? []);
+      })
+      .catch(() => setSearchResults([]))
+      .finally(() => setSearching(false));
+  }, []);
 
   useEffect(() => {
     try {
@@ -306,6 +336,8 @@ export function BinboiAssistant({
                 loading={loading}
                 transcriptRef={transcriptRef}
                 endRef={transcriptEndRef}
+                searchResults={panelMode === "idle" ? searchResults : undefined}
+                searching={panelMode === "idle" ? searching : undefined}
               />
 
               <AssistantInsights mode={panelMode} response={latestResponse} />

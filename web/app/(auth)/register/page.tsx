@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react"; // Suspense eklendi
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
@@ -165,9 +165,9 @@ function LeftPanel() {
   );
 }
 
-// ── RegisterPage ──────────────────────────────────────────────────────────────
+// ── RegisterContent (Buraya taşıdık ki Suspense içine alabilelim) ─────────────
 
-export default function RegisterPage() {
+function RegisterContent() {
   const router = useRouter();
   const params = useSearchParams();
   const callbackUrl = safeCb(params.get("callbackUrl"));
@@ -345,5 +345,19 @@ export default function RegisterPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+// ── RegisterPage (Final Export with Suspense) ────────────────────────────────
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center bg-[#05070b]">
+        <Loader2 className="h-8 w-8 animate-spin text-[#00ffd1]" />
+      </div>
+    }>
+      <RegisterContent />
+    </Suspense>
   );
 }

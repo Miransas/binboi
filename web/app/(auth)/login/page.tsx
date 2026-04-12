@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import { Suspense } from "react";
+import { useState, Suspense } from "react"; // Suspense eklendi
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
@@ -67,7 +66,6 @@ function FlowDot({ color }: { color: string }) {
   return (
     <div className="relative flex w-full items-center justify-center py-1.5">
       <div className="absolute left-1/2 h-full w-px -translate-x-1/2 bg-white/[0.06]" />
-      {/* Data flow effect: top-to-bottom slide + glow */}
       <motion.div
         className={`relative z-10 h-1.5 w-1.5 rounded-full ${color}`}
         animate={{ 
@@ -166,9 +164,9 @@ function LeftPanel() {
   );
 }
 
-// ── LoginPage ─────────────────────────────────────────────────────────────────
+// ── LoginContent ──────────────────────────────────────────────────────────────
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter();
   const params = useSearchParams();
   const callbackUrl = safeCb(params.get("callbackUrl"));
@@ -201,14 +199,11 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen w-full">
-      {/* Left — branding */}
       <div className="relative hidden w-[52%] shrink-0 border-r border-white/[0.06] lg:block">
         <LeftPanel />
       </div>
 
-      {/* Right — form */}
       <div className="flex flex-1 flex-col">
-        {/* Top bar */}
         <div className="flex items-center justify-between px-8 pt-8">
           <div className="flex items-center gap-2 lg:hidden">
             <div className="flex h-7 w-7 items-center justify-center rounded-lg border border-[#86a9ff]/20 bg-[#86a9ff]/[0.06]">
@@ -224,7 +219,6 @@ export default function LoginPage() {
           </Link>
         </div>
 
-        {/* Form */}
         <div className="flex flex-1 items-center justify-center px-6 py-10">
           <motion.div
             initial={{ opacity: 0, y: 14 }}
@@ -303,5 +297,19 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+// ── LoginPage (Main Export with Suspense) ─────────────────────────────────────
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center bg-[#05070b]">
+        <Loader2 className="h-8 w-8 animate-spin text-[#86a9ff]" />
+      </div>
+    }>
+      <LoginContent />
+    </Suspense>
   );
 }

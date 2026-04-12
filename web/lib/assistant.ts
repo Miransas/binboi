@@ -59,7 +59,7 @@ const MAX_MESSAGES = 10;
 const MAX_MESSAGE_LENGTH = 1200;
 const MAX_CONTEXT_TEXT = 600;
 const CONTROL_PLANE_TIMEOUT_MS = 1800;
-const OPENAI_TIMEOUT_MS = 12000;
+const AI_TIMEOUT_MS = 12000;
 
 function compactWhitespace(input: string) {
   return input.trim().replace(/\s+/g, " ");
@@ -613,48 +613,6 @@ function buildFallbackMessage(input: {
   return [firstParagraph, secondParagraph, relatedLine, nextSteps].join("\n\n");
 }
 
-function extractOpenAIText(payload: unknown): string | null {
-  if (!payload || typeof payload !== "object") {
-    return null;
-  }
-
-  const record = payload as Record<string, unknown>;
-  if (typeof record.output_text === "string" && record.output_text.trim()) {
-    return record.output_text.trim();
-  }
-
-  const output = Array.isArray(record.output) ? record.output : [];
-  for (const item of output) {
-    if (!item || typeof item !== "object") {
-      continue;
-    }
-
-    const itemRecord = item as Record<string, unknown>;
-    const content = Array.isArray(itemRecord.content) ? itemRecord.content : [];
-    for (const part of content) {
-      if (!part || typeof part !== "object") {
-        continue;
-      }
-
-      const partRecord = part as Record<string, unknown>;
-      if (typeof partRecord.text === "string" && partRecord.text.trim()) {
-        return partRecord.text.trim();
-      }
-
-      const textValue = partRecord.text;
-      if (
-        textValue &&
-        typeof textValue === "object" &&
-        typeof (textValue as Record<string, unknown>).value === "string"
-      ) {
-        return ((textValue as Record<string, unknown>).value as string).trim();
-      }
-    }
-  }
-
-  return null;
-}
-
 async function generateAiMessage(input: {
   query: string;
   messages: AssistantConversationMessage[];
@@ -664,15 +622,14 @@ async function generateAiMessage(input: {
   suggestions: string[];
   fallbackMessage: string;
 }) {
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     return null;
   }
 
-  const model = process.env.OPENAI_MODEL || "gpt-4.1-mini";
-  const baseUrl = process.env.OPENAI_BASE_URL || "https://api.openai.com/v1";
+  const model = process.env.ANTHROPIC_MODEL || "claude-haiku-4-5-20251001";
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), OPENAI_TIMEOUT_MS);
+  const timeout = setTimeout(() => controller.abort(), AI_TIMEOUT_MS);
 
   const conversation = input.messages
     .slice(-8)
@@ -722,22 +679,18 @@ async function generateAiMessage(input: {
   ].join("\n");
 
   try {
-    const response = await fetch(`${baseUrl}/responses`, {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       signal: controller.signal,
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
         model,
-        max_output_tokens: 500,
-        input: [
-          {
-            role: "user",
-            content: [{ type: "input_text", text: prompt }],
-          },
-        ],
+        max_tokens: 500,
+        messages: [{ role: "user", content: prompt }],
       }),
     });
 
@@ -745,8 +698,11 @@ async function generateAiMessage(input: {
       return null;
     }
 
-    const payload = (await response.json()) as unknown;
-    return extractOpenAIText(payload);
+    const payload = (await response.json()) as {
+      content?: Array<{ type: string; text?: string }>;
+    };
+    const text = payload.content?.find((block) => block.type === "text")?.text?.trim();
+    return text || null;
   } catch {
     return null;
   } finally {

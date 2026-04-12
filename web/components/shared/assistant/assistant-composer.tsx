@@ -14,6 +14,7 @@ type AssistantComposerProps = {
   inputRef: RefObject<HTMLInputElement | null>;
   aiUsageLabel?: string;
   limitReached?: boolean;
+  aiAvailable?: boolean;
 };
 
 export function AssistantComposer({
@@ -27,6 +28,7 @@ export function AssistantComposer({
   inputRef,
   aiUsageLabel,
   limitReached = false,
+  aiAvailable = true,
 }: AssistantComposerProps) {
   const conversationActive = mode === "conversation";
 
@@ -55,14 +57,16 @@ export function AssistantComposer({
             />
           </label>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="inline-flex items-center justify-center gap-2 rounded-[1.25rem] bg-miransas-cyan px-5 py-3 text-sm font-semibold text-black transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-70"
-          >
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-            {loading ? "Thinking" : conversationActive ? "Send" : "Ask Binboi"}
-          </button>
+          {aiAvailable && (
+            <button
+              type="submit"
+              disabled={loading}
+              className="inline-flex items-center justify-center gap-2 rounded-[1.25rem] bg-miransas-cyan px-5 py-3 text-sm font-semibold text-black transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+              {loading ? "Thinking" : conversationActive ? "Send" : "Ask Binboi"}
+            </button>
+          )}
         </div>
 
         {limitReached ? (
