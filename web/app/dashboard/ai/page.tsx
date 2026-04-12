@@ -30,6 +30,12 @@ export default function AiPage() {
   const [error, setError] = useState<string | null>(null);
   const [model, setModel] = useState<ModelOption>("gpt-4o-mini");
   const endRef = useRef<HTMLDivElement>(null);
+  const lastMessage = messages[messages.length - 1]?.content?.toLowerCase() ?? "";
+  const isGreeting =
+  lastMessage.includes("selam") ||
+  lastMessage.includes("merhaba") ||
+  lastMessage.includes("hi") ||
+  lastMessage.includes("hello");
 
   const submit = async (nextValue?: string) => {
     const value = (nextValue ?? query).trim();

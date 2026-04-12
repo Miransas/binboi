@@ -31,7 +31,7 @@ export const DASHBOARD_LINKS = [
       { label: "Setup & Installation", href: "/dashboard/setup", icon: MdOutlineSettingsInputComposite },
       { label: "Access Tokens", href: "/dashboard/access-tokens", icon: FiKey },
       { label: "Billing", href: "/dashboard/billing", icon: FiCreditCard },
-      { label: "User Management", href: "/dashboard/user-management", icon: FiUser },
+      // { label: "User Management", href: "/dashboard/user-management", icon: FiUser },
       { label: "Tunnel", href: "/dashboard/tunnel", icon: FiSliders },
     ],
   },

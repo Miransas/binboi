@@ -221,12 +221,12 @@ export default function DashboardHeader({
                 </Link>
 
                 <Link
-                  href="/dashboard/user-management"
-                  onClick={(event) => handleActionClick("/dashboard/user-management", event)}
+                  href="/dashboard/profile"
+                  onClick={(event) => handleActionClick("/dashboard/profile", event)}
                   className="inline-flex min-w-0 items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-left transition hover:border-white/15 hover:bg-white/[0.06]"
                 >
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/[0.06] text-sm font-semibold text-white">
-                    {initials || "BA"}
+                    {initials || "SA"}
                   </div>
                   <div className="min-w-0">
                     <div className="truncate text-sm font-medium text-zinc-100">

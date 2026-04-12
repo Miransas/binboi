@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import Link from "next/link";
@@ -61,15 +62,15 @@ export function SidebarDocs({ collapsed, onNavigate }: SidebarProps) {
       <div className="sticky top-0 flex h-screen flex-col">
         <div className="border-b border-white/10 px-4 py-5">
           <Link
-            href="/dashboard"
-            onClick={(event) => handleNavClick("/dashboard", event)}
+            href="/"
+            onClick={(event) => handleNavClick("/", event)}
             className={cn(
               "flex items-center gap-3 rounded-xl",
               collapsed ? "justify-center px-0" : "px-1",
             )}
           >
             <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-base font-semibold tracking-tight text-white">
-              B
+              <img src="/logo.png" alt="" />
             </div>
             {!collapsed ? (
               <div className="min-w-0">
@@ -155,8 +156,8 @@ export function SidebarDocs({ collapsed, onNavigate }: SidebarProps) {
           </div>
 
           <Link
-            href="/dashboard/user-management"
-            onClick={(event) => handleNavClick("/dashboard/user-management", event)}
+            href="/dashboard/profile"
+            onClick={(event) => handleNavClick("/dashboard/profile", event)}
             className={cn(
               "mt-3 flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-3 transition hover:border-white/15 hover:bg-white/[0.05]",
               collapsed ? "justify-center px-2" : "",
