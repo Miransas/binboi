@@ -1,5 +1,12 @@
-import { PricingPageClient } from "@/components/pricing/pricing-page-client";
+import React from 'react'
+import { PricingSection } from './pricing-section'
 
-export default function PricingPage() {
-  return <PricingPageClient />;
+const page = () => {
+  return (
+    <div className='mt-20'>
+      <PricingSection/>
+    </div>
+  )
 }
+
+export default page

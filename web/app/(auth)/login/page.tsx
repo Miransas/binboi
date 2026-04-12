@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
@@ -23,17 +24,17 @@ async function postJson<T = Record<string, unknown>>(url: string, body: unknown)
     body: JSON.stringify(body),
   });
   const data = (await res.json().catch(() => ({}))) as T & { error?: string };
-  if (!res.ok) throw new Error(data.error ?? "Bir hata oluştu.");
+  if (!res.ok) throw new Error(data.error ?? "An error occurred.");
   return data;
 }
 
 // ── left panel components ─────────────────────────────────────────────────────
 
 const FEATURES = [
-  { icon: Zap,    label: "Anlık tüneller",    desc: "Tek komutla herhangi bir portu aç" },
-  { icon: Globe,  label: "Özel subdomain'ler", desc: "Kendi .miransas.com adresin" },
-  { icon: Lock,   label: "Her yerde TLS",      desc: "HTTPS zorunlu, sertifikalar otomatik" },
-  { icon: Server, label: "Self-hosted",         desc: "Kendi altyapın, tam kontrol" },
+  { icon: Zap,    label: "Instant tunnels",    desc: "Expose any port with a single command" },
+  { icon: Globe,  label: "Custom subdomains",  desc: "Your own .miransas.com address" },
+  { icon: Lock,   label: "TLS everywhere",     desc: "HTTPS enforced, certificates automated" },
+  { icon: Server, label: "Self-hosted",        desc: "Your infrastructure, full control" },
 ];
 
 function TunnelNode({ icon: Icon, label, sublabel, accent = false }: {
@@ -64,12 +65,20 @@ function TunnelNode({ icon: Icon, label, sublabel, accent = false }: {
 
 function FlowDot({ color }: { color: string }) {
   return (
-    <div className="relative flex w-full items-center justify-center py-0.5">
+    <div className="relative flex w-full items-center justify-center py-1.5">
       <div className="absolute left-1/2 h-full w-px -translate-x-1/2 bg-white/[0.06]" />
+      {/* Animasyon Düzeltmesi: Veri akışı efekti (Yukarıdan aşağı kayma + parlama) */}
       <motion.div
         className={`relative z-10 h-1.5 w-1.5 rounded-full ${color}`}
-        animate={{ y: ["-6px", "6px"] }}
-        transition={{ duration: 1.8, repeat: Infinity, repeatType: "reverse", ease: "easeInOut" }}
+        animate={{ 
+          y: ["-8px", "8px"], 
+          opacity: [0, 1, 0] 
+        }}
+        transition={{ 
+          duration: 1.5, 
+          repeat: Infinity, 
+          ease: "linear" 
+        }}
       />
     </div>
   );
@@ -94,14 +103,14 @@ function LeftPanel() {
       {/* Headline */}
       <div className="mt-12">
         <h2 className="text-[2.2rem] font-bold leading-[1.08] tracking-[-0.04em] text-white">
-          Tekrar hoş geldin.
+          Welcome back.
           <br />
           <span className="bg-gradient-to-r from-[#86a9ff] to-[#c2cbdb] bg-clip-text text-transparent">
-            Tünellerin seni bekliyor.
+            Your tunnels are waiting.
           </span>
         </h2>
         <p className="mt-4 max-w-xs text-sm leading-7 text-zinc-500">
-          Kontrol panelinize giriş yapın ve tüm ortamlarınızdaki tünelleri yönetin.
+          Sign in to your dashboard and manage your tunnels across all environments.
         </p>
       </div>
 
@@ -125,8 +134,8 @@ function LeftPanel() {
           <div className="mt-4 flex items-center gap-2 rounded-lg border border-[#86a9ff]/15 bg-[#86a9ff]/[0.07] px-3 py-2">
             <motion.div
               className="h-1.5 w-1.5 rounded-full bg-[#86a9ff]"
-              animate={{ opacity: [1, 0.3, 1] }}
-              transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+              animate={{ opacity: [0.4, 1, 0.4], scale: [0.9, 1.1, 0.9] }}
+              transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
             />
             <span className="font-mono text-[11px] text-[#c2cbdb]/70">
               Tunnel active · TLS secured · 0ms latency
@@ -151,7 +160,7 @@ function LeftPanel() {
       </div>
 
       <div className="mt-auto pt-12">
-        <p className="text-xs text-zinc-700">© 2025 Miransas Software. Tüm hakları saklıdır.</p>
+        <p className="text-xs text-zinc-700">© 2026 Miransas Software. All rights reserved.</p>
       </div>
     </div>
   );
@@ -171,8 +180,8 @@ export default function LoginPage() {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim()) { setError("E-posta adresinizi girin."); return; }
-    if (!password)     { setError("Şifrenizi girin."); return; }
+    if (!email.trim()) { setError("Please enter your email address."); return; }
+    if (!password)     { setError("Please enter your password."); return; }
     setLoading(true);
     setError(null);
     try {
@@ -184,7 +193,7 @@ export default function LoginPage() {
       router.push(data.redirectTo ?? callbackUrl);
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Giriş yapılamadı.");
+      setError(err instanceof Error ? err.message : "Failed to sign in.");
     } finally {
       setLoading(false);
     }
@@ -211,7 +220,7 @@ export default function LoginPage() {
           </div>
           <div className="hidden lg:block" />
           <Link href="/register" className="text-sm text-zinc-500 transition hover:text-white">
-            Hesap oluştur
+            Create account
           </Link>
         </div>
 
@@ -228,12 +237,12 @@ export default function LoginPage() {
               className="mb-7 inline-flex items-center gap-1.5 text-sm text-zinc-600 transition hover:text-white"
             >
               <ArrowLeft className="h-3.5 w-3.5" />
-              Ana sayfaya dön
+              Back to home
             </Link>
 
             <div className="mb-7">
-              <h1 className="text-[1.75rem] font-bold tracking-[-0.03em] text-white">Binboi&apos;ya giriş yap</h1>
-              <p className="mt-1.5 text-sm text-zinc-500">Tünel kontrol panelinize erişin</p>
+              <h1 className="text-[1.75rem] font-bold tracking-[-0.03em] text-white">Sign in to Binboi</h1>
+              <p className="mt-1.5 text-sm text-zinc-500">Access your tunnel dashboard</p>
             </div>
 
             {error && (
@@ -244,22 +253,22 @@ export default function LoginPage() {
 
             <form onSubmit={(e) => void submit(e)} className="space-y-4">
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-zinc-400">E-posta</label>
+                <label className="text-xs font-medium text-zinc-400">Email</label>
                 <input
                   type="email"
                   autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="siz@sirket.com"
+                  placeholder="you@company.com"
                   className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3.5 py-2.5 text-sm text-white placeholder-zinc-600 outline-none transition focus:border-[#86a9ff]/40 focus:bg-white/[0.05]"
                 />
               </div>
 
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-medium text-zinc-400">Şifre</label>
+                  <label className="text-xs font-medium text-zinc-400">Password</label>
                   <Link href="/forgot-password" className="text-xs text-zinc-600 transition hover:text-white">
-                    Şifremi unuttum
+                    Forgot password?
                   </Link>
                 </div>
                 <input
@@ -277,17 +286,17 @@ export default function LoginPage() {
                 disabled={loading}
                 className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#86a9ff] px-4 py-2.5 text-sm font-semibold text-[#05070b] transition hover:bg-[#a0bdff] disabled:opacity-50"
               >
-                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Giriş yap"}
+                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Sign in"}
               </button>
             </form>
 
             <p className="mt-6 text-center text-sm text-zinc-600">
-              Hesabın yok mu?{" "}
+              Don&apos;t have an account?{" "}
               <Link
                 href="/register"
                 className="font-medium text-zinc-300 underline underline-offset-4 decoration-white/20 transition hover:text-white hover:decoration-white/50"
               >
-                Kayıt ol
+                Sign up
               </Link>
             </p>
           </motion.div>

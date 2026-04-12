@@ -1,21 +1,9 @@
-import { UserManagementClient } from "./user-management-client";
+import React from 'react'
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
-
-export default function UserManagementPage() {
+const page = () => {
   return (
-    <UserManagementClient
-      initialSettings={{
-        authenticated: false,
-        mode: "unavailable" as const,
-        credentialsEnabled: false,
-        githubEnabled: false,
-        previewEnabled: false,
-        user: null,
-      }}
-      initialBilling={null}
-      initialBillingError="User management requires database-backed auth."
-    />
-  );
+    <div>page</div>
+  )
 }
+
+export default page

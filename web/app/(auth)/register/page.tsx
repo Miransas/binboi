@@ -23,25 +23,25 @@ async function postJson<T = Record<string, unknown>>(url: string, body: unknown)
     body: JSON.stringify(body),
   });
   const data = (await res.json().catch(() => ({}))) as T & { error?: string };
-  if (!res.ok) throw new Error(data.error ?? "Bir hata oluştu.");
+  if (!res.ok) throw new Error(data.error ?? "An error occurred.");
   return data;
 }
 
 function pwChecks(pw: string, confirm: string) {
   return [
-    { label: "8+ karakter",  ok: pw.length >= 8 },
-    { label: "Harf + rakam", ok: /[a-z]/i.test(pw) && /\d/.test(pw) },
-    { label: "Eşleşiyor",    ok: confirm.length > 0 && pw === confirm },
+    { label: "8+ chars",     ok: pw.length >= 8 },
+    { label: "Letter + Num", ok: /[a-z]/i.test(pw) && /\d/.test(pw) },
+    { label: "Matches",      ok: confirm.length > 0 && pw === confirm },
   ];
 }
 
 // ── left panel components ─────────────────────────────────────────────────────
 
 const FEATURES = [
-  { icon: Zap,    label: "Anlık tüneller",    desc: "Tek komutla herhangi bir portu aç" },
-  { icon: Globe,  label: "Özel subdomain'ler", desc: "Kendi .miransas.com adresin" },
-  { icon: Lock,   label: "Her yerde TLS",      desc: "HTTPS zorunlu, sertifikalar otomatik" },
-  { icon: Server, label: "Self-hosted",         desc: "Kendi altyapın, tam kontrol" },
+  { icon: Zap,    label: "Instant tunnels",    desc: "Expose any port with a single command" },
+  { icon: Globe,  label: "Custom subdomains",  desc: "Your own .miransas.com address" },
+  { icon: Lock,   label: "TLS everywhere",     desc: "HTTPS enforced, certificates automated" },
+  { icon: Server, label: "Self-hosted",        desc: "Your infrastructure, full control" },
 ];
 
 function TunnelNode({ icon: Icon, label, sublabel, accent = false }: {
@@ -102,15 +102,14 @@ function LeftPanel() {
       {/* Headline */}
       <div className="mt-12">
         <h2 className="text-[2.2rem] font-bold leading-[1.08] tracking-[-0.04em] text-white">
-          Her şeyi bağla,
+          Connect everything,
           <br />
           <span className="bg-gradient-to-r from-[#00ffd1] to-[#7aefdc] bg-clip-text text-transparent">
-            her yerden.
+            from everywhere.
           </span>
         </h2>
         <p className="mt-4 max-w-xs text-sm leading-7 text-zinc-500">
-          Yerel servislerinizi saniyeler içinde internete açın. Self-hosted, TLS güvenceli,
-          geliştiriciler için inşa edilmiş.
+          Expose your local services to the internet in seconds. Self-hosted, TLS secured, built for developers.
         </p>
       </div>
 
@@ -160,7 +159,7 @@ function LeftPanel() {
       </div>
 
       <div className="mt-auto pt-12">
-        <p className="text-xs text-zinc-700">© 2025 Miransas Software. Tüm hakları saklıdır.</p>
+        <p className="text-xs text-zinc-700">© 2026 Miransas Software. All rights reserved.</p>
       </div>
     </div>
   );
@@ -182,10 +181,10 @@ export default function RegisterPage() {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim())          { setError("Adınızı girin."); return; }
-    if (!email.trim())         { setError("E-posta adresinizi girin."); return; }
-    if (!password)             { setError("Bir şifre oluşturun."); return; }
-    if (password !== confirm)  { setError("Şifreler eşleşmiyor."); return; }
+    if (!name.trim())          { setError("Please enter your name."); return; }
+    if (!email.trim())         { setError("Please enter your email address."); return; }
+    if (!password)             { setError("Please create a password."); return; }
+    if (password !== confirm)  { setError("Passwords do not match."); return; }
     setLoading(true);
     setError(null);
     try {
@@ -197,7 +196,7 @@ export default function RegisterPage() {
       router.push(data.redirectTo ?? `/login?callbackUrl=${encodeURIComponent(callbackUrl)}`);
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Hesap oluşturulamadı.");
+      setError(err instanceof Error ? err.message : "Failed to create account.");
     } finally {
       setLoading(false);
     }
@@ -226,7 +225,7 @@ export default function RegisterPage() {
           </div>
           <div className="hidden lg:block" />
           <Link href="/login" className="text-sm text-zinc-500 transition hover:text-white">
-            Zaten hesabın var mı? Giriş yap
+            Already have an account? Sign in
           </Link>
         </div>
 
@@ -243,12 +242,12 @@ export default function RegisterPage() {
               className="mb-7 inline-flex items-center gap-1.5 text-sm text-zinc-600 transition hover:text-white"
             >
               <ArrowLeft className="h-3.5 w-3.5" />
-              Ana sayfaya dön
+              Back to home
             </Link>
 
             <div className="mb-7">
-              <h1 className="text-[1.75rem] font-bold tracking-[-0.03em] text-white">Hesap oluştur</h1>
-              <p className="mt-1.5 text-sm text-zinc-500">Ücretsiz başla. Tünellerin, altyapın.</p>
+              <h1 className="text-[1.75rem] font-bold tracking-[-0.03em] text-white">Create an account</h1>
+              <p className="mt-1.5 text-sm text-zinc-500">Start for free. Your tunnels, your infra.</p>
             </div>
 
             {error && (
@@ -259,7 +258,7 @@ export default function RegisterPage() {
 
             <form onSubmit={(e) => void submit(e)} className="space-y-4">
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-zinc-400">Ad Soyad</label>
+                <label className="text-xs font-medium text-zinc-400">Full Name</label>
                 <input
                   type="text"
                   autoComplete="name"
@@ -271,37 +270,37 @@ export default function RegisterPage() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-zinc-400">E-posta</label>
+                <label className="text-xs font-medium text-zinc-400">Email</label>
                 <input
                   type="email"
                   autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="siz@sirket.com"
+                  placeholder="you@company.com"
                   className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3.5 py-2.5 text-sm text-white placeholder-zinc-600 outline-none transition focus:border-[#00ffd1]/40 focus:bg-white/[0.05]"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-zinc-400">Şifre</label>
+                <label className="text-xs font-medium text-zinc-400">Password</label>
                 <input
                   type="password"
                   autoComplete="new-password"
                   value={password}
                   onChange={(e) => setPw(e.target.value)}
-                  placeholder="Şifre oluştur"
+                  placeholder="Create a password"
                   className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3.5 py-2.5 text-sm text-white placeholder-zinc-600 outline-none transition focus:border-[#00ffd1]/40 focus:bg-white/[0.05]"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-zinc-400">Şifre tekrar</label>
+                <label className="text-xs font-medium text-zinc-400">Confirm password</label>
                 <input
                   type="password"
                   autoComplete="new-password"
                   value={confirm}
                   onChange={(e) => setConfirm(e.target.value)}
-                  placeholder="Şifreni tekrarla"
+                  placeholder="Repeat your password"
                   className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3.5 py-2.5 text-sm text-white placeholder-zinc-600 outline-none transition focus:border-[#00ffd1]/40 focus:bg-white/[0.05]"
                 />
               </div>
@@ -329,17 +328,17 @@ export default function RegisterPage() {
                 disabled={loading}
                 className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#00ffd1] px-4 py-2.5 text-sm font-semibold text-[#05070b] transition hover:bg-[#33ffda] disabled:opacity-50"
               >
-                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Hesap oluştur"}
+                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create account"}
               </button>
             </form>
 
             <p className="mt-6 text-center text-sm text-zinc-600">
-              Zaten hesabın var mı?{" "}
+              Already have an account?{" "}
               <Link
                 href="/login"
                 className="font-medium text-zinc-300 underline underline-offset-4 decoration-white/20 transition hover:text-white hover:decoration-white/50"
               >
-                Giriş yap
+                Sign in
               </Link>
             </p>
           </motion.div>
