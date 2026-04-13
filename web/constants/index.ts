@@ -88,6 +88,7 @@ export const footerLinks = {
     { name: "Changelog", href: "/changelog" },
     { name: "Support", href: "/support" }, 
     { name: "Private", href: "/private" },
+    { name: "Refund", href: "/refund" },
   ], 
   Platform: [
     { name: "Quick Start", href: "https://www.dosc.binboi.com/docs/quick_start" },
