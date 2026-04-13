@@ -41,7 +41,7 @@ export default function RootLayout({
       )}
     >
       <head />
-      <body className={cn("min-h-screen bg-[#000000] text-white antialiased font-sans")}>
+      <body className={cn("min-h-screen bg-[#171717] text-white antialiased font-sans")}>
         <ThemeProvider
           attribute="class"
           defaultTheme="dark"

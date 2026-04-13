@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, type ComponentType } from "react";
+import { useEffect, useState, type ComponentType, type ReactNode } from "react";
 import { AnimatePresence, cubicBezier, motion, type Variants } from "framer-motion";
 import {
   ArrowRight,
@@ -13,15 +13,38 @@ import {
   Webhook,
 } from "lucide-react";
 
+// --- Custom Primitives (Replaced from external imports) ---
 
+function PremiumSurface({
+  children,
+  className = "",
+  contentClassName = "",
+}: {
+  children: ReactNode;
+  className?: string;
+  contentClassName?: string;
+}) {
+  return (
+    <div
+      className={`relative rounded-[2rem] border border-zinc-800/80 bg-black/40 backdrop-blur-md overflow-hidden group transition-all duration-500 hover:border-[#9eff00]/30 hover:shadow-[0_8px_30px_rgba(158,255,0,0.05)] ${className}`}
+    >
+      {/* Terminal Grid Overlay inside the surface */}
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#8080800a_1px,transparent_1px),linear-gradient(to_bottom,#8080800a_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none" />
+      <div className={`relative z-10 ${contentClassName}`}>{children}</div>
+    </div>
+  );
+}
 
-import {
-  AccentBadge,
-  PremiumSurface,
-  type Accent,
-} from "./landing-primitives";
+function AccentBadge({ children }: { children: ReactNode }) {
+  return (
+    <div className="inline-flex items-center gap-2 rounded-full border border-[#9eff00]/20 bg-[#9eff00]/5 px-3 py-1 font-mono text-[10px] uppercase tracking-widest text-[#9eff00] shadow-[0_0_10px_rgba(158,255,0,0.1)]">
+      <span className="h-1.5 w-1.5 rounded-full bg-[#9eff00] animate-pulse shadow-[0_0_8px_rgba(158,255,0,0.8)]" />
+      {children}
+    </div>
+  );
+}
 
-
+// --- Animation Config ---
 const transition = { duration: 0.8, ease: cubicBezier(0.16, 1, 0.3, 1) };
 
 const fadeUp: Variants = {
@@ -29,13 +52,13 @@ const fadeUp: Variants = {
   visible: { opacity: 1, y: 0, filter: "blur(0px)", transition },
 };
 
+// --- Types ---
 type IconType = ComponentType<{ className?: string }>;
 
 type EngineModule = {
   id: string;
   label: string;
   color: string;
-  accent: Accent;
   icon: IconType;
   steps: [string, string, string];
   details: [string, string, string];
@@ -67,12 +90,12 @@ type EngineScenario = {
   logs: EngineModule["logs"];
 };
 
+// --- Data ---
 const engineModules: EngineModule[] = [
   {
     id: "routing",
     label: "HTTP Routing",
-    color: "#00ffd1",
-    accent: "cyan",
+    color: "#9eff00", // Neon Green
     icon: Globe,
     steps: ["Reserve subdomain", "Match public host", "Forward to localhost"],
     details: [
@@ -91,8 +114,7 @@ const engineModules: EngineModule[] = [
   {
     id: "webhooks",
     label: "Webhook Trace",
-    color: "#ff00ff",
-    accent: "magenta",
+    color: "#00ffd1", // Cyan
     icon: Webhook,
     steps: ["Capture signature headers", "Preserve raw payload", "Classify failure"],
     details: [
@@ -111,8 +133,7 @@ const engineModules: EngineModule[] = [
   {
     id: "tokens",
     label: "Token Auth",
-    color: "#fbbf24",
-    accent: "amber",
+    color: "#fbbf24", // Amber
     icon: KeyRound,
     steps: ["Validate CLI token", "Attach tunnel agent", "Refresh last-used"],
     details: [
@@ -131,8 +152,7 @@ const engineModules: EngineModule[] = [
   {
     id: "logs",
     label: "Relay Logs",
-    color: "#a855f7",
-    accent: "violet",
+    color: "#a855f7", // Violet
     icon: TerminalSquare,
     steps: ["Tail relay events", "Mark tunnel lifecycle", "Guide troubleshooting"],
     details: [
@@ -151,8 +171,7 @@ const engineModules: EngineModule[] = [
   {
     id: "regions",
     label: "Edge Regions",
-    color: "#38bdf8",
-    accent: "blue",
+    color: "#38bdf8", // Blue
     icon: Waypoints,
     steps: ["Pick nearest node", "Measure edge latency", "Keep session warm"],
     details: [
@@ -171,8 +190,7 @@ const engineModules: EngineModule[] = [
   {
     id: "tls",
     label: "TLS Edge",
-    color: "#34d399",
-    accent: "emerald",
+    color: "#f43f5e", // Rose
     icon: ShieldCheck,
     steps: ["Terminate TLS", "Normalize headers", "Forward trusted request"],
     details: [
@@ -207,7 +225,7 @@ const heroSignals = [
 const heroStatus = [
   {
     label: "Public URL",
-    value: "miransas-dev.binboi.link",
+    value: "binboi-dev.binboi.link",
     note: "Stable enough for providers to call back into local development.",
   },
   {
@@ -222,8 +240,7 @@ const heroStatus = [
   },
 ];
 
-
-
+// --- Helper Functions ---
 function generateScenario(previousId?: string): EngineScenario {
   const availableModules = engineModules.filter((module) => module.id !== previousId);
   const activeModule =
@@ -275,17 +292,8 @@ function generateScenario(previousId?: string): EngineScenario {
   };
 }
 
-function GlowingWire({
-  path,
-  color,
-  delay,
-  duration,
-}: {
-  path: string;
-  color: string;
-  delay: number;
-  duration: number;
-}) {
+// --- Sub Components ---
+function GlowingWire({ path, color, delay, duration }: { path: string; color: string; delay: number; duration: number }) {
   return (
     <g>
       <path
@@ -296,14 +304,7 @@ function GlowingWire({
         strokeLinecap="round"
         style={{ filter: "drop-shadow(0 5px 10px rgba(0,0,0,0.8))" }}
       />
-      <path
-        d={path}
-        stroke="#27272a"
-        strokeWidth={4}
-        fill="none"
-        strokeLinecap="round"
-        opacity={0.6}
-      />
+      <path d={path} stroke="#27272a" strokeWidth={4} fill="none" strokeLinecap="round" opacity={0.6} />
       <motion.path
         d={path}
         stroke={color}
@@ -316,29 +317,15 @@ function GlowingWire({
         exit={{ opacity: 0 }}
         transition={{
           opacity: { delay, duration: 0.3 },
-          strokeDashoffset: {
-            duration,
-            repeat: Infinity,
-            ease: "linear",
-          },
+          strokeDashoffset: { duration, repeat: Infinity, ease: "linear" },
         }}
-        style={{
-          filter: `drop-shadow(0 0 15px ${color}) drop-shadow(0 0 30px ${color})`,
-        }}
+        style={{ filter: `drop-shadow(0 0 15px ${color}) drop-shadow(0 0 30px ${color})` }}
       />
     </g>
   );
 }
 
-function OrbitModule({
-  module,
-  angle,
-  isActive,
-}: {
-  module: EngineModule;
-  angle: number;
-  isActive: boolean;
-}) {
+function OrbitModule({ module, angle, isActive }: { module: EngineModule; angle: number; isActive: boolean }) {
   const Icon = module.icon;
 
   return (
@@ -353,18 +340,16 @@ function OrbitModule({
     >
       <div className="relative" style={{ transform: `translateX(${isActive ? "188px" : "168px"})` }}>
         <div className="absolute left-[-20px] top-1/2 z-0 flex -translate-y-1/2 flex-col gap-[4px]">
-          <div className="h-[3px] w-5 rounded-sm bg-gradient-to-r from-zinc-700 to-zinc-300" />
-          <div className="h-[3px] w-5 rounded-sm bg-gradient-to-r from-zinc-700 to-zinc-300" />
-          <div className="h-[3px] w-5 rounded-sm bg-gradient-to-r from-zinc-700 to-zinc-300" />
+          <div className="h-[3px] w-5 rounded-sm bg-gradient-to-r from-zinc-800 to-zinc-400" />
+          <div className="h-[3px] w-5 rounded-sm bg-gradient-to-r from-zinc-800 to-zinc-400" />
+          <div className="h-[3px] w-5 rounded-sm bg-gradient-to-r from-zinc-800 to-zinc-400" />
         </div>
 
         <div style={{ transform: `rotate(${-angle}deg)` }} className="flex flex-col items-center">
           <div
             className="relative flex h-16 w-16 items-center justify-center rounded-2xl border border-white/10 bg-[#0a0a0a] shadow-[0_15px_30px_rgba(0,0,0,0.9),inset_0_2px_2px_rgba(255,255,255,0.1)]"
             style={{
-              boxShadow: isActive
-                ? `0 0 30px ${module.color}60, inset 0 2px 2px rgba(255,255,255,0.2)`
-                : undefined,
+              boxShadow: isActive ? `0 0 30px ${module.color}60, inset 0 2px 2px rgba(255,255,255,0.2)` : undefined,
             }}
           >
             <div
@@ -395,35 +380,30 @@ function ProcessNode({ node }: { node: EngineNode }) {
       animate={{ opacity: 1, scale: 1, x: 0 }}
       exit={{ opacity: 0, scale: 0.84, x: 18 }}
       transition={{ duration: 0.4, delay: node.delay, type: "spring" }}
-      className="absolute z-10 flex h-[90px] w-[260px] flex-col justify-center overflow-hidden rounded-xl border border-white/10 bg-[#0d0d0d] px-6 shadow-[0_30px_60px_rgba(0,0,0,0.82),inset_0_2px_3px_rgba(255,255,255,0.05)]"
+      className="absolute z-10 flex h-[90px] w-[260px] flex-col justify-center overflow-hidden rounded-xl border border-zinc-800 bg-black/80 backdrop-blur-sm px-6 shadow-[0_30px_60px_rgba(0,0,0,0.82),inset_0_2px_3px_rgba(255,255,255,0.05)]"
       style={{ left: node.x, top: node.y }}
     >
       <div
         className="absolute left-0 top-0 h-[18px] w-full border-b border-black/50 opacity-20"
-        style={{
-          backgroundImage: "radial-gradient(#ffffff 1.5px, transparent 1.5px)",
-          backgroundSize: "5px 5px",
-        }}
+        style={{ backgroundImage: "radial-gradient(#ffffff 1.5px, transparent 1.5px)", backgroundSize: "5px 5px" }}
       />
       <div
         className="absolute bottom-0 left-0 h-[18px] w-full border-t border-black/50 opacity-20"
-        style={{
-          backgroundImage: "radial-gradient(#ffffff 1.5px, transparent 1.5px)",
-          backgroundSize: "5px 5px",
-        }}
+        style={{ backgroundImage: "radial-gradient(#ffffff 1.5px, transparent 1.5px)", backgroundSize: "5px 5px" }}
       />
 
-      <div className="absolute left-[-9px] top-1/2 z-20 h-[18px] w-[18px] -translate-y-1/2 rounded-full border-2 border-zinc-500 bg-[#050505] shadow-[inset_0_2px_4px_rgba(0,0,0,0.82)]" />
+      <div className="absolute left-[-9px] top-1/2 z-20 h-[18px] w-[18px] -translate-y-1/2 rounded-full border-2 border-[#9eff00]/50 bg-[#050505] shadow-[inset_0_2px_4px_rgba(0,0,0,0.82)]" />
       <div className="absolute right-[-9px] top-1/2 z-20 h-[18px] w-[18px] -translate-y-1/2 rounded-full border-2 border-zinc-500 bg-[#050505] shadow-[inset_0_2px_4px_rgba(0,0,0,0.82)]" />
 
       <h4 className="relative z-10 text-base font-bold tracking-tight text-white">{node.title}</h4>
-      <p className="relative z-10 mt-1 truncate rounded-md border border-white/5 bg-black/80 p-1.5 font-mono text-[10px] text-miransas-cyan shadow-inner">
+      <p className="relative z-10 mt-1 truncate rounded-md border border-[#9eff00]/10 bg-[#9eff00]/5 px-2 py-1 font-mono text-[10px] text-[#9eff00] shadow-inner">
         {node.sub}
       </p>
     </motion.div>
   );
 }
 
+// --- Main Page Component ---
 const LandingSaas = () => {
   const [scenario, setScenario] = useState<EngineScenario>(() => generateScenario());
 
@@ -434,11 +414,17 @@ const LandingSaas = () => {
 
     return () => window.clearInterval(timer);
   }, []);
+
   return (
     <>
-      <section className="relative pt-32">
-        <div className="mx-auto max-w-full">
+      <section className="relative pt-32 pb-24 overflow-hidden min-h-screen bg-black">
+        {/* Main Background Terminal Grid */}
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#8080800a_1px,transparent_1px),linear-gradient(to_bottom,#8080800a_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none" />
+        
+        {/* Glow behind the hero */}
+        <div className="absolute left-1/2 top-0 -translate-x-1/2 w-full max-w-[1000px] h-[500px] bg-[#9eff00]/5 blur-[120px] pointer-events-none rounded-full" />
 
+        <div className="relative z-10 mx-auto max-w-full">
           {/* Hero headline */}
           <motion.div
             variants={fadeUp}
@@ -447,20 +433,20 @@ const LandingSaas = () => {
             transition={{ ...transition, delay: 0 }}
             className="mb-10 px-4 text-center"
           >
-            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-1.5">
-              <span className="h-1.5 w-1.5 rounded-full bg-miransas-cyan" />
-              <span className="text-xs font-medium uppercase tracking-[0.18em] text-zinc-400">
+            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-[#9eff00]/20 bg-[#9eff00]/5 px-4 py-1.5 shadow-[0_0_15px_rgba(158,255,0,0.05)]">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#9eff00] animate-pulse shadow-[0_0_8px_rgba(158,255,0,0.8)]" />
+              <span className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-[#9eff00]">
                 Self-hosted tunnel platform
               </span>
             </div>
-            <h1 className="mx-auto max-w-4xl text-5xl font-black tracking-[-0.04em] text-white sm:text-6xl lg:text-7xl">
+            <h1 className="mx-auto max-w-4xl text-5xl font-black tracking-tight text-white sm:text-6xl lg:text-7xl">
               Expose local.
               <br />
-              <span className="bg-gradient-to-r from-miransas-cyan to-miransas-magenta bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-[#9eff00] to-[#00ffd1] bg-clip-text text-transparent drop-shadow-[0_0_15px_rgba(158,255,0,0.3)]">
                 Debug faster.
               </span>
             </h1>
-            <p className="mx-auto mt-6 max-w-2xl text-base leading-8 text-zinc-400 sm:text-lg">
+            <p className="mx-auto mt-6 max-w-2xl font-mono text-sm leading-relaxed text-zinc-400 sm:text-base">
               Binboi gives your localhost a stable public URL, captures every inbound request,
               and surfaces webhook failures before you touch a redeploy.
             </p>
@@ -471,26 +457,20 @@ const LandingSaas = () => {
             initial="hidden"
             animate="visible"
             transition={{ ...transition, delay: 0.14 }}
-            className="flex flex-col items-center justify-center gap-3 sm:flex-row"
+            className="flex flex-col items-center justify-center gap-4 sm:flex-row font-mono uppercase tracking-widest text-xs"
           >
             <Link
               href="/dashboard"
-              className="inline-flex items-center justify-center gap-2 rounded-full bg-miransas-cyan px-6 py-3.5 text-sm font-semibold text-black transition hover:brightness-110"
+              className="inline-flex items-center justify-center gap-2 rounded-full bg-[#9eff00] px-8 py-4 font-bold text-black transition-all duration-300 hover:bg-[#b0ff33] hover:scale-105 shadow-[0_0_15px_rgba(158,255,0,0.15)] hover:shadow-[0_0_25px_rgba(158,255,0,0.4)]"
             >
               Open dashboard
               <ArrowRight className="h-4 w-4" />
             </Link>
             <Link
-              href="/docs/quick-start"
-              className="inline-flex items-center justify-center rounded-full border border-white/12 bg-white/[0.04] px-6 py-3.5 text-sm font-semibold text-white transition hover:border-white/20 hover:bg-white/[0.07]"
+              href="/docs"
+              className="inline-flex items-center justify-center rounded-full border border-zinc-700 bg-black/50 backdrop-blur-sm px-8 py-4 font-bold text-zinc-300 transition-all duration-300 hover:border-[#9eff00]/50 hover:text-[#9eff00] hover:bg-[#9eff00]/5"
             >
               Read quick start
-            </Link>
-            <Link
-              href="/dashboard/access-tokens"
-              className="inline-flex items-center justify-center rounded-full border border-miransas-magenta/18 bg-miransas-magenta/8 px-6 py-3.5 text-sm font-semibold text-white transition hover:brightness-110"
-            >
-              Create access token
             </Link>
           </motion.div>
 
@@ -499,12 +479,12 @@ const LandingSaas = () => {
             initial="hidden"
             animate="visible"
             transition={{ ...transition, delay: 0.22 }}
-            className="mt-6 flex flex-wrap items-center justify-center gap-3"
+            className="mt-8 flex flex-wrap items-center justify-center gap-3"
           >
             {heroSignals.map((signal) => (
               <span
                 key={signal}
-                className="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-xs font-medium uppercase tracking-[0.18em] text-zinc-300"
+                className="rounded-full border border-zinc-800 bg-black/50 px-4 py-2 font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-zinc-400"
               >
                 {signal}
               </span>
@@ -516,48 +496,48 @@ const LandingSaas = () => {
             initial="hidden"
             animate="visible"
             transition={{ ...transition, delay: 0.32 }}
-            className="mt-12"
+            className="mt-16 max-w-[1200px] mx-auto px-4"
           >
-            <PremiumSurface accent="magenta" contentClassName="p-0" className="overflow-hidden">
+            <PremiumSurface contentClassName="p-0">
               <div className="relative overflow-hidden">
-                <div className=" px-5 py-5 sm:px-7">
-                  <div className="grid gap-5 lg:grid-cols-[1.02fr_0.98fr] lg:items-end">
+                <div className="px-6 py-8 sm:px-10 border-b border-zinc-800/50 bg-black/20">
+                  <div className="grid gap-6 lg:grid-cols-[1fr_1fr] lg:items-end">
                     <div>
-                      <AccentBadge accent={scenario.module.accent}>Tunnel engine</AccentBadge>
-                      <h2 className="mt-4 text-2xl font-black tracking-tight text-white sm:text-3xl">
+                      <AccentBadge>Tunnel engine</AccentBadge>
+                      <h2 className="mt-5 text-2xl font-black tracking-tight text-white sm:text-3xl">
                         Full request visibility from public webhook to local response.
                       </h2>
-                      <p className="mt-4 max-w-2xl text-sm leading-7 text-zinc-400 sm:text-base">
-                        Active focus: <span className="text-white">{scenario.module.label}</span>.
+                      <p className="mt-4 max-w-2xl font-mono text-xs leading-relaxed text-zinc-400">
+                        Active focus: <span className="text-[#9eff00]">{scenario.module.label}</span>.
                         {" "}
                         {scenario.module.focus}
                       </p>
                     </div>
 
-                    <div className="grid gap-3 sm:grid-cols-3">
+                    <div className="grid gap-4 sm:grid-cols-3">
                       {heroStatus.map((item, index) => (
                         <div
                           key={item.label}
-                          className="rounded-[1.4rem] border border-white/10 bg-black/30 p-4"
+                          className="rounded-2xl border border-zinc-800/80 bg-black/60 p-4 transition-colors"
                         >
-                          <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
+                          <p className="font-mono text-[9px] font-bold uppercase tracking-[0.22em] text-zinc-500">
                             {item.label}
                           </p>
                           <p
-                            className="mt-3 text-lg font-semibold"
+                            className="mt-3 font-mono text-sm font-bold"
                             style={{ color: index === 1 ? scenario.module.color : "#ffffff" }}
                           >
                             {item.value}
                           </p>
-                          <p className="mt-2 text-sm leading-6 text-zinc-400">{item.note}</p>
+                          <p className="mt-2 text-[11px] leading-relaxed text-zinc-500">{item.note}</p>
                         </div>
                       ))}
                     </div>
                   </div>
                 </div>
 
-                <div className="relative h-[520px] sm:h-[580px] xl:h-[640px]">
-                  <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_28%_42%,rgba(0,255,209,0.08),transparent_30%),radial-gradient(circle_at_78%_38%,rgba(255,0,255,0.08),transparent_30%)]" />
+                <div className="relative h-[520px] sm:h-[580px] xl:h-[640px] bg-black/40">
+                  <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_28%_42%,rgba(158,255,0,0.05),transparent_30%),radial-gradient(circle_at_78%_38%,rgba(0,255,209,0.05),transparent_30%)]" />
 
                   <div className="absolute left-1/2 top-6 h-[600px] w-[1180px] origin-top -translate-x-1/2 scale-[0.42] sm:scale-[0.62] lg:scale-[0.84] xl:scale-100">
                     <svg className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 1200 600">
@@ -579,13 +559,10 @@ const LandingSaas = () => {
                     <div className="absolute left-[40px] top-[150px] z-10 flex h-[260px] w-[260px] items-center justify-center">
                       <div
                         className="pointer-events-none absolute inset-0 -z-10 rounded-full blur-[90px]"
-                        style={{
-                          backgroundColor: scenario.module.color,
-                          opacity: 0.24,
-                        }}
+                        style={{ backgroundColor: scenario.module.color, opacity: 0.15 }}
                       />
 
-                      <div className="pointer-events-none absolute h-[450px] w-[450px] rounded-full border border-white/[0.05] shadow-[inset_0_0_20px_rgba(0,0,0,0.5)]" />
+                      <div className="pointer-events-none absolute h-[450px] w-[450px] rounded-full border border-white/[0.03] shadow-[inset_0_0_20px_rgba(0,0,0,0.5)]" />
                       <div className="pointer-events-none absolute h-[600px] w-[600px] rounded-full border border-white/[0.02]" />
 
                       {engineModules.map((module, index) => (
@@ -597,15 +574,7 @@ const LandingSaas = () => {
                         />
                       ))}
 
-                      <div className="relative z-20 flex h-[220px] w-[220px] items-center justify-center overflow-hidden rounded-[60px] border border-[#2a2a2e] bg-[#0a0a0a] shadow-[inset_2px_2px_4px_rgba(255,255,255,0.1),inset_-4px_-4px_10px_rgba(0,0,0,0.9),0_30px_60px_rgba(0,0,0,0.95)]">
-                        <div
-                          className="absolute inset-0 opacity-[0.16] mix-blend-overlay"
-                          style={{
-                            backgroundImage:
-                              'url("data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.85%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22/%3E%3C/svg%3E")',
-                          }}
-                        />
-
+                      <div className="relative z-20 flex h-[220px] w-[220px] items-center justify-center overflow-hidden rounded-full border border-zinc-800 bg-[#050505] shadow-[inset_0_0_20px_rgba(0,0,0,0.8),0_0_30px_rgba(0,0,0,0.9)]">
                         <motion.div
                           animate={{ rotate: 360 }}
                           transition={{ repeat: Infinity, duration: 20, ease: "linear" }}
@@ -615,26 +584,22 @@ const LandingSaas = () => {
                             <div
                               key={angle}
                               className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center"
-                              style={{
-                                transform: `translate(-50%, -50%) rotate(${angle}deg) translateY(-55px)`,
-                              }}
+                              style={{ transform: `translate(-50%, -50%) rotate(${angle}deg) translateY(-55px)` }}
                             >
-                              <div className="z-20 h-3 w-5 rounded-sm bg-gradient-to-b from-miransas-cyan to-miransas-magenta shadow-[0_0_20px_#00ffd1]" />
-                              <div className="z-10 mt-[-1px] h-5 w-6 rounded-b-lg border border-[#333] border-t-0 bg-gradient-to-b from-[#111] to-[#000] shadow-inner" />
+                              <div className="z-20 h-3 w-5 rounded-sm bg-gradient-to-b from-[#9eff00] to-[#00ffd1] shadow-[0_0_20px_#9eff00]" />
+                              <div className="z-10 mt-[-1px] h-5 w-6 rounded-b-lg border border-zinc-800 border-t-0 bg-black shadow-inner" />
                             </div>
                           ))}
                         </motion.div>
 
-                        <span className="absolute z-30 text-8xl font-black italic text-white drop-shadow-[0_0_30px_rgba(255,255,255,0.4)]">
+                        <span className="absolute z-30 text-8xl font-black italic text-white drop-shadow-[0_0_15px_rgba(158,255,0,0.3)]">
                           B
                         </span>
-
-                        <div className="pointer-events-none absolute inset-0 rounded-[60px] bg-gradient-to-tr from-white/10 via-transparent to-transparent mix-blend-overlay" />
                       </div>
 
                       <div className="absolute right-[-2px] top-1/2 z-0 flex -translate-y-1/2 items-center drop-shadow-xl">
-                        <div className="h-[20px] w-[26px] rounded-r-sm border border-[#444] bg-[#1a1a1c] shadow-[inset_0_2px_4px_rgba(0,0,0,0.8)]" />
-                        <div className="absolute right-[-5px] z-10 h-[26px] w-[7px] rounded-[2px] bg-gradient-to-b from-miransas-cyan to-miransas-magenta shadow-[0_0_10px_#00ffd1]" />
+                        <div className="h-[20px] w-[26px] rounded-r-sm border border-zinc-800 bg-[#111] shadow-[inset_0_2px_4px_rgba(0,0,0,0.8)]" />
+                        <div className="absolute right-[-5px] z-10 h-[26px] w-[7px] rounded-[2px] bg-gradient-to-b from-[#9eff00] to-[#00ffd1] shadow-[0_0_10px_#9eff00]" />
                       </div>
                     </div>
 
@@ -646,21 +611,21 @@ const LandingSaas = () => {
                       </motion.div>
                     </AnimatePresence>
 
-                    <div className="absolute left-[850px] top-[140px] z-10 flex h-[320px] w-[300px] flex-col overflow-hidden rounded-2xl border border-[#222] bg-[#0c0c0e] p-6 shadow-[0_40px_80px_rgba(0,0,0,0.9),inset_0_2px_10px_rgba(0,0,0,0.8)]">
-                      <div className="absolute left-[-10px] top-[160px] z-20 h-[20px] w-[20px] rounded-full border-2 border-zinc-600 bg-[#050505] shadow-[inset_0_2px_4px_rgba(0,0,0,0.9)]" />
+                    <div className="absolute left-[850px] top-[140px] z-10 flex h-[320px] w-[320px] flex-col overflow-hidden rounded-2xl border border-zinc-800 bg-black/80 backdrop-blur-md p-6 shadow-[0_40px_80px_rgba(0,0,0,0.9),inset_0_2px_10px_rgba(255,255,255,0.02)]">
+                      <div className="absolute left-[-10px] top-[160px] z-20 h-[20px] w-[20px] rounded-full border-2 border-zinc-700 bg-[#050505] shadow-[inset_0_2px_4px_rgba(0,0,0,0.9)]" />
 
-                      <div className="mb-5 border-b border-[#222]/50 pb-4">
+                      <div className="mb-5 border-b border-zinc-800/80 pb-4">
                         <div className="flex gap-2.5">
-                          <div className="h-3.5 w-3.5 rounded-full border border-[#e0443e] bg-[#ff5f56]" />
-                          <div className="h-3.5 w-3.5 rounded-full border border-[#dea123] bg-[#ffbd2e]" />
-                          <div className="h-3.5 w-3.5 rounded-full border border-[#1aab29] bg-[#27c93f] shadow-[0_0_10px_#27c93f]" />
+                          <div className="h-3 w-3 rounded-full border border-[#e0443e] bg-[#ff5f56]" />
+                          <div className="h-3 w-3 rounded-full border border-[#dea123] bg-[#ffbd2e]" />
+                          <div className="h-3 w-3 rounded-full border border-[#1aab29] bg-[#27c93f] shadow-[0_0_8px_#27c93f]" />
                         </div>
                         <div className="mt-4 flex items-center justify-between">
                           <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-zinc-500">
                             Live relay terminal
                           </p>
                           <p
-                            className="font-mono text-[10px] uppercase tracking-[0.24em]"
+                            className="font-mono text-[10px] font-bold uppercase tracking-[0.24em]"
                             style={{ color: scenario.module.color }}
                           >
                             {scenario.module.label}
@@ -668,20 +633,18 @@ const LandingSaas = () => {
                         </div>
                       </div>
 
-                      <div className="flex-1 overflow-hidden font-mono text-xs leading-relaxed">
+                      <div className="flex-1 overflow-hidden font-mono text-[11px] leading-relaxed">
                         <AnimatePresence mode="wait">
                           <motion.div
                             key={scenario.key}
                             initial="hidden"
                             animate="visible"
                             exit={{ opacity: 0 }}
-                            variants={{
-                              visible: { transition: { staggerChildren: 0.1 } },
-                            }}
-                            className="flex flex-col gap-2"
+                            variants={{ visible: { transition: { staggerChildren: 0.1 } } }}
+                            className="flex flex-col gap-2.5"
                           >
-                            <p className="mb-2 text-zinc-600">
-                              operator@binboi:~$ tail -f relay.log
+                            <p className="text-zinc-600">
+                              <span className="text-[#9eff00]">operator@binboi</span>:~$ tail -f relay.log
                             </p>
                             {scenario.logs.map((log, index) => (
                               <motion.p
@@ -694,8 +657,8 @@ const LandingSaas = () => {
                                   index === 0
                                     ? "font-bold text-zinc-300"
                                     : index === scenario.logs.length - 1
-                                      ? "mt-3 font-bold text-miransas-cyan"
-                                      : "text-zinc-500"
+                                      ? "mt-2 font-bold text-[#9eff00] drop-shadow-[0_0_5px_rgba(158,255,0,0.5)]"
+                                      : "text-zinc-500 pl-3 border-l border-zinc-800"
                                 }
                               >
                                 {log}
@@ -707,8 +670,8 @@ const LandingSaas = () => {
                     </div>
                   </div>
 
-                  <div className="pointer-events-none absolute bottom-5 left-5 rounded-full border border-white/10 bg-black/35 px-4 py-2 text-xs font-medium text-zinc-300 backdrop-blur">
-                    Captures headers, payload, timing, and status — without touching your app.
+                  <div className="pointer-events-none absolute bottom-5 left-5 rounded-full border border-[#9eff00]/20 bg-[#9eff00]/5 px-4 py-2 font-mono text-[10px] uppercase tracking-widest text-[#9eff00] backdrop-blur-md shadow-[0_0_15px_rgba(158,255,0,0.05)]">
+                    Captures headers, payload, timing, and status
                   </div>
                 </div>
               </div>
@@ -717,7 +680,7 @@ const LandingSaas = () => {
         </div>
       </section>
     </>
-  )
-}
+  );
+};
 
-export default LandingSaas
+export default LandingSaas;

@@ -44,13 +44,13 @@ const CHANGELOG_DATA: ChangelogEntryData[] = [
       "Resolved memory leak in long-lived HTTP streams",
     ],
     codeBlock: (
-      <div className="bg-black border border-zinc-800 rounded-lg p-4 font-mono text-xs leading-relaxed overflow-x-auto mb-4">
+      <div className="bg-black/50 border border-zinc-800 rounded-lg p-4 font-mono text-xs leading-relaxed overflow-x-auto mb-4 shadow-[inset_0_0_20px_rgba(0,0,0,0.5)]">
         <span className="text-zinc-500">// Start a tunnel with a custom domain</span>
         <br />
-        <span className="text-emerald-400">$</span> binboi http 3000 <span className="text-cyan-400">--domain</span> api.mycompany.com
+        <span className="text-[#9eff00]">$</span> binboi http 3000 <span className="text-[#9eff00]">--domain</span> api.mycompany.com
         <br />
         <span className="text-zinc-400">
-          Tunnel Status: Online
+          Tunnel Status: <span className="text-[#9eff00] drop-shadow-[0_0_5px_rgba(158,255,0,0.8)]">Online</span>
           <br />
           Forwarding:    https://api.mycompany.com -{">"} localhost:3000
         </span>
@@ -64,15 +64,15 @@ const CHANGELOG_DATA: ChangelogEntryData[] = [
           <line x1="0" y1="52" x2="760" y2="52" /><line x1="0" y1="105" x2="760" y2="105" /><line x1="0" y1="157" x2="760" y2="157" />
           <line x1="190" y1="0" x2="190" y2="210" /><line x1="380" y1="0" x2="380" y2="210" /><line x1="570" y1="0" x2="570" y2="210" />
         </g>
-        {/* Network Nodes & Lines */}
-        <path d="M 190 105 Q 285 105 380 105 T 570 105" fill="none" stroke="#06b6d4" strokeWidth="2" strokeDasharray="4 4" className="animate-pulse" />
+        {/* Network Nodes & Lines - Neon Green */}
+        <path d="M 190 105 Q 285 105 380 105 T 570 105" fill="none" stroke="#9eff00" strokeWidth="2" strokeDasharray="4 4" className="animate-pulse shadow-[0_0_10px_rgba(158,255,0,0.5)]" />
         {/* Client Node */}
         <circle cx="190" cy="105" r="24" fill="#18181b" stroke="#3f3f46" strokeWidth="2" />
         <text x="190" y="109" fontFamily="var(--font-mono)" fontSize="10" fill="#a1a1aa" textAnchor="middle">CLI</text>
-        {/* Edge Node (Glowing) */}
-        <circle cx="380" cy="105" r="40" fill="rgba(6,182,212,0.1)" stroke="#06b6d4" strokeWidth="2" />
-        <circle cx="380" cy="105" r="32" fill="none" stroke="#06b6d4" strokeWidth="1" opacity="0.5" />
-        <text x="380" y="109" fontFamily="var(--font-mono)" fontSize="12" fill="#22d3ee" textAnchor="middle" fontWeight="bold">EDGE</text>
+        {/* Edge Node (Glowing Neon Green) */}
+        <circle cx="380" cy="105" r="40" fill="rgba(158,255,0,0.05)" stroke="#9eff00" strokeWidth="2" />
+        <circle cx="380" cy="105" r="32" fill="none" stroke="#9eff00" strokeWidth="1" opacity="0.5" />
+        <text x="380" y="109" fontFamily="var(--font-mono)" fontSize="12" fill="#9eff00" textAnchor="middle" fontWeight="bold">EDGE</text>
         {/* Target Node */}
         <circle cx="570" cy="105" r="24" fill="#18181b" stroke="#3f3f46" strokeWidth="2" />
         <text x="570" y="109" fontFamily="var(--font-mono)" fontSize="10" fill="#a1a1aa" textAnchor="middle">WEB</text>
@@ -115,13 +115,13 @@ const CHANGELOG_DATA: ChangelogEntryData[] = [
         <rect x="180" y="40" width="400" height="130" rx="8" fill="#18181b" stroke="#3f3f46" strokeWidth="1" />
         <rect x="180" y="40" width="100" height="130" rx="8" fill="#09090b" stroke="#3f3f46" strokeWidth="1" />
         <line x1="200" y1="60" x2="260" y2="60" stroke="#3f3f46" strokeWidth="4" strokeLinecap="round" />
-        <line x1="200" y1="80" x2="240" y2="80" stroke="#06b6d4" strokeWidth="4" strokeLinecap="round" />
+        <line x1="200" y1="80" x2="240" y2="80" stroke="#9eff00" strokeWidth="4" strokeLinecap="round" />
         <line x1="200" y1="100" x2="250" y2="100" stroke="#3f3f46" strokeWidth="4" strokeLinecap="round" />
         
         <rect x="300" y="60" width="260" height="40" rx="4" fill="#27272a" />
         <rect x="300" y="110" width="260" height="40" rx="4" fill="#27272a" />
         <circle cx="320" cy="80" r="6" fill="#10b981" />
-        <circle cx="320" cy="130" r="6" fill="#06b6d4" />
+        <circle cx="320" cy="130" r="6" fill="#9eff00" />
       </svg>
     ),
   },
@@ -156,17 +156,18 @@ export default function Changelog() {
   );
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-300 font-sans selection:bg-cyan-500/30 selection:text-cyan-200">
-   
+    <div className="relative min-h-screen bg-zinc-950 text-zinc-300 font-sans selection:bg-[#9eff00]/30 selection:text-[#9eff00]">
+      {/* Terminal Grid Background Eklendi */}
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#8080800a_1px,transparent_1px),linear-gradient(to_bottom,#8080800a_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none" />
 
       {/* Hero */}
-      <header className="max-w-[900px] mx-auto pt-24 pb-16 px-8 text-center">
+      <header className="relative z-10 max-w-[900px] mx-auto pt-24 pb-16 px-8 text-center">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="inline-flex items-center gap-2 border border-cyan-500/20 bg-cyan-500/5 rounded-full px-4 py-1 text-[11px] font-mono text-cyan-400 mb-8"
+          className="inline-flex items-center gap-2 border border-[#9eff00]/20 bg-[#9eff00]/5 rounded-full px-4 py-1 text-[11px] font-mono text-[#9eff00] mb-8 shadow-[0_0_15px_rgba(158,255,0,0.1)]"
         >
-          <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+          <span className="w-1.5 h-1.5 rounded-full bg-[#9eff00] animate-pulse shadow-[0_0_8px_rgba(158,255,0,0.8)]" />
           Latest: v2.0 — Edge Network
         </motion.div>
         <motion.h1
@@ -175,7 +176,7 @@ export default function Changelog() {
           transition={{ delay: 0.1 }}
           className="text-4xl md:text-6xl font-extrabold tracking-tight leading-tight text-white"
         >
-          What&#39;s <em className="not-italic text-cyan-400">new</em>
+          What&#39;s <em className="not-italic text-[#9eff00] drop-shadow-[0_0_10px_rgba(158,255,0,0.3)]">new</em>
           <br /> in Binboi
         </motion.h1>
         <motion.p
@@ -193,7 +194,7 @@ export default function Changelog() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3 }}
-        className="flex flex-wrap justify-center gap-2 px-8 pb-12"
+        className="relative z-10 flex flex-wrap justify-center gap-2 px-8 pb-12"
       >
         {[
           { label: "All", value: "all" },
@@ -208,8 +209,8 @@ export default function Changelog() {
             onClick={() => setActiveFilter(filter.value)}
             className={`px-4 py-1.5 rounded-full border text-[11px] font-mono uppercase tracking-widest transition-all ${
               activeFilter === filter.value
-                ? "border-cyan-500 text-cyan-400 bg-cyan-500/10"
-                : "border-zinc-800 bg-transparent text-zinc-500 hover:border-cyan-500/50 hover:text-cyan-400 hover:bg-cyan-500/5"
+                ? "border-[#9eff00]/50 text-[#9eff00] bg-[#9eff00]/10 shadow-[0_0_10px_rgba(158,255,0,0.2)]"
+                : "border-zinc-800 bg-black/50 text-zinc-500 hover:border-[#9eff00]/30 hover:text-[#9eff00] hover:bg-[#9eff00]/5 backdrop-blur-sm"
             }`}
           >
             {filter.label}
@@ -218,7 +219,7 @@ export default function Changelog() {
       </motion.div>
 
       {/* Timeline */}
-      <main className="max-w-[760px] mx-auto px-8 pb-24">
+      <main className="relative z-10 max-w-[760px] mx-auto px-8 pb-24">
         {filteredData.map((item, index) => {
           const showYear = index === 0 || item.year !== filteredData[index - 1].year;
 
@@ -254,10 +255,10 @@ function ChangelogEntry({ item }: { item: ChangelogEntryData }) {
       <div className="relative pt-6 font-mono text-[11px] text-zinc-500 text-right leading-relaxed whitespace-pre-line">
         {item.date}
         <div
-          className={`absolute -right-[1.5rem] top-[1.6rem] translate-x-1/2 translate-y-1 w-2 h-2 rounded-full border-[1.5px] z-10 ${
+          className={`absolute -right-[1.5rem] top-[1.6rem] translate-x-1/2 translate-y-1 w-2 h-2 rounded-full border-[1.5px] z-10 transition-colors duration-300 ${
             isMajor
-              ? "bg-cyan-500 border-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.5)]"
-              : "bg-zinc-900 border-zinc-700"
+              ? "bg-[#9eff00] border-[#9eff00] shadow-[0_0_12px_rgba(158,255,0,0.6)]"
+              : "bg-zinc-900 border-zinc-700 group-hover/major:border-[#9eff00]/50"
           }`}
         />
       </div>
@@ -265,14 +266,14 @@ function ChangelogEntry({ item }: { item: ChangelogEntryData }) {
       {/* Card Content */}
       <div className="border-l border-zinc-800 py-5 pl-6">
         <div
-          className={`overflow-hidden transition-all duration-200 ${
+          className={`overflow-hidden transition-all duration-300 ${
             isMajor
-              ? "bg-zinc-900/30 border border-zinc-800 rounded-2xl hover:border-zinc-700 hover:-translate-y-0.5 cursor-pointer"
-              : "bg-transparent rounded-xl hover:bg-zinc-900/50 hover:border-zinc-800 border border-transparent p-4"
+              ? "bg-black/40 backdrop-blur-sm border border-zinc-800/80 rounded-2xl hover:border-[#9eff00]/30 hover:shadow-[0_8px_30px_rgba(158,255,0,0.05)] hover:-translate-y-0.5 cursor-pointer"
+              : "bg-transparent rounded-xl hover:bg-zinc-900/30 hover:border-zinc-800/50 border border-transparent p-4 transition-all"
           }`}
         >
           {isMajor && item.svg && (
-            <div className="w-full bg-zinc-950 relative overflow-hidden border-b border-zinc-800/50">{item.svg}</div>
+            <div className="w-full bg-black/80 relative overflow-hidden border-b border-zinc-800/50">{item.svg}</div>
           )}
 
           <div className={isMajor ? "p-6" : ""}>
@@ -285,11 +286,11 @@ function ChangelogEntry({ item }: { item: ChangelogEntryData }) {
               ))}
             </div>
 
-            <div className="inline-block font-mono text-[10px] border border-zinc-700 text-zinc-400 px-2 py-0.5 rounded mb-2.5 bg-zinc-800/30">
+            <div className="inline-block font-mono text-[10px] border border-zinc-700/50 text-zinc-400 px-2 py-0.5 rounded mb-2.5 bg-zinc-800/20">
               {item.version}
             </div>
 
-            <h3 className={`font-bold text-white leading-snug mb-2 ${isMajor ? "text-xl" : "text-[15px]"}`}>
+            <h3 className={`font-bold text-white leading-snug mb-2 transition-colors ${isMajor ? "text-xl group-hover/major:text-[#9eff00]" : "text-[15px]"}`}>
               {item.title}
             </h3>
             
@@ -300,8 +301,8 @@ function ChangelogEntry({ item }: { item: ChangelogEntryData }) {
             {item.codeBlock && item.codeBlock}
 
             {isMajor && (
-              <div className="flex items-center justify-between pt-3 mt-2 border-t border-zinc-800/50">
-                <button className="flex items-center gap-1.5 font-mono text-[11px] text-zinc-500 uppercase tracking-widest hover:text-cyan-400 transition-colors group">
+              <div className="flex items-center justify-between pt-3 mt-2 border-t border-zinc-800/30">
+                <button className="flex items-center gap-1.5 font-mono text-[11px] text-zinc-500 uppercase tracking-widest hover:text-[#9eff00] transition-colors group">
                   Read release notes
                   <span className="transition-transform group-hover:translate-x-1">→</span>
                 </button>
@@ -330,13 +331,13 @@ function ExpandableSection({ title, items }: { title: string; items: string[] })
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div className="border-t border-zinc-800/50 bg-zinc-900/10">
+    <div className="border-t border-zinc-800/30 bg-black/20">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between px-6 py-3 text-[12px] font-mono text-zinc-500 uppercase tracking-widest hover:text-white transition-colors"
+        className="w-full flex items-center justify-between px-6 py-3 text-[12px] font-mono text-zinc-500 uppercase tracking-widest hover:text-[#9eff00] transition-colors"
       >
         <span>{title}</span>
-        <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 ${isOpen ? "rotate-180" : ""}`} />
+        <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 ${isOpen ? "rotate-180 text-[#9eff00]" : ""}`} />
       </button>
       <AnimatePresence>
         {isOpen && (
@@ -349,7 +350,7 @@ function ExpandableSection({ title, items }: { title: string; items: string[] })
             <ul className="px-6 pb-5 pt-1 text-[12px] font-mono text-zinc-400 leading-relaxed space-y-1">
               {items.map((item, i) => (
                 <li key={i} className="flex gap-2">
-                  <span className="text-zinc-700 shrink-0">—</span>
+                  <span className="text-[#9eff00]/50 shrink-0">—</span>
                   <span dangerouslySetInnerHTML={{ __html: item }} />
                 </li>
               ))}
@@ -364,8 +365,8 @@ function ExpandableSection({ title, items }: { title: string; items: string[] })
 // --- Utility function for tags ---
 function getTagStyle(tag: string) {
   switch (tag) {
-    case "network": return "border-cyan-500/30 text-cyan-400 bg-cyan-500/10";
-    case "cli": return "border-emerald-500/30 text-emerald-400 bg-emerald-500/10";
+    case "network": return "border-[#9eff00]/30 text-[#9eff00] bg-[#9eff00]/10";
+    case "cli": return "border-zinc-300/30 text-zinc-200 bg-zinc-300/10";
     case "dashboard": return "border-indigo-500/30 text-indigo-400 bg-indigo-500/10";
     case "perf": return "border-amber-500/30 text-amber-400 bg-amber-500/10";
     default: return "border-zinc-700 text-zinc-400 bg-zinc-800/30";

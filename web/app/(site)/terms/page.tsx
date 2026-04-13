@@ -1,97 +1,89 @@
-import {
-  SitePageShell,
-  SitePanel,
-  SiteSectionHeader,
-} from "@/components/site/shared/site-primitives";
-import { Footer } from "../../../components/site/shared/footer";
+// app/terms/page.tsx
+import React from 'react';
+import { Footer } from '../../../components/site/shared/footer';
 
-const termsSections = [
-  {
-    title: "Using the service",
-    body: [
-      "Binboi is a tunneling, webhook inspection, and developer visibility product. By using the service or self-hosted software, you agree to use it only for lawful and authorized purposes.",
-      "You may not use Binboi to deliver malware, exfiltrate data, bypass network controls without authorization, abuse credentials, attack third parties, or route traffic that violates applicable law or platform rules.",
-    ],
-  },
-  {
-    title: "Accounts and credentials",
-    body: [
-      "You are responsible for activity performed through your dashboard account, access tokens, and deployed relay infrastructure.",
-      "Keep tokens secure, rotate them when exposed, and avoid sharing raw credentials in screenshots, chat logs, or public repositories.",
-    ],
-  },
-  {
-    title: "Beta and MVP limitations",
-    body: [
-      "Binboi remains an early-stage product. Some features are MVP, preview, self-hosted only, or partially mocked while the product surface matures.",
-      "Do not treat the service as an unlimited, highly available, or regulation-ready edge network unless you have independently validated that deployment posture yourself.",
-    ],
-  },
-  {
-    title: "Billing foundations",
-    body: [
-      "The website and dashboard may refer to Free and Pro plan foundations. Those labels describe product packaging intent and usage limits, even where billing and managed provisioning are still evolving.",
-      "If paid plans are later introduced, additional commercial terms, invoicing, cancellation, and tax details may apply.",
-    ],
-  },
-  {
-    title: "Availability and support",
-    body: [
-      "We do not guarantee uninterrupted availability, error-free operation, or specific response times unless separately agreed in writing.",
-      "Planned features, release timing, integrations, and roadmap items may change without notice.",
-    ],
-  },
-  {
-    title: "Ownership and feedback",
-    body: [
-      "You retain ownership of your application code, payloads, and content. Binboi retains ownership of the software, website, design, documentation, and related intellectual property.",
-      "If you send feedback, suggestions, or product ideas, you agree that we may use that input to improve Binboi without additional compensation.",
-    ],
-  },
-  {
-    title: "Suspension and termination",
-    body: [
-      "We may suspend or terminate access if we reasonably believe your use is abusive, unlawful, dangerous to others, or harmful to the platform.",
-      "You may stop using Binboi at any time. Self-hosted operators remain responsible for their own infrastructure cleanup and retained data.",
-    ],
-  },
-  {
-    title: "Liability",
-    body: [
-      "To the maximum extent permitted by law, Binboi is provided on an as-is and as-available basis.",
-      "We are not liable for indirect, incidental, special, consequential, or exemplary damages arising from use of the service, including downtime, data loss, deployment mistakes, or security issues in systems you expose.",
-    ],
-  },
-];
+export default function TermsOfService() {
+  const lastUpdated = "April 14, 2026";
 
-export default function TermsPage() {
   return (
-    <SitePageShell
-      eyebrow="Terms"
-      title="Terms for using Binboi"
-      description="These terms set the operating expectations for an early-stage developer infrastructure product: acceptable use, token responsibility, MVP limits, and practical boundaries around support, uptime, and liability."
-    >
-      <SitePanel>
-        <SiteSectionHeader
-          eyebrow="Last updated"
-          title="March 30, 2026"
-          description="These terms are written to be useful now while still leaving room for later paid plans, enterprise controls, and more formal managed-service terms."
-        />
-      </SitePanel>
+    <div className="min-h-screen bg-black text-zinc-400 font-mono p-8 md:p-24 selection:bg-cyan-500/30 w-full">
+      <div className="max-w-3xl mx-auto border border-zinc-800 bg-zinc-950/50 p-8 rounded-lg shadow-[0_0_50px_-12px_rgba(6,182,212,0.1)]">
+        
+        {/* Header Section */}
+        <header className="mb-12 border-b border-zinc-800 pb-8 text-center">
+          <h1 className="text-4xl font-bold text-white tracking-tighter mb-2 italic">
+            TERMS_OF_SERVICE
+          </h1>
+          <p className="text-cyan-500 text-sm tracking-widest uppercase font-semibold">
+            Project: binboi // binboi.com
+          </p>
+          <p className="text-xs text-zinc-500 mt-4 italic">
+            Last Updated: {lastUpdated}
+          </p>
+        </header>
 
-      <section className="space-y-6">
-        {termsSections.map((section) => (
-          <SitePanel key={section.title}>
-            <h2 className="text-2xl font-semibold text-white">{section.title}</h2>
-            <div className="mt-5 space-y-4 text-sm leading-8 text-zinc-400">
-              {section.body.map((paragraph) => (
-                <p key={paragraph}>{paragraph}</p>
-              ))}
-            </div>
-          </SitePanel>
-        ))}
-      </section>
-      <Footer/>
-    </SitePageShell>
+        {/* Content Section */}
+        <div className="space-y-12 leading-relaxed">
+          
+          <section>
+            <h2 className="text-white text-lg font-bold mb-4 flex items-center">
+              <span className="text-cyan-500 mr-2">01.</span> THE_PROTOCOL
+            </h2>
+            <p>
+              By accessing <span className="text-zinc-200 underline decoration-cyan-500/50">binboi.com</span>, 
+              you enter into a binding agreement with **Miransas**. This is a self-hosted tunneling 
+              infrastructure. Use it for development, testing, and being a god-tier engineer.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-white text-lg font-bold mb-4 flex items-center">
+              <span className="text-cyan-500 mr-2">02.</span> USER_CONDUCT
+            </h2>
+            <p className="mb-4">You agree not to use binboi for:</p>
+            <ul className="list-none space-y-2 pl-4 border-l border-cyan-500/30">
+              <li>{">"} Illegal data exfiltration</li>
+              <li>{">"} Botnet command and control centers</li>
+              <li>{">"} Distributing malicious scripts or payloads</li>
+              <li>{">"} Bypassing firewalls for unauthorized access</li>
+            </ul>
+          </section>
+
+          <section>
+            <h2 className="text-white text-lg font-bold mb-4 flex items-center">
+              <span className="text-cyan-500 mr-2">03.</span> LIABILITY_NULL
+            </h2>
+            <p className="italic">
+              &ldquo;We build the tunnels, you drive the trucks.&ldquo;
+            </p>
+            <p className="mt-2">
+              **Miransoft** is not responsible for any data loss, server downtime, or 
+              security breaches caused by improper tunnel configuration. The software is 
+              provided &#34;AS IS&#34;, without warranty of any kind.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-white text-lg font-bold mb-4 flex items-center">
+              <span className="text-cyan-500 mr-2">04.</span> API_TERMINATION
+            </h2>
+            <p>
+              We reserve the right to revoke API keys or terminate tunnel access if we detect 
+              activity that threatens the integrity of the binboi network. Play fair, stay secure.
+            </p>
+          </section>
+
+        </div>
+
+        {/* Footer Section */}
+        <footer className="mt-16 pt-8 border-t border-zinc-800 text-center text-[10px] tracking-[0.2em] text-zinc-600 uppercase">
+          &copy; 2026 Miransas // All Rights Reserved // Secure Tunneling Protocol
+        </footer>
+      </div>
+      <div>
+
+      </div>
+     
+    </div>
   );
 }

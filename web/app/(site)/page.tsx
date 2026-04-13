@@ -1,7 +1,7 @@
 import SaaSPage from "@/components/site/shared/SaaSPage";
 import LandingSaas from "../../components/site/shared/landing-saas";
 import { SmoothScroll } from "../../components/site/shared/smooth-scroll";
-import { Footer } from "../../components/site/shared/footer";
+
 import { HowItWorks, FaqSection, CtaSection } from "../../components/site/shared/landing-sections";
 
 export default function Home() {
@@ -13,7 +13,7 @@ export default function Home() {
         <HowItWorks />
         <FaqSection />
         <CtaSection />
-        <Footer/>
+        {/* <Footer/> */}
       </SmoothScroll>
     </main>
   );

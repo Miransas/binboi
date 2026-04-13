@@ -1,6 +1,6 @@
 import { ArrowUpRight, Layers, Zap } from "lucide-react";
 
-import { Footer } from "@/components/site/shared/footer";
+;
 
 type ShowcaseCard = {
   name: string;
@@ -172,7 +172,7 @@ export default function ShowcasePage() {
                       background: card.accentBg,
                     }}
                   >
-                    "{card.quote}"
+                    &quot;{card.quote}&quot;
                   </blockquote>
                 )}
 
@@ -215,8 +215,6 @@ export default function ShowcasePage() {
           </a>
         </div>
       </main>
-
-      <Footer />
     </div>
   );
 }

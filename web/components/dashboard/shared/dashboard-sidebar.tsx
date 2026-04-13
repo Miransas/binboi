@@ -132,7 +132,7 @@ export function SidebarDocs({ collapsed, onNavigate }: SidebarProps) {
         <div className="border-t border-white/10 p-3">
           <div className="space-y-2">
             <Link
-              href="/docs"
+              href="https://docs.binboi.com"
               className={cn(
                 "flex items-center gap-3 rounded-xl border border-transparent px-3 py-2.5 text-sm text-zinc-400 transition hover:border-white/10 hover:bg-white/[0.04] hover:text-zinc-100",
                 collapsed ? "justify-center px-2" : "",

@@ -1,124 +1,105 @@
-"use client";
+'use client'
 
-import Image from "next/image";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useSession } from "@/components/provider/session-provider";
-import { LayoutDashboard, Loader2 } from "lucide-react";
+import { useEffect, useRef, useState } from 'react'
+import Link from 'next/link'
+import gsap from 'gsap'
 
-import { NAV_LINKS } from "@/constants";
-import { buildLoginHref, buildRegisterHref } from "@/lib/auth-routing";
+const NAV_LINKS = [
+  { label: "Docs", link: "https://docs.binboi.com/docs" }, // dosc düzeltildi
+  { label: "Pricing", link: "/pricing" },
+  { label: "Blog", link: "/blog" },
+  { label: "Changelog", link: "/changelog" },
+  { label: "Showcase", link: "/showcase" }, // Yazım hatası düzeltildi
+  { label: "Privacy", link: "/privacy" }, 
+];
 
+export default function Navbar() {
+  const navRef = useRef<HTMLElement>(null)
+  const [scrolled, setScrolled] = useState(false)
 
+  // TODO: Burayı gerçek Auth state'in ile değiştireceksin (örn: const { user } = useAuth())
+  const isAuthenticated = false; 
 
-const primaryNav = NAV_LINKS.slice(0, 5);
+  useEffect(() => {
+    const ctx = gsap.context(() => {
+      gsap.from(navRef.current, { y: -60, opacity: 0, duration: 0.8, ease: 'power2.out' })
+    })
+    return () => ctx.revert()
+  }, [])
 
-function getUserBadge(name?: string | null, email?: string | null) {
-  const base = (name || email || "User").trim();
-  const words = base.split(/\s+/).filter(Boolean);
-
-  if (words.length === 0) {
-    return "BU";
-  }
-
-  if (words.length === 1) {
-    return words[0].slice(0, 2).toUpperCase();
-  }
-
-  return words.slice(0, 2).map((word) => word[0]).join("").toUpperCase();
-}
-
-export default function Header() {
-  const { data: session, status } = useSession();
-  const pathname = usePathname();
-  const callbackUrl = pathname && pathname !== "/" ? pathname : null;
-  const signedInLabel = session?.user?.name || session?.user?.email || "Binboi account";
-  const badge = getUserBadge(session?.user?.name, session?.user?.email);
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 50)
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
 
   return (
-    <header className="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-[#050506]/78 backdrop-blur-xl">
-      <div className="mx-auto flex h-18 max-w-[1440px] items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center gap-6">
-          <Link href="/" className="group flex items-center gap-3">
-            <div className="relative h-10 w-10 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] shadow-[0_0_30px_rgba(0,255,209,0.08)]">
-              <Image
-                src="/logo.png"
-                alt="Binboi logo"
-                fill
-                sizes="40px"
-                className="object-contain p-1.5 transition duration-300 group-hover:scale-105"
-              />
-            </div>
-            <div className="hidden sm:block">
-              <h1 className="text-[20px] font-semibold uppercase tracking-[0.26em] text-zinc-500">
-                Binboi
-              </h1>
-              {/* <p className="text-base font-black tracking-tight text-white">
-                Tunnel visibility for developers
-              </p> */}
-            </div>
+    <nav
+      ref={navRef}
+      className={`fixed top-0 left-0 right-0 z-50 flex items-center justify-between h-16 px-6 md:px-10 transition-all duration-300 ${
+        scrolled 
+          ? 'bg-black/40 backdrop-blur-md border-b border-zinc-800/50' 
+          : 'bg-transparent border-b border-transparent'
+      }`}
+    >
+      {/* ── Logo ── */}
+      <Link href="/" className="flex items-center gap-2.5 select-none shrink-0 group">
+        <div className="flex flex-col gap-[3px] transition-transform duration-300 group-hover:scale-110">
+         <img src="/logo.png" alt="" className='w-10' />
+        </div>
+        <span className="font-bold text-base text-white tracking-tight transition-colors group-hover:text-[#9eff00]">
+          Binboi
+        </span>
+      </Link>
+
+      {/* ── Nav links ── */}
+      <ul className="hidden md:flex items-center gap-8 m-0 p-0 list-none">
+        {NAV_LINKS.map((item) => (
+          <li key={item.label}>
+            <Link
+              href={item.link}
+              className="relative group flex items-center gap-1.5 font-mono text-xs tracking-widest text-zinc-400 uppercase transition-colors hover:text-[#9eff00]"
+            >
+              {item.label}
+              
+              {/* Sadece Changelog veya yeni bir özellikte yeşil nokta çıksın */}
+              {item.label === 'Changelog' && (
+                <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#9eff00] shrink-0 animate-pulse shadow-[0_0_8px_rgba(158,255,0,0.8)]" />
+              )}
+              
+              {/* Hover underline (Neon Yeşil) */}
+              <span className="absolute -bottom-1 left-0 right-0 h-[1px] bg-[#9eff00] scale-x-0 origin-left transition-transform duration-300 group-hover:scale-x-100 shadow-[0_0_5px_rgba(158,255,0,0.5)]" />
+            </Link>
+          </li>
+        ))}
+      </ul>
+
+      {/* ── Auth / CTA ── */}
+      <div className="hidden md:flex items-center gap-4 shrink-0 font-mono text-xs uppercase tracking-widest">
+        {isAuthenticated ? (
+          <Link
+            href="/dashboard"
+            className="px-5 py-2.5 rounded-full bg-zinc-900 border border-zinc-800 text-white transition-all hover:border-[#9eff00]/50 hover:text-[#9eff00]"
+          >
+            Dashboard
           </Link>
-
-          <nav className="hidden items-center gap-6 xl:flex">
-            {primaryNav.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="text-sm text-zinc-400 transition hover:text-white"
-              >
-                {link.label}
-              </Link>
-            ))}
-          </nav>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <div className="hidden md:block md:w-[18rem] xl:w-[22rem]">
-            {/* <AssistantLauncher variant="site" storageKey="site-global" /> */}
-          </div>
-
-          {status === "loading" ? (
-            <div className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/[0.03]">
-              <Loader2 className="h-4 w-4 animate-spin text-miransas-cyan" />
-            </div>
-          ) : session ? (
-            <div className="flex items-center gap-3">
-              <div className="hidden items-center gap-3 rounded-full border border-white/10 bg-white/[0.04] px-3 py-2 sm:flex">
-                <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/[0.05] text-xs font-semibold uppercase tracking-[0.18em] text-white">
-                  {badge}
-                </span>
-                <div className="hidden min-w-0 lg:block">
-                  <p className="truncate text-sm font-medium text-white">{signedInLabel}</p>
-                  <p className="truncate text-xs text-zinc-500">{session.user?.email}</p>
-                </div>
-              </div>
-
-              <Link
-                href="/dashboard"
-                className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm font-medium text-white transition hover:border-white/20 hover:bg-white/[0.08]"
-              >
-                <LayoutDashboard className="h-4 w-4 text-miransas-cyan" />
-                Dashboard
-              </Link>
-            </div>
-          ) : (
-            <>
-              <Link
-                href={buildLoginHref(callbackUrl)}
-                className="hidden rounded-full border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm text-zinc-300 transition hover:border-white/20 hover:bg-white/[0.06] hover:text-white sm:inline-flex"
-              >
-                Sign in
-              </Link>
-              <Link
-                href={buildRegisterHref(callbackUrl)}
-                className="inline-flex items-center rounded-full bg-miransas-cyan px-4 py-2.5 text-sm font-semibold text-black transition hover:brightness-110"
-              >
-                Create account
-              </Link>
-            </>
-          )}
-        </div>
+        ) : (
+          <>
+            <Link
+              href="/login"
+              className="text-zinc-400 transition-colors hover:text-white"
+            >
+              Log in
+            </Link>
+            <Link
+              href="/register"
+              className="px-5 py-2.5 rounded-full bg-[#9eff00] text-black font-bold transition-all duration-300 hover:bg-[#b0ff33] hover:scale-105 active:scale-95 shadow-[0_0_15px_rgba(158,255,0,0.15)] hover:shadow-[0_0_25px_rgba(158,255,0,0.4)]"
+            >
+              Get Started
+            </Link>
+          </>
+        )}
       </div>
-    </header>
-  );
+    </nav>
+  )
 }

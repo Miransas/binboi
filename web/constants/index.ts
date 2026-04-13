@@ -13,14 +13,15 @@ import { MdOutlineSettingsInputComposite } from "react-icons/md";
 
 
 import { ArrowUpRight, BookOpen, Bot, LifeBuoy, Sparkles } from "lucide-react" 
+import { BsGithub } from "react-icons/bs";
 
 export const NAV_LINKS = [
-  { label: "Docs", href: "https://www.dosc.binboi.com/docs" },
-  { label: "Pricing", href: "/pricing" },
-  { label: "Blog", href: "/blog" },
-  { label: "Changelog", href: "/changelog" },
-  { label: "Sowcase", href: "/showcase" },
-  { label: "Privacy", href: "/privacy" },
+  { label: "Docs", link: "https://www.dosc.binboi.com/docs" },
+  { label: "Pricing", link: "/pricing" },
+  { label: "Blog", link: "/blog" },
+  { label: "Changelog", link: "/changelog" },
+  { label: "Sowcase", link: "/showcase" },
+  { label: "Privacy", link: "/privacy" }, 
 ];
 
 export const DASHBOARD_LINKS = [
@@ -74,6 +75,9 @@ export const FOOTER_LINKS = {
   legal: [
     { label: "Privacy", href: "/privacy" },
     { label: "Terms", href: "/terms" },
+     { label: "Private", href: "/private" },
+    
+
   ],
 };
 
@@ -82,8 +86,9 @@ export const footerLinks = {
     { name: "Docs", href: "https://www.dosc.binboi.com/docs" },
     { name: "Pricing", href: "/pricing" },
     { name: "Changelog", href: "/changelog" },
-    { name: "Support", href: "/support" },
-  ],
+    { name: "Support", href: "/support" }, 
+    { name: "Private", href: "/private" },
+  ], 
   Platform: [
     { name: "Quick Start", href: "https://www.dosc.binboi.com/docs/quick_start" },
     { name: "HTTP Tunnels", href: "https://www.dosc.binboi.com/docs/s/http_tunnels" },
@@ -109,4 +114,6 @@ export const footerSocialLinks = [
   { name: "API", icon: Bot, href: "/docs/api" },
   { name: "Support", icon: LifeBuoy, href: "/support" },
   { name: "Pricing", icon: ArrowUpRight, href: "/pricing" },
+  { name: "Github", icon: BsGithub, href: "https://github.com/miransas/binboi" },
+
 ];

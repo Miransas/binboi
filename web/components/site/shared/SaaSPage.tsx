@@ -169,7 +169,7 @@ function Card3Visual() {
 function Card4Visual() {
   const rows = [
     { label: "How we str…",  time: "10:30 AM", color: "#9060d0", bg: "rgba(90,50,150,0.38)" },
-    { label: "Quantum Al…",  time: "14:00 PM", color: "#7040b8", bg: "rgba(60,30,110,0.32)" },
+    { label: "Binboi keyy…",  time: "14:00 PM", color: "#7040b8", bg: "rgba(60,30,110,0.32)" },
     { label: "Growth Rev…",  time: "16:00 PM", color: "#a070e0", bg: "rgba(100,60,160,0.28)" },
   ];
 
