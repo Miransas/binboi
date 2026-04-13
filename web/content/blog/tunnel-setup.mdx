@@ -1,0 +1,114 @@
+export const metadata = {
+  title: "Setting Up Your First Binboi Tunnel",
+  date: "April 10, 2026",
+  category: "Guide",
+  readTime: "6 min read",
+  excerpt:
+    "From zero to a stable public HTTPS URL in under five minutes — how to install the CLI, authenticate, and forward your first local port to the internet.",
+};
+
+export const toc = [
+  { id: "prerequisites", title: "Prerequisites", level: 2 },
+  { id: "install-the-cli", title: "Install the CLI", level: 2 },
+  { id: "authenticate", title: "Authenticate", level: 2 },
+  { id: "open-your-first-tunnel", title: "Open Your First Tunnel", level: 2 },
+  { id: "stable-subdomain", title: "Stable Subdomain", level: 2 },
+  { id: "inspect-traffic", title: "Inspect Traffic", level: 2 },
+  { id: "tips-for-production", title: "Tips for Production", level: 2 },
+];
+
+# Setting Up Your First Binboi Tunnel
+
+Binboi gives your local server a public HTTPS URL in seconds. This guide walks through installing the CLI, logging in, and opening a tunnel — then covers a few habits that make tunneling feel native to your dev workflow.
+
+## Prerequisites
+
+- A machine running macOS, Linux, or Windows WSL2
+- A local HTTP server on any port (a `next dev` or `go run` process works fine)
+- A free Binboi account — sign up at [binboi.dev](https://binboi.dev)
+
+## Install the CLI
+
+**Homebrew (macOS / Linux)**
+
+```bash
+brew install miransas/tap/binboi
+```
+
+**Go install**
+
+```bash
+go install github.com/miransas/binboi/cmd/binboi@latest
+```
+
+**Verify the installation**
+
+```bash
+binboi version
+# binboi v0.5.0 (darwin/arm64)
+```
+
+## Authenticate
+
+Run `binboi login` to connect the CLI to your account. It will open your browser and store a token in `~/.binboi/config.json`.
+
+```bash
+binboi login
+# Opening https://binboi.dev/cli-auth…
+# Logged in as sardor@example.com ✓
+```
+
+Tokens are scoped to your account. Rotate them from the dashboard under **Access Tokens** if a machine is lost or decommissioned.
+
+## Open Your First Tunnel
+
+Forward port `3000` to the internet:
+
+```bash
+binboi http 3000
+```
+
+Within a second you'll see output like:
+
+```
+Tunnel started
+  Public URL  → https://sardor.binboi.dev
+  Local port  → http://localhost:3000
+  Protocol    → HTTP/2
+  Status      → connected
+```
+
+Any request to `https://sardor.binboi.dev` is forwarded to `localhost:3000`. Headers are preserved, including `X-Forwarded-For`, `X-Real-IP`, and the original `Host`.
+
+## Stable Subdomain
+
+By default, Binboi assigns a stable subdomain based on your username. If you need a custom one per project, use `--name`:
+
+```bash
+binboi http 3000 --name payments-service
+# https://payments-service.binboi.dev
+```
+
+Name tunnels after the service they expose — not the port — so the URL is readable in logs and Slack notifications.
+
+## Inspect Traffic
+
+Every active tunnel has a request log in the dashboard. Open it to see:
+
+- Full request headers and body
+- Response status and latency
+- A **replay** button that resends the exact request to your local server
+
+This is especially useful when debugging webhooks: you can capture a live delivery and replay it until your handler is correct.
+
+## Tips for Production
+
+**Match production TLS exactly.** Pair `binboi http` with a local HTTPS proxy (`mkcert` + `caddy reverse-proxy`) to test TLS termination, HSTS headers, and cookie `Secure` flags locally.
+
+**One token per machine.** Create a dedicated token for each developer machine rather than sharing one. Revoking a single machine doesn't disrupt others.
+
+**Keep the tunnel URL stable across restarts.** Binboi reconnects on the same subdomain after a network drop. If your process manager restarts the tunnel, the URL stays the same — no need to update webhook configs.
+
+---
+
+With the tunnel running, you're ready to start receiving live webhook deliveries, testing OAuth callbacks, and demoing work in progress without a deploy.

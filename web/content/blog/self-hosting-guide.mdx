@@ -1,0 +1,182 @@
+export const metadata = {
+  title: "Self-Hosting Binboi on a €5/month VPS",
+  date: "April 3, 2026",
+  category: "Guide",
+  readTime: "9 min read",
+  excerpt:
+    "A step-by-step walkthrough for deploying the full Binboi stack — Go relay, Next.js control plane, Caddy, and Postgres — on any cheap Linux box with a domain you control.",
+};
+
+export const toc = [
+  { id: "what-youre-deploying", title: "What You're Deploying", level: 2 },
+  { id: "requirements", title: "Requirements", level: 2 },
+  { id: "dns-setup", title: "DNS Setup", level: 2 },
+  { id: "server-setup", title: "Server Setup", level: 2 },
+  { id: "configure-environment", title: "Configure Environment", level: 2 },
+  { id: "start-the-stack", title: "Start the Stack", level: 2 },
+  { id: "wildcard-tls", title: "Wildcard TLS with Caddy", level: 2 },
+  { id: "test-your-first-tunnel", title: "Test Your First Tunnel", level: 2 },
+  { id: "production-checklist", title: "Production Checklist", level: 2 },
+];
+
+# Self-Hosting Binboi on a €5/month VPS
+
+You don't need to rely on the hosted service. Binboi is fully open-source and self-hostable on any Linux machine with a public IP address. This guide gets the full stack running on a cheap VPS in under 20 minutes.
+
+## What You're Deploying
+
+Binboi has four components:
+
+| Component | Technology | Role |
+|---|---|---|
+| Relay server | Go | Accepts tunnel connections from the CLI, proxies public HTTP/HTTPS to the local client |
+| Control plane | Next.js | Web dashboard, user management, token issuance |
+| Database | PostgreSQL | User accounts, tokens, tunnel metadata |
+| Reverse proxy | Caddy | Wildcard TLS termination, HTTPS for the dashboard |
+
+Everything runs in Docker and is wired together with `docker compose`.
+
+## Requirements
+
+- A VPS with at least 512 MB RAM and 1 vCPU (Hetzner CX11, DigitalOcean Droplet, or equivalent)
+- Ubuntu 22.04 or Debian 12
+- Docker Engine + Docker Compose v2 installed
+- A domain name you control (e.g. `example.com`)
+- A Cloudflare account (for DNS-01 challenge TLS — any supported provider works)
+
+## DNS Setup
+
+You need two DNS records pointing to your server's public IP:
+
+```
+A    example.com        → YOUR_SERVER_IP
+A    *.example.com      → YOUR_SERVER_IP
+```
+
+The wildcard `*.example.com` record is what enables tunnel subdomains like `username.example.com`. Propagation typically takes 1–5 minutes on Cloudflare.
+
+## Server Setup
+
+SSH into your VPS and clone the repository:
+
+```bash
+git clone https://github.com/miransas/binboi.git
+cd binboi
+```
+
+Install Docker if it's not already present:
+
+```bash
+curl -fsSL https://get.docker.com | sh
+```
+
+## Configure Environment
+
+Copy the example environment file:
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env` and set the required values:
+
+```bash
+# Domain
+BINBOI_DOMAIN=example.com
+
+# A random 64-character hex string — used to sign JWTs
+JWT_SECRET=$(openssl rand -hex 32)
+
+# Postgres credentials (change these)
+POSTGRES_USER=binboi
+POSTGRES_PASSWORD=changeme
+POSTGRES_DB=binboi
+
+# GitHub OAuth (create an app at github.com/settings/apps)
+AUTH_GITHUB_ID=your_client_id
+AUTH_GITHUB_SECRET=your_client_secret
+AUTH_SECRET=$(openssl rand -hex 32)
+
+# Cloudflare API token with Zone:DNS:Edit permission
+CLOUDFLARE_API_TOKEN=your_token_here
+```
+
+The only values that are strictly required for tunnels to work are `BINBOI_DOMAIN` and `JWT_SECRET`. Everything else enables specific features (OAuth login, billing, etc.).
+
+## Start the Stack
+
+```bash
+docker compose up -d
+```
+
+This pulls the images, starts Postgres, runs database migrations, and brings up the relay server and control plane. First startup takes about 60 seconds while Docker pulls images.
+
+Check that everything is running:
+
+```bash
+docker compose ps
+```
+
+You should see all four services in `running` state. If a service exits immediately, check its logs:
+
+```bash
+docker compose logs relay
+```
+
+## Wildcard TLS with Caddy
+
+Caddy is included in the compose file and handles TLS automatically. It uses the DNS-01 ACME challenge to obtain a wildcard certificate from Let's Encrypt — this is why you need a Cloudflare API token.
+
+The Caddy configuration (in `Caddyfile`) looks roughly like this:
+
+```
+*.example.com, example.com {
+  tls {
+    dns cloudflare {env.CLOUDFLARE_API_TOKEN}
+  }
+  
+  @dashboard host example.com
+  handle @dashboard {
+    reverse_proxy web:3000
+  }
+  
+  handle {
+    reverse_proxy relay:8080
+  }
+}
+```
+
+Caddy will automatically renew the certificate before it expires. You don't need to manage certificates manually.
+
+## Test Your First Tunnel
+
+On your local machine, install the CLI and point it at your self-hosted server:
+
+```bash
+# Set your server as the Binboi host
+export BINBOI_API_URL=https://example.com
+
+# Log in (this will open your dashboard in a browser)
+binboi login
+
+# Open a tunnel
+binboi http 3000
+```
+
+If everything is working, you'll see a subdomain URL like `https://sardor.example.com`.
+
+## Production Checklist
+
+Before inviting other users, work through this checklist:
+
+- [ ] **Change the default Postgres password** in `.env` and run `docker compose up -d --force-recreate postgres`
+- [ ] **Set up automatic backups** — at minimum, a daily `pg_dump` to object storage
+- [ ] **Restrict SSH access** — disable password auth, use key-based auth only
+- [ ] **Configure a firewall** — only ports 22 (SSH), 80 (HTTP), and 443 (HTTPS) should be public
+- [ ] **Set `AUTH_TRUST_HOST=true`** in your environment if login redirects fail
+- [ ] **Monitor disk usage** — request logs and Postgres data grow over time
+- [ ] **Pin Docker image versions** in `docker-compose.yml` for reproducible deployments
+
+---
+
+The full stack runs comfortably on a €5/month Hetzner CX11. For teams with heavy webhook traffic, consider moving Postgres to a managed database and increasing the relay server's memory limit.

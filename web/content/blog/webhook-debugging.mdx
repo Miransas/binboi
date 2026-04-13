@@ -1,0 +1,159 @@
+export const metadata = {
+  title: "Debugging Webhooks from Stripe, Clerk, and Supabase",
+  date: "March 27, 2026",
+  category: "Debugging",
+  readTime: "8 min read",
+  excerpt:
+    "Each provider fails differently. Here is how to use Binboi request inspection to diagnose signature errors, payload mismatches, and silent delivery failures before they reach production.",
+};
+
+export const toc = [
+  { id: "the-common-pattern", title: "The Common Pattern", level: 2 },
+  { id: "stripe", title: "Stripe", level: 2 },
+  { id: "clerk", title: "Clerk", level: 2 },
+  { id: "supabase", title: "Supabase", level: 2 },
+  { id: "replay-driven-debugging", title: "Replay-Driven Debugging", level: 2 },
+  { id: "checklist", title: "Quick Checklist", level: 2 },
+];
+
+# Debugging Webhooks from Stripe, Clerk, and Supabase
+
+Webhooks are the distributed system equivalent of a function call you can't step through. The request originates outside your codebase, the payload format is dictated by someone else, and a silent failure might not surface until a user files a support ticket.
+
+Binboi's request inspection captures every delivery at the edge — headers, raw body, response code, and latency — so you can debug locally with the same fidelity as production.
+
+## The Common Pattern
+
+Before diving into provider-specific details, here's the debug loop that works for all three:
+
+1. Start a Binboi tunnel: `binboi http 3000`
+2. Register the tunnel URL as the webhook endpoint in the provider's dashboard
+3. Trigger a test event (most dashboards have a "Send test webhook" button)
+4. Open the Binboi request log — you'll see the full delivery
+5. If your handler rejected it, fix the code and **replay** the original request
+6. Repeat without touching the provider's dashboard again
+
+This turns a 20-minute cycle (edit → push → deploy → wait for provider retry) into a 30-second loop.
+
+## Stripe
+
+Stripe is the most common source of webhook confusion because its signature verification rejects any handler that reads the body as a parsed object instead of the raw buffer.
+
+**The failure mode:** `stripe.webhooks.constructEvent()` throws `No signatures found matching the expected signature for payload`. Your logs show a 400, Stripe marks the delivery as failed.
+
+**Root cause:** Body parsers consume the raw bytes and replace `req.body` with a parsed object. Stripe hashes the original bytes — if they're gone, the signature won't match.
+
+**Fix in Next.js App Router:**
+
+```typescript
+// app/api/webhooks/stripe/route.ts
+import Stripe from "stripe";
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+
+export async function POST(req: Request) {
+  const rawBody = await req.text(); // ← raw bytes, not JSON
+  const sig = req.headers.get("stripe-signature")!;
+
+  let event: Stripe.Event;
+  try {
+    event = stripe.webhooks.constructEvent(
+      rawBody,
+      sig,
+      process.env.STRIPE_WEBHOOK_SECRET!
+    );
+  } catch (err) {
+    return new Response(`Webhook Error: ${(err as Error).message}`, {
+      status: 400,
+    });
+  }
+
+  // Handle event.type …
+  return new Response("ok");
+}
+```
+
+**Use Binboi to verify:** In the request log, check that the `stripe-signature` header is present and that the raw body exactly matches what Stripe sent. If the body looks URL-encoded or missing, a middleware layer is intercepting it.
+
+## Clerk
+
+Clerk webhooks are powered by [Svix](https://svix.com). The signature mechanism uses three headers instead of one: `svix-id`, `svix-timestamp`, and `svix-signature`.
+
+**The failure mode:** `Webhook verification failed` from the Svix SDK, or silent 200s that drop events.
+
+**Key insight:** `svix-id` is an idempotency key. If Clerk retries a delivery (its retry window is 5 days), the `svix-id` value is identical across attempts. You can use this to deduplicate events in your database.
+
+**Verification:**
+
+```typescript
+import { Webhook } from "svix";
+
+export async function POST(req: Request) {
+  const body = await req.text();
+  const wh = new Webhook(process.env.CLERK_WEBHOOK_SECRET!);
+
+  const headers = {
+    "svix-id": req.headers.get("svix-id")!,
+    "svix-timestamp": req.headers.get("svix-timestamp")!,
+    "svix-signature": req.headers.get("svix-signature")!,
+  };
+
+  let evt;
+  try {
+    evt = wh.verify(body, headers);
+  } catch {
+    return new Response("Unauthorized", { status: 401 });
+  }
+
+  // evt.type, evt.data …
+  return new Response("ok");
+}
+```
+
+**Use Binboi to verify:** Confirm all three `svix-*` headers are present in the captured request. A missing header (often from a reverse proxy that strips unknown headers) is the most common cause of verification failures in production.
+
+## Supabase
+
+Supabase database webhooks are triggered by Postgres events via `pg_net`. The behavior differs from Stripe and Clerk in two important ways:
+
+1. **No signature verification** — you authenticate requests by keeping the endpoint URL secret or adding your own auth header
+2. **5-second timeout** — if your handler takes longer than 5 seconds to respond, Supabase marks the delivery as failed and does not retry by default
+
+**The failure mode:** Events stop arriving after a new database trigger is added, or handlers work in development but silently fail under real load.
+
+**Latency budget — keep handlers fast:**
+
+```typescript
+export async function POST(req: Request) {
+  const payload = await req.json();
+
+  // ✅ Queue the heavy work, respond immediately
+  await enqueue("process-db-event", payload);
+  return new Response("ok"); // respond in < 100ms
+}
+```
+
+Avoid synchronous calls to external APIs, heavy database queries, or file I/O inside the webhook handler itself.
+
+**Use Binboi to verify:** Check the response time shown in the Binboi request log. If it's creeping toward 4–5 seconds, you're close to the timeout. The log also shows Supabase's `X-Supabase-*` metadata headers which are useful for correlating events with your database trigger configuration.
+
+## Replay-Driven Debugging
+
+Once you've captured a delivery in Binboi, you don't need to trigger another one from the provider's dashboard. Hit **Replay** in the request log and the exact same payload — same headers, same body, same timestamp — is re-delivered to your local server.
+
+This is especially valuable for:
+- Testing edge cases that are hard to reproduce (e.g., a `customer.subscription.deleted` event)
+- Verifying a fix without waiting for Stripe's retry schedule
+- Running the request through a debugger or adding temporary `console.log` statements
+
+## Quick Checklist
+
+When a webhook fails, work through this before touching the provider's dashboard:
+
+- [ ] Is the tunnel running? (`binboi http <port>` and check the status line)
+- [ ] Is the webhook URL registered with the correct tunnel subdomain?
+- [ ] Does the Binboi request log show the delivery? (if not, the provider isn't sending it)
+- [ ] Are the required signature headers present in the captured request?
+- [ ] Is the handler reading `req.text()` (not `req.json()`) before signature verification?
+- [ ] Is the response time under the provider's timeout threshold?
+- [ ] Is the response status 2xx? (providers treat 4xx and 5xx as failures)

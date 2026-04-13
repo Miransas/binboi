@@ -15,7 +15,7 @@ import { MdOutlineSettingsInputComposite } from "react-icons/md";
 import { ArrowUpRight, BookOpen, Bot, LifeBuoy, Sparkles } from "lucide-react" 
 
 export const NAV_LINKS = [
-  { label: "Docs", href: "/docs" },
+  { label: "Docs", href: "https://www.dosc.binboi.com/docs" },
   { label: "Pricing", href: "/pricing" },
   { label: "Blog", href: "/blog" },
   { label: "Changelog", href: "/changelog" },
@@ -58,7 +58,7 @@ export const DOCS_LINKS = [
 
 export const FOOTER_LINKS = {
   product: [
-    { label: "Docs", href: "/docs" },
+    { label: "Docs", href: "https://www.dosc.binboi.com/docs" },
     { label: "Pricing", href: "/pricing" },
     { label: "Dashboard", href: "/dashboard" },
   ],
@@ -79,28 +79,28 @@ export const FOOTER_LINKS = {
 
 export const footerLinks = {
   Product: [
-    { name: "Docs", href: "/docs" },
+    { name: "Docs", href: "https://www.dosc.binboi.com/docs" },
     { name: "Pricing", href: "/pricing" },
     { name: "Changelog", href: "/changelog" },
     { name: "Support", href: "/support" },
   ],
   Platform: [
-    { name: "Quick Start", href: "/docs/quick_start" },
-    { name: "HTTP Tunnels", href: "/docs/http_tunnels" },
-    { name: "Requests", href: "/docs/requests" },
-    { name: "API", href: "/docs/api" },
+    { name: "Quick Start", href: "https://www.dosc.binboi.com/docs/quick_start" },
+    { name: "HTTP Tunnels", href: "https://www.dosc.binboi.com/docs/s/http_tunnels" },
+    { name: "Requests", href: "/https://www.dosc.binboi.com/docs/requests" },
+    { name: "API", href: "/https://www.dosc.binboi.com/docs/api" },
   ],
   Workflows: [
-    { name: "Webhooks", href: "/docs/webhooks" },
-    { name: "Logs", href: "/docs/logs" },
-    { name: "Regions", href: "/docs/regions" },
-    { name: "Troubleshooting", href: "/docs/troubleshooting" },
+    { name: "Webhooks", href: "/https://www.dosc.binboi.com/docs/webhooks" },
+    { name: "Logs", href: "/https://www.dosc.binboi.com/docs/logs" },
+    { name: "Regions", href: "/https://www.dosc.binboi.com/docs/regions" },
+    { name: "Troubleshooting", href: "/https://www.dosc.binboi.com/docs/troubleshooting" },
   ],
   Company: [
     { name: "Register", href: "/register" },
     { name: "Login", href: "/login" },
     { name: "Terms", href: "/terms" },
-    { name: "Status", href: "/docs/bugs" },
+    { name: "Status", href: "/https://www.dosc.binboi.com/docs/bugs" },
   ],
 };
 

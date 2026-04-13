@@ -2,36 +2,61 @@ import Link from "next/link";
 import { ArrowRight, Clock, Tag } from "lucide-react";
 
 import { Footer } from "@/components/site/shared/footer";
-import { blogPosts } from "@/content/site-content";
+
+import { metadata as tunnelMeta } from "@/content/blog/tunnel-setup.mdx";
+import { metadata as webhookMeta } from "@/content/blog/webhook-debugging.mdx";
+import { metadata as selfHostingMeta } from "@/content/blog/self-hosting-guide.mdx";
+
+// ── types ─────────────────────────────────────────────────────────────────────
+
+type PostMeta = {
+  title: string;
+  date: string;
+  category: string;
+  readTime: string;
+  excerpt: string;
+};
+
+type Post = PostMeta & { slug: string };
+
+// ── data ──────────────────────────────────────────────────────────────────────
+
+const posts: Post[] = [
+  { slug: "tunnel-setup",        ...tunnelMeta },
+  { slug: "self-hosting-guide",  ...selfHostingMeta },
+  { slug: "webhook-debugging",   ...webhookMeta },
+];
+
+// ── styles ────────────────────────────────────────────────────────────────────
 
 const CATEGORY_COLORS: Record<string, { text: string; bg: string; border: string }> = {
-  Tips:      { text: "text-miransas-cyan",    bg: "bg-miransas-cyan/10",    border: "border-miransas-cyan/20" },
-  Guide:     { text: "text-[#86a9ff]",        bg: "bg-[#86a9ff]/10",        border: "border-[#86a9ff]/20" },
-  Debugging: { text: "text-[#ff00ff]",        bg: "bg-[#ff00ff]/10",        border: "border-[#ff00ff]/20" },
-  Security:  { text: "text-amber-400",        bg: "bg-amber-400/10",        border: "border-amber-400/20" },
-  Product:   { text: "text-emerald-400",      bg: "bg-emerald-400/10",      border: "border-emerald-400/20" },
-  Design:    { text: "text-rose-400",         bg: "bg-rose-400/10",         border: "border-rose-400/20" },
+  Tips:      { text: "text-miransas-cyan",  bg: "bg-miransas-cyan/10",  border: "border-miransas-cyan/20" },
+  Guide:     { text: "text-[#86a9ff]",      bg: "bg-[#86a9ff]/10",      border: "border-[#86a9ff]/20" },
+  Debugging: { text: "text-[#ff00ff]",      bg: "bg-[#ff00ff]/10",      border: "border-[#ff00ff]/20" },
+  Security:  { text: "text-amber-400",      bg: "bg-amber-400/10",      border: "border-amber-400/20" },
+  Product:   { text: "text-emerald-400",    bg: "bg-emerald-400/10",    border: "border-emerald-400/20" },
+  Design:    { text: "text-rose-400",       bg: "bg-rose-400/10",       border: "border-rose-400/20" },
 };
 
 function categoryStyle(category: string) {
-  return CATEGORY_COLORS[category] ?? {
-    text: "text-zinc-400",
-    bg: "bg-zinc-400/10",
-    border: "border-zinc-400/20",
-  };
+  return CATEGORY_COLORS[category] ?? { text: "text-zinc-400", bg: "bg-zinc-400/10", border: "border-zinc-400/20" };
 }
+
+// ── page metadata ─────────────────────────────────────────────────────────────
 
 export const metadata = {
   title: "Blog | Binboi",
-  description: "Tunnel tips, self-hosting guides, and webhook debugging deep dives from the Binboi team.",
+  description:
+    "Tunnel tips, self-hosting guides, and webhook debugging deep dives from the Binboi team.",
 };
+
+// ── component ─────────────────────────────────────────────────────────────────
 
 export default function BlogPage() {
   return (
     <div className="min-h-screen bg-[#000000] text-white">
       {/* ── Hero ─────────────────────────────────────────────────── */}
       <div className="relative overflow-hidden border-b border-white/[0.06]">
-        {/* subtle grid bg */}
         <div
           className="pointer-events-none absolute inset-0 opacity-[0.03]"
           style={{
@@ -53,8 +78,8 @@ export default function BlogPage() {
             </span>
           </h1>
           <p className="mt-5 max-w-xl text-base leading-8 text-zinc-400">
-            Practical writing on self-hosting Binboi, getting the most out of tunnels,
-            and diagnosing webhook failures before they reach production.
+            Practical writing on self-hosting Binboi, getting the most out of
+            tunnels, and diagnosing webhook failures before they reach production.
           </p>
         </div>
       </div>
@@ -62,7 +87,7 @@ export default function BlogPage() {
       {/* ── Post Grid ────────────────────────────────────────────── */}
       <main className="mx-auto max-w-6xl px-6 py-16 lg:px-8 lg:py-20">
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {blogPosts.map((post) => {
+          {posts.map((post) => {
             const style = categoryStyle(post.category);
             return (
               <article
@@ -93,7 +118,7 @@ export default function BlogPage() {
 
                   {/* date */}
                   <p className="mt-2 text-[11px] uppercase tracking-[0.18em] text-zinc-600">
-                    {post.publishedAt}
+                    {post.date}
                   </p>
 
                   {/* excerpt */}
@@ -115,7 +140,7 @@ export default function BlogPage() {
           })}
         </div>
 
-        {/* ── Bottom note ──────────────────────────────────────────── */}
+        {/* bottom note */}
         <p className="mt-16 text-center text-sm text-zinc-600">
           More posts coming soon — follow{" "}
           <a
