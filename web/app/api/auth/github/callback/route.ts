@@ -9,23 +9,29 @@ const CLIENT_SECRET = process.env.AUTH_GITHUB_SECRET ?? "";
 const GO_API = process.env.BINBOI_GO_API_URL ?? "https://api.binboi.com";
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
 
+function clearStateCookies(response: NextResponse) {
+  response.cookies.delete("github_oauth_state");
+  response.cookies.delete("github_oauth_cb");
+  return response;
+}
+
 export async function GET(req: NextRequest) {
   const origin = req.nextUrl.origin;
 
   function err(msg: string) {
-    return NextResponse.redirect(
-      new URL(`/login?error=${encodeURIComponent(msg)}`, origin),
+    return clearStateCookies(
+      NextResponse.redirect(new URL(`/login?error=${encodeURIComponent(msg)}`, origin)),
     );
   }
 
   const code = req.nextUrl.searchParams.get("code");
   const state = req.nextUrl.searchParams.get("state");
 
+  // Read state from the incoming request cookies (this is fine — reads are
+  // always from the request). Writes must go on the response object directly.
   const jar = await cookies();
   const storedState = jar.get("github_oauth_state")?.value;
   const callbackUrl = jar.get("github_oauth_cb")?.value ?? "/dashboard";
-  jar.delete("github_oauth_state");
-  jar.delete("github_oauth_cb");
 
   if (!code || !state || state !== storedState) {
     return err("OAuth state mismatch. Please try again.");
@@ -95,15 +101,17 @@ export async function GET(req: NextRequest) {
     return err(data.error ?? "Sign-in failed. Please try again.");
   }
 
-  jar.set("binboi_token", data.token, {
+  const redirectTo =
+    callbackUrl.startsWith("/") && !callbackUrl.startsWith("//") ? callbackUrl : "/dashboard";
+
+  const response = NextResponse.redirect(new URL(redirectTo, origin));
+  response.cookies.set("binboi_token", data.token, {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
     path: "/",
     maxAge: COOKIE_MAX_AGE,
   });
-
-  const redirectTo =
-    callbackUrl.startsWith("/") && !callbackUrl.startsWith("//") ? callbackUrl : "/dashboard";
-  return NextResponse.redirect(new URL(redirectTo, origin));
+  clearStateCookies(response);
+  return response;
 }
