@@ -2,7 +2,7 @@
 	email sardor@miransas.com
 }
 
-binboi.com {
+binboi.com, api.binboi.com {
 	tls {
 		dns cloudflare {env.CLOUDFLARE_API_TOKEN}
 	}

@@ -39,7 +39,7 @@ function pwChecks(pw: string, confirm: string) {
 
 const FEATURES = [
   { icon: Zap,    label: "Instant tunnels",    desc: "Expose any port with a single command" },
-  { icon: Globe,  label: "Custom subdomains",  desc: "Your own .miransas.com address" },
+  { icon: Globe,  label: "Custom subdomains",  desc: "Your own .binboi.com address" },
   { icon: Lock,   label: "TLS everywhere",     desc: "HTTPS enforced, certificates automated" },
   { icon: Server, label: "Self-hosted",        desc: "Your infrastructure, full control" },
 ];
@@ -128,7 +128,7 @@ function LeftPanel() {
             <FlowDot color="bg-[#00ffd1]/60" />
             <TunnelNode icon={Shield} label="Binboi gateway" sublabel="Miransas Software" accent />
             <FlowDot color="bg-[#00ffd1]/60" />
-            <TunnelNode icon={Globe} label="slug.binboi.miransas.com" sublabel="Public HTTPS endpoint" />
+            <TunnelNode icon={Globe} label="slug.binboi.com" sublabel="Public HTTPS endpoint" />
           </div>
           <div className="mt-4 flex items-center gap-2 rounded-lg border border-emerald-400/15 bg-emerald-400/[0.07] px-3 py-2">
             <motion.div
