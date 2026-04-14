@@ -645,6 +645,7 @@ func (s *Service) RegisterRoutes(r *gin.Engine) {
 	// Public auth endpoints — no token required, rate-limited by the api group.
 	api.POST("/auth/register", s.handleAuthRegister)
 	api.POST("/auth/login", s.handleAuthLogin)
+	api.POST("/auth/github", s.handleAuthGithub)
 	api.GET("/ready", s.handleReady)
 	api.GET("/instance", func(c *gin.Context) {
 		c.JSON(http.StatusOK, s.instanceResponse())

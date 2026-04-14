@@ -116,9 +116,20 @@ func (p *authProvider) migrateSchema(ctx context.Context) error {
 			CONSTRAINT billing_subscriptions_paddle_subscription_id_unique UNIQUE (paddle_subscription_id)
 		)`,
 
+		// ── oauth accounts ─────────────────────────────────────────────────────
+		`CREATE TABLE IF NOT EXISTS oauth_account (
+			id                   text      PRIMARY KEY,
+			user_id              text      NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+			provider             text      NOT NULL,
+			provider_account_id  text      NOT NULL,
+			created_at           timestamp NOT NULL DEFAULT now(),
+			CONSTRAINT oauth_account_provider_unique UNIQUE (provider, provider_account_id)
+		)`,
+
 		// ── indexes ────────────────────────────────────────────────────────────
 		`CREATE INDEX IF NOT EXISTS access_token_user_id_idx          ON access_token          (user_id)`,
 		`CREATE INDEX IF NOT EXISTS billing_subscriptions_user_id_idx  ON billing_subscriptions (user_id)`,
+		`CREATE INDEX IF NOT EXISTS oauth_account_user_id_idx          ON oauth_account          (user_id)`,
 	}
 
 	for _, stmt := range statements {

@@ -4,10 +4,11 @@ import { useState, Suspense } from "react"; // Suspense eklendi
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
-import { ArrowLeft, Globe, Loader2, Lock, Server, Shield, Terminal, Zap } from "lucide-react";
+import { ArrowLeft,  Globe, Loader2, Lock, Server, Shield, Terminal, Zap } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { BorderBeam } from "@/components/ui/border-beam";
+import { BsGithub } from "react-icons/bs";
 
 // ── utils ─────────────────────────────────────────────────────────────────────
 
@@ -177,7 +178,7 @@ function RegisterContent() {
   const [password, setPw]     = useState("");
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError]     = useState<string | null>(null);
+  const [error, setError]     = useState<string | null>(params.get("error"));
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -331,6 +332,20 @@ function RegisterContent() {
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create account"}
               </button>
             </form>
+
+            <div className="relative my-5 flex items-center gap-3">
+              <div className="h-px flex-1 bg-white/[0.07]" />
+              <span className="text-[11px] text-zinc-600">or continue with</span>
+              <div className="h-px flex-1 bg-white/[0.07]" />
+            </div>
+
+            <a
+              href={`/api/auth/github?callbackUrl=${encodeURIComponent(callbackUrl)}`}
+              className="flex w-full items-center justify-center gap-2.5 rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-2.5 text-sm font-medium text-zinc-300 transition hover:bg-white/[0.06] hover:text-white"
+            >
+              <BsGithub className="h-4 w-4" />
+              Continue with GitHub
+            </a>
 
             <p className="mt-6 text-center text-sm text-zinc-600">
               Already have an account?{" "}
