@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const GO_API = process.env.BINBOI_GO_API_URL ?? "http://localhost:8080";
+const GO_API = process.env.BINBOI_GO_API_URL ?? "https://api.binboi.com";
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 
 export async function POST(req: Request) {

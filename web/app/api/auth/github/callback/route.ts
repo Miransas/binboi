@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 const CLIENT_ID = process.env.AUTH_GITHUB_ID ?? "";
 const CLIENT_SECRET = process.env.AUTH_GITHUB_SECRET ?? "";
-const GO_API = process.env.BINBOI_GO_API_URL ?? "http://localhost:8080";
+const GO_API = process.env.BINBOI_GO_API_URL ?? "https://api.binboi.com";
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
 
 export async function GET(req: NextRequest) {

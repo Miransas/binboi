@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-const GO_API = process.env.BINBOI_GO_API_URL ?? "http://localhost:8080";
+const GO_API = process.env.BINBOI_GO_API_URL ?? "https://api.binboi.com";
 const MOCK = { plan: "FREE", status: "active" };
 
 export async function GET() {

@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const GO_API = process.env.BINBOI_GO_API_URL ?? "http://localhost:8080";
+const GO_API = process.env.BINBOI_GO_API_URL ?? "https://api.binboi.com";
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
