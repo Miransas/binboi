@@ -6,17 +6,13 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"os"
 
 	"github.com/hashicorp/yamux"
 	"github.com/miransas/binboi/internal/protocol"
 )
 
 func StartHttpTunnel(token string, port int, subdomain string) error {
-	serverAddr := os.Getenv("BINBOI_SERVER_ADDR")
-	if serverAddr == "" {
-		serverAddr = "127.0.0.1:8081"
-	}
+	serverAddr := ResolveServerAddr("")
 
 	conn, err := net.Dial("tcp", serverAddr)
 	if err != nil {

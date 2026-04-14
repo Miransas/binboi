@@ -55,6 +55,7 @@ func handleLogin(args []string) {
 	flags.SetOutput(os.Stdout)
 
 	tokenFlag := flags.String("token", "", "Personal access token from the dashboard")
+	serverFlag := flags.String("server", "", "Relay server address (host:port), default: "+cli.DefaultServerAddr)
 	if err := flags.Parse(args); err != nil {
 		return
 	}
@@ -71,8 +72,9 @@ func handleLogin(args []string) {
 		return
 	}
 
-	if err := cli.SaveToken(token); err != nil {
-		fmt.Printf("Could not save token: %v\n", err)
+	serverAddr := cli.ResolveServerAddr(*serverFlag)
+	if err := cli.SaveConfig(cli.Config{Token: token, ServerAddr: serverAddr}); err != nil {
+		fmt.Printf("Could not save config: %v\n", err)
 		return
 	}
 
@@ -84,6 +86,7 @@ func handleLogin(args []string) {
 	fmt.Printf("Authenticated as %s\n", nameOrEmail)
 	fmt.Printf("Plan: %s\n", strings.ToUpper(identity.User.Plan))
 	fmt.Printf("Token: %s (%s)\n", identity.TokenPrefix, source)
+	fmt.Printf("Server: %s\n", serverAddr)
 	fmt.Printf("Saved to %s\n", cli.SavedTokenPath())
 }
 
@@ -154,15 +157,17 @@ func showHelp() {
 	fmt.Println("\nBINBOI CLI")
 	fmt.Println("Usage: binboi <command> [arguments]")
 	fmt.Println("\nCommands:")
-	fmt.Println("  login [--token ...]  Verify and save an access token")
-	fmt.Println("  whoami               Show the authenticated account")
-	fmt.Println("  http <port> [sub]    Start an HTTP tunnel for the local port")
-	fmt.Println("  start <port> [sub]   Alias for 'http'")
-	fmt.Println("  version              Show the CLI version")
+	fmt.Println("  login [--token ...] [--server host:port]  Verify and save an access token")
+	fmt.Println("  whoami                                    Show the authenticated account")
+	fmt.Println("  http <port> [sub]                         Start an HTTP tunnel for the local port")
+	fmt.Println("  start <port> [sub]                        Alias for 'http'")
+	fmt.Println("  version                                   Show the CLI version")
 	fmt.Println("\nEnvironment:")
 	fmt.Println("  BINBOI_API_URL       Control plane API URL for login/whoami")
-	fmt.Println("  BINBOI_SERVER_ADDR   Relay listener address for tunnel traffic")
+	fmt.Println("  BINBOI_SERVER_ADDR   Relay server address (overrides config.json server_addr)")
 	fmt.Println("  BINBOI_AUTH_TOKEN    Access token for non-interactive use")
+	fmt.Println("\nDefaults:")
+	fmt.Println("  Relay server:        " + cli.DefaultServerAddr)
 }
 
 func printMissingToken() {

@@ -11,8 +11,11 @@ import (
 
 var ErrTokenNotFound = errors.New("no access token configured")
 
+const DefaultServerAddr = "binboi.com:8081"
+
 type Config struct {
-	Token string `json:"token"`
+	Token      string `json:"token"`
+	ServerAddr string `json:"server_addr,omitempty"`
 }
 
 func configPath() (string, error) {
@@ -51,7 +54,31 @@ func SaveToken(token string) error {
 	if token == "" {
 		return errors.New("token cannot be empty")
 	}
-	return SaveConfig(Config{Token: token})
+	// Load existing config so we don't wipe other fields (e.g. ServerAddr).
+	cfg, err := LoadConfig()
+	if err != nil && !errors.Is(err, ErrTokenNotFound) {
+		return err
+	}
+	cfg.Token = token
+	return SaveConfig(cfg)
+}
+
+// ResolveServerAddr returns the relay address to connect to, checking (in
+// order): explicit argument → BINBOI_SERVER_ADDR env var → config.json
+// server_addr → DefaultServerAddr.
+func ResolveServerAddr(explicit string) string {
+	if addr := strings.TrimSpace(explicit); addr != "" {
+		return addr
+	}
+	if addr := strings.TrimSpace(os.Getenv("BINBOI_SERVER_ADDR")); addr != "" {
+		return addr
+	}
+	if cfg, err := LoadConfig(); err == nil {
+		if addr := strings.TrimSpace(cfg.ServerAddr); addr != "" {
+			return addr
+		}
+	}
+	return DefaultServerAddr
 }
 
 func LoadConfig() (Config, error) {
