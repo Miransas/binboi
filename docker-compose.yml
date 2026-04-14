@@ -2,18 +2,22 @@ version: "3.8"
 
 services:
   caddy:
-    image: caddy:2-alpine
+    build:
+      context: .
+      dockerfile: Dockerfile.caddy
     container_name: binboi-caddy
     restart: unless-stopped
 
     ports:
       - "80:80"    # HTTP (redirects to HTTPS)
       - "443:443"  # HTTPS
+      - "443:443/udp"  # HTTP/3
 
     environment:
-      BINBOI_BASE_DOMAIN: "${BINBOI_BASE_DOMAIN:-binboi.localhost}"
+      CLOUDFLARE_API_TOKEN: "${CLOUDFLARE_API_TOKEN}"
+      BINBOI_BASE_DOMAIN: "${BINBOI_BASE_DOMAIN:-binboi.com}"
       BINBOI_UPSTREAM_HOST: "core"
-      ACME_EMAIL: "${ACME_EMAIL:-}"
+      ACME_EMAIL: "${ACME_EMAIL:-sardor@miransas.com}"
 
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro

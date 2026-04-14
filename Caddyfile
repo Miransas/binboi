@@ -1,9 +1,17 @@
-binboi.miransas.com {
-	tls sardor@miransas.com
+{
+	email sardor@miransas.com
+}
+
+binboi.com {
+	tls {
+		dns cloudflare {env.CLOUDFLARE_API_TOKEN}
+	}
 	reverse_proxy core:8080
 }
 
-# Wildcard subdomain — tunnel proxy (HTTP only until wildcard DNS-01 TLS is configured)
-http://*.binboi.miransas.com {
+*.binboi.com {
+	tls {
+		dns cloudflare {env.CLOUDFLARE_API_TOKEN}
+	}
 	reverse_proxy core:8000
 }
