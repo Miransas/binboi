@@ -101,3 +101,14 @@ volumes:
 
 networks:
   binboi-net:
+
+
+# Manage your own tunnel, with your own rules. 🟩⚡️
+
+# With Binboi, you're completely in control. See every request in detail, from public webhooks to local responses, and provide your own TLS Edge security.
+
+# An optimized, performance-oriented, and minimalist experience with Go. No clutter, just pure engineering.
+
+# Teaser 1: The most transparent way to open your localhost to the world. Coming soon.
+
+#Binboi #GoLang #SelfHosted #CyberArchitecture #BuildingInPublic #ComingSoon
