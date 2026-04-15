@@ -20,7 +20,7 @@ export const NAV_LINKS = [
   { label: "Pricing", link: "/pricing" },
   { label: "Blog", link: "/blog" },
   { label: "Changelog", link: "/changelog" },
-  { label: "Sowcase", link: "/showcase" },
+  { label: "Showcase", link: "/showcase" },
   { label: "Privacy", link: "/privacy" }, 
 ];
 
@@ -93,20 +93,20 @@ export const footerLinks = {
   Platform: [
     { name: "Quick Start", href: "https://www.dosc.binboi.com/docs/quick_start" },
     { name: "HTTP Tunnels", href: "https://www.dosc.binboi.com/docs/s/http_tunnels" },
-    { name: "Requests", href: "/https://www.dosc.binboi.com/docs/requests" },
-    { name: "API", href: "/https://www.dosc.binboi.com/docs/api" },
+    { name: "Requests", href: "https://www.dosc.binboi.com/docs/requests" },
+    { name: "API", href: "https://www.dosc.binboi.com/docs/api" },
   ],
   Workflows: [
-    { name: "Webhooks", href: "/https://www.dosc.binboi.com/docs/webhooks" },
-    { name: "Logs", href: "/https://www.dosc.binboi.com/docs/logs" },
-    { name: "Regions", href: "/https://www.dosc.binboi.com/docs/regions" },
-    { name: "Troubleshooting", href: "/https://www.dosc.binboi.com/docs/troubleshooting" },
+    { name: "Webhooks", href: "https://www.dosc.binboi.com/docs/webhooks" },
+    { name: "Logs", href: "https://www.dosc.binboi.com/docs/logs" },
+    { name: "Regions", href: "https://www.dosc.binboi.com/docs/regions" },
+    { name: "Troubleshooting", href: "https://www.dosc.binboi.com/docs/troubleshooting" },
   ],
   Company: [
     { name: "Register", href: "/register" },
     { name: "Login", href: "/login" },
     { name: "Terms", href: "/terms" },
-    { name: "Status", href: "/https://www.dosc.binboi.com/docs/bugs" },
+    { name: "Status", href: "https://www.dosc.binboi.com/docs/bugs" },
   ],
 };
 

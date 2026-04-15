@@ -28,7 +28,7 @@ const refundSections = [
   {
     title: "How to Request",
     body: [
-      "If you believe you have a valid case for a refund due to a technical failure, please contact us at support@miransas.com with your account details and a description of the technical blocker.",
+      "If you believe you have a valid case for a refund due to a technical failure, please contact us at support@binboi.com with your account details and a description of the technical blocker.",
       "Refund requests must be made within 14 days of the original transaction date.",
     ],
   },

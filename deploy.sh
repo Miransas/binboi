@@ -4,10 +4,10 @@
 # Requires: ssh key access to sardor_stack@34.40.95.17
 set -euo pipefail
 
-SERVER="sardor_stack@34.40.95.17"
+SERVER="${DEPLOY_SERVER:-sardor_stack@34.40.95.17}"
 REMOTE_DIR="/home/sardor_stack/binboi"
-DOMAIN="binboi.miransas.com"
-ACME_EMAIL="${ACME_EMAIL:-admin@miransas.com}"
+DOMAIN="${BINBOI_BASE_DOMAIN:-binboi.com}"
+ACME_EMAIL="${ACME_EMAIL:-admin@binboi.com}"
 
 echo "==> Syncing project to $SERVER:$REMOTE_DIR …"
 rsync -az --delete \
@@ -43,8 +43,8 @@ set_env ACME_EMAIL                "$ACME_EMAIL"
 set_env BINBOI_PUBLIC_SCHEME      "https"
 set_env BINBOI_PUBLIC_PORT        "443"
 set_env BINBOI_ALLOW_PREVIEW_MODE "false"
-set_env BINBOI_JWT_SECRET         "cb7935600dd8574c2bc4e3effaffa2dd5efcd7b83a59f6dd513f60657efd7de6"
-set_env BINBOI_AUTH_DATABASE_URL  "postgres://binboi:binboi@binboi-postgres:5432/miransas_db"
+set_env BINBOI_JWT_SECRET         "${BINBOI_JWT_SECRET:-$(openssl rand -hex 32)}"
+set_env BINBOI_AUTH_DATABASE_URL  "postgres://binboi:binboi@binboi-postgres:5432/binboi"
 REMOTE
 
 echo "==> Ensuring Docker is installed …"

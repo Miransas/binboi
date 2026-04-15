@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import gsap from 'gsap'
+import { useSession } from '@/components/provider/session-provider'
 
 const NAV_LINKS = [
   { label: "Docs", link: "https://docs.binboi.com/docs" }, // dosc düzeltildi
@@ -17,8 +18,8 @@ export default function Navbar() {
   const navRef = useRef<HTMLElement>(null)
   const [scrolled, setScrolled] = useState(false)
 
-  // TODO: Burayı gerçek Auth state'in ile değiştireceksin (örn: const { user } = useAuth())
-  const isAuthenticated = false; 
+  const { status } = useSession()
+  const isAuthenticated = status === 'authenticated'
 
   useEffect(() => {
     const ctx = gsap.context(() => {

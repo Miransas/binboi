@@ -5,7 +5,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const CLIENT_ID = process.env.AUTH_GITHUB_ID ?? "";
-const CALLBACK_URL = "https://binboi.com/api/auth/github/callback";
+const CALLBACK_URL = process.env.AUTH_GITHUB_CALLBACK_URL ?? "https://binboi.com/api/auth/github/callback";
 const SCOPE = "read:user user:email";
 
 const COOKIE_OPTS = {

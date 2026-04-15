@@ -17,7 +17,7 @@ services:
       CLOUDFLARE_API_TOKEN: "${CLOUDFLARE_API_TOKEN}"
       BINBOI_BASE_DOMAIN: "${BINBOI_BASE_DOMAIN:-binboi.com}"
       BINBOI_UPSTREAM_HOST: "core"
-      ACME_EMAIL: "${ACME_EMAIL:-sardor@miransas.com}"
+      ACME_EMAIL: "${ACME_EMAIL:-admin@binboi.com}"
 
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
@@ -51,8 +51,8 @@ services:
       BINBOI_PUBLIC_SCHEME: "https"
       BINBOI_PUBLIC_PORT: "443"
       BINBOI_DATABASE_PATH: "/data/binboi.db"
-      BINBOI_JWT_SECRET: "cb7935600dd8574c2bc4e3effaffa2dd5efcd7b83a59f6dd513f60657efd7de6"
-      BINBOI_AUTH_DATABASE_URL: "postgres://binboi:binboi@binboi-postgres:5432/miransas_db"
+      BINBOI_JWT_SECRET: "${BINBOI_JWT_SECRET}"
+      BINBOI_AUTH_DATABASE_URL: "${BINBOI_AUTH_DATABASE_URL:-postgres://binboi:binboi@binboi-postgres:5432/binboi}"
       BINBOI_ALLOW_PREVIEW_MODE: "${BINBOI_ALLOW_PREVIEW_MODE:-false}"
 
     volumes:
@@ -78,8 +78,8 @@ services:
 
     environment:
       POSTGRES_USER: binboi
-      POSTGRES_PASSWORD: binboi
-      POSTGRES_DB: miransas_db
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-binboi}"
+      POSTGRES_DB: binboi
 
     volumes:
       - pg-data:/var/lib/postgresql/data
@@ -102,13 +102,3 @@ volumes:
 networks:
   binboi-net:
 
-
-# Manage your own tunnel, with your own rules. 🟩⚡️
-
-# With Binboi, you're completely in control. See every request in detail, from public webhooks to local responses, and provide your own TLS Edge security.
-
-# An optimized, performance-oriented, and minimalist experience with Go. No clutter, just pure engineering.
-
-# Teaser 1: The most transparent way to open your localhost to the world. Coming soon.
-
-#Binboi #GoLang #SelfHosted #CyberArchitecture #BuildingInPublic #ComingSoon

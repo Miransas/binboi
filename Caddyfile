@@ -1,5 +1,5 @@
 {
-	email sardor@miransas.com
+	email {env.ACME_EMAIL}
 }
 
 binboi.com, api.binboi.com {
