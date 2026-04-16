@@ -7,12 +7,10 @@ import {
   FiLink,
   FiSliders,
   FiCreditCard,
-  FiUser,
+  FiWifi,
 } from "react-icons/fi"
 import { MdOutlineSettingsInputComposite } from "react-icons/md";
-
-
-import { ArrowUpRight, BookOpen, Bot, LifeBuoy, Sparkles } from "lucide-react" 
+import { ArrowUpRight, BookOpen, Bot, LifeBuoy, Radio, Sparkles } from "lucide-react"
 import { BsGithub } from "react-icons/bs";
 
 export const NAV_LINKS = [
@@ -28,19 +26,20 @@ export const DASHBOARD_LINKS = [
   {
     title: "Getting Started",
     items: [
-      {label: "Welcome", href: "/dashboard", icon: FiHome },
+      { label: "Welcome", href: "/dashboard", icon: FiHome },
       { label: "Setup & Installation", href: "/dashboard/setup", icon: MdOutlineSettingsInputComposite },
       { label: "Access Tokens", href: "/dashboard/access-tokens", icon: FiKey },
       { label: "Billing", href: "/dashboard/billing", icon: FiCreditCard },
-      // { label: "User Management", href: "/dashboard/user-management", icon: FiUser },
       { label: "Tunnel", href: "/dashboard/tunnel", icon: FiSliders },
     ],
   },
   {
     title: "Universal Gateway",
     items: [
+      { label: "Tunnels", href: "/dashboard/tunnels", icon: FiWifi },
       { label: "Requests", href: "/dashboard/requests", icon: FiActivity },
       { label: "Webhooks", href: "/dashboard/webhooks", icon: FiGlobe },
+      { label: "Events", href: "/dashboard/events", icon: Radio },
       { label: "AI Assistant", href: "/dashboard/ai", icon: Sparkles, badge: "New" },
       { label: "Domains", href: "/dashboard/domains", icon: FiLink },
     ],

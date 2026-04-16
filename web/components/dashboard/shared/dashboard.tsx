@@ -41,7 +41,8 @@ export default function DashboardPage() {
 
   const statusCards = [
     { label: "Active tunnels", value: activeCount.toString().padStart(2, "0"), icon: Activity, accent: "text-cyan-400", bg: "bg-cyan-400/5", border: "border-cyan-400/20" },
-    { label: "Throughput", value: `${(totalBandwidth / (1024 * 1024)).toFixed(1)} MB`, icon: Waypoints, accent: "text-violet-400", bg: "bg-violet-400/5", border: "border-violet-400/20" },
+    { label: "Requests", value: requests.length.toLocaleString(), icon: Waypoints, accent: "text-violet-400", bg: "bg-violet-400/5", border: "border-violet-400/20" },
+    { label: "Throughput", value: `${(totalBandwidth / (1024 * 1024)).toFixed(1)} MB`, icon: Waypoints, accent: "text-emerald-400", bg: "bg-emerald-400/5", border: "border-emerald-400/20" },
     { label: "Mode", value: session?.user ? "AUTH" : "GUEST", icon: Shield, accent: "text-zinc-400", bg: "bg-zinc-400/5", border: "border-zinc-400/20" },
   ];
 
@@ -91,7 +92,7 @@ export default function DashboardPage() {
         </section>
 
         {/* Stats Grid */}
-        <section className="mt-12 grid gap-4 sm:grid-cols-3">
+        <section className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {statusCards.map((card) => (
             <motion.div 
               key={card.label}
@@ -141,7 +142,14 @@ export default function DashboardPage() {
                   {isLoading ? (
                     <tr><td colSpan={3} className="px-6 py-12 text-center text-sm text-zinc-600">Scanning control plane...</td></tr>
                   ) : tunnels?.length === 0 ? (
-                    <tr><td colSpan={3} className="px-6 py-12 text-center text-sm text-zinc-600 font-mono">NO ACTIVE RESERVATIONS</td></tr>
+                    <tr>
+                      <td colSpan={3} className="px-6 py-12 text-center">
+                        <p className="text-sm text-zinc-500 mb-1">No tunnels yet</p>
+                        <p className="text-xs text-zinc-600 font-mono">
+                          Run <span className="bg-white/[0.06] px-1.5 py-0.5 rounded text-zinc-400">binboi http 3000 my-app</span> to create your first tunnel
+                        </p>
+                      </td>
+                    </tr>
                   ) : (
                     tunnels.map((tunnel: any) => (
                       <tr key={tunnel.id} className="hover:bg-white/[0.02] transition-colors">

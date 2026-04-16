@@ -15,7 +15,7 @@ const DefaultServerAddr = "binboi.com:8081"
 
 type Config struct {
 	Token      string `json:"token"`
-	ServerAddr string `json:"server_addr,omitempty"`
+	ServerAddr string `json:"server_addr"`
 }
 
 func configPath() (string, error) {
@@ -32,6 +32,10 @@ func configPath() (string, error) {
 }
 
 func SaveConfig(cfg Config) error {
+	if cfg.ServerAddr == "" {
+		cfg.ServerAddr = DefaultServerAddr
+	}
+
 	path, err := configPath()
 	if err != nil {
 		return err

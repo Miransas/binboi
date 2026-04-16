@@ -156,9 +156,13 @@ export default function TunnelsPage() {
               <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl border border-white/[0.06] bg-white/[0.02]">
                 <WifiOff className="h-5 w-5 text-zinc-600" />
               </div>
-              <p className="text-sm font-medium text-zinc-500">No tunnels found</p>
+              <p className="text-sm font-medium text-zinc-500">No tunnels yet</p>
               <p className="mt-1 text-xs text-zinc-600">
-                Run <code className="rounded bg-white/[0.06] px-1.5 py-0.5 font-mono text-zinc-400">binboi http 3000</code> to open a tunnel.
+                Run{" "}
+                <code className="rounded bg-white/[0.06] px-1.5 py-0.5 font-mono text-zinc-400">
+                  binboi http 3000 my-app
+                </code>{" "}
+                to create your first tunnel
               </p>
             </div>
           ) : (

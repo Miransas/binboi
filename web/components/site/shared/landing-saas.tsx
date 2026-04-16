@@ -496,7 +496,7 @@ const LandingSaas = () => {
             initial="hidden"
             animate="visible"
             transition={{ ...transition, delay: 0.32 }}
-            className="mt-16 max-w-[1200px] mx-auto px-4"
+            className="mt-16 max-w-[1400px] mx-auto px-4"
           >
             <PremiumSurface contentClassName="p-0">
               <div className="relative overflow-hidden">
@@ -593,7 +593,7 @@ const LandingSaas = () => {
                         </motion.div>
 
                         <span className="absolute z-30 text-8xl font-black italic text-white drop-shadow-[0_0_15px_rgba(158,255,0,0.3)]">
-                          B
+                          {/* B */}
                         </span>
                       </div>
 
