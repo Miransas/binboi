@@ -5,12 +5,13 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Activity,
   AlertTriangle,
+  ArrowUp,
+  Clock,
+  ExternalLink,
   Globe,
   RefreshCcw,
   Wifi,
   WifiOff,
-  Clock,
-  ExternalLink,
 } from "lucide-react";
 
 import { fetchControlPlane, type ControlPlaneTunnel } from "@/lib/controlplane";
@@ -24,6 +25,25 @@ function fmtDate(iso: string) {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+function fmtRelative(iso: string | undefined): string {
+  if (!iso) return "—";
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const s = Math.floor(diffMs / 1000);
+  if (s < 60) return `${s}s ago`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return fmtDate(iso);
+}
+
+function fmtBytes(n: number): string {
+  if (n >= 1 << 30) return `${(n / (1 << 30)).toFixed(2)} GB`;
+  if (n >= 1 << 20) return `${(n / (1 << 20)).toFixed(1)} MB`;
+  if (n >= 1 << 10) return `${(n / (1 << 10)).toFixed(1)} KB`;
+  return `${n} B`;
 }
 
 function StatusBadge({ status }: { status: ControlPlaneTunnel["status"] }) {
@@ -56,9 +76,11 @@ export default function TunnelsPage() {
   );
 
   const tunnels: ControlPlaneTunnel[] = Array.isArray(data) ? data : [];
-  const active   = tunnels.filter((t) => t.status === "ACTIVE").length;
-  const inactive = tunnels.filter((t) => t.status === "INACTIVE").length;
-  const hasError = error != null;
+  const active         = tunnels.filter((t) => t.status === "ACTIVE").length;
+  const inactive       = tunnels.filter((t) => t.status === "INACTIVE").length;
+  const totalRequests  = tunnels.reduce((sum, t) => sum + t.request_count, 0);
+  const totalBytes     = tunnels.reduce((sum, t) => sum + t.bytes_out, 0);
+  const hasError       = error != null;
 
   return (
     <motion.main
@@ -98,11 +120,13 @@ export default function TunnelsPage() {
         </motion.div>
 
         {/* ── Stats ──────────────────────────────────────────────────────── */}
-        <motion.div variants={row} className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-3">
+        <motion.div variants={row} className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
           {[
-            { label: "Total",    value: tunnels.length, color: "text-white",         icon: Globe },
-            { label: "Active",   value: active,         color: "text-emerald-400",   icon: Wifi },
-            { label: "Inactive", value: inactive,       color: "text-zinc-500",      icon: WifiOff },
+            { label: "Total",     value: String(tunnels.length),            color: "text-white",        icon: Globe },
+            { label: "Active",    value: String(active),                    color: "text-emerald-400",  icon: Wifi },
+            { label: "Inactive",  value: String(inactive),                  color: "text-zinc-500",     icon: WifiOff },
+            { label: "Requests",  value: totalRequests.toLocaleString(),    color: "text-miransas-cyan",icon: Activity },
+            { label: "Data out",  value: fmtBytes(totalBytes),              color: "text-violet-400",   icon: ArrowUp },
           ].map((s) => (
             <div key={s.label} className="rounded-2xl border border-white/[0.06] bg-zinc-900/20 px-6 py-5 backdrop-blur-sm">
               <div className="mb-2 flex items-center gap-2 text-zinc-600">
@@ -167,14 +191,19 @@ export default function TunnelsPage() {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[700px] text-left text-sm">
+              <table className="w-full min-w-[860px] text-left text-sm">
                 <thead>
                   <tr className="border-b border-white/[0.04] text-[10px] font-bold uppercase tracking-widest text-zinc-600">
                     <th className="px-6 py-3.5">Subdomain</th>
                     <th className="px-6 py-3.5">Status</th>
                     <th className="px-6 py-3.5">Target</th>
-                    <th className="px-6 py-3.5">Requests</th>
-                    <th className="px-6 py-3.5">Created</th>
+                    <th className="px-4 py-3.5">Requests</th>
+                    <th className="px-4 py-3.5">
+                      <span className="flex items-center gap-1">
+                        <ArrowUp className="h-3 w-3" /> Data out
+                      </span>
+                    </th>
+                    <th className="px-4 py-3.5">Last active</th>
                     <th className="px-6 py-3.5" />
                   </tr>
                 </thead>
@@ -199,13 +228,21 @@ export default function TunnelsPage() {
                         <td className="px-6 py-4">
                           <span className="font-mono text-xs text-zinc-400">{t.target}</span>
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-4 py-4">
                           <span className="text-zinc-300">{t.request_count.toLocaleString()}</span>
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-4 py-4">
+                          <span className="flex items-center gap-1 text-xs text-violet-400">
+                            <ArrowUp className="h-3 w-3 shrink-0" />
+                            {fmtBytes(t.bytes_out)}
+                          </span>
+                        </td>
+                        <td className="px-4 py-4">
                           <div className="flex items-center gap-1.5 text-xs text-zinc-500">
-                            <Clock className="h-3 w-3" />
-                            {fmtDate(t.created_at)}
+                            <Clock className="h-3 w-3 shrink-0" />
+                            {t.status === "ACTIVE"
+                              ? <span className="text-emerald-400">now</span>
+                              : fmtRelative(t.last_connected_at)}
                           </div>
                         </td>
                         <td className="px-6 py-4 text-right">

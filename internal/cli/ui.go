@@ -11,13 +11,13 @@ import (
 // ── styles ────────────────────────────────────────────────────────────────────
 
 var (
-	styleLabel    = lipgloss.NewStyle().Foreground(lipgloss.Color("#52525b"))         // zinc-600
-	styleValue    = lipgloss.NewStyle().Foreground(lipgloss.Color("#e4e4e7"))         // zinc-200
-	styleCyan     = lipgloss.NewStyle().Foreground(lipgloss.Color("#22d3ee"))         // cyan-400
-	styleOnline   = lipgloss.NewStyle().Foreground(lipgloss.Color("#4ade80")).Bold(true) // green-400
-	styleTitle    = lipgloss.NewStyle().Foreground(lipgloss.Color("#ffffff")).Bold(true)
-	styleDim      = lipgloss.NewStyle().Foreground(lipgloss.Color("#3f3f46"))         // zinc-700
-	styleSep      = lipgloss.NewStyle().Foreground(lipgloss.Color("#27272a"))         // zinc-800
+	styleLabel  = lipgloss.NewStyle().Foreground(lipgloss.Color("#52525b")) // zinc-600
+	styleValue  = lipgloss.NewStyle().Foreground(lipgloss.Color("#e4e4e7")) // zinc-200
+	styleCyan   = lipgloss.NewStyle().Foreground(lipgloss.Color("#22d3ee")) // cyan-400
+	styleOnline = lipgloss.NewStyle().Foreground(lipgloss.Color("#4ade80")).Bold(true)
+	styleTitle  = lipgloss.NewStyle().Foreground(lipgloss.Color("#ffffff")).Bold(true)
+	styleDim    = lipgloss.NewStyle().Foreground(lipgloss.Color("#3f3f46")) // zinc-700
+	styleSep    = lipgloss.NewStyle().Foreground(lipgloss.Color("#27272a")) // zinc-800
 
 	styleMethod = map[string]lipgloss.Style{
 		"GET":     lipgloss.NewStyle().Foreground(lipgloss.Color("#60a5fa")), // blue-400
@@ -90,9 +90,23 @@ func fmtUptime(d time.Duration) string {
 	return fmt.Sprintf("%d:%02d", m, s)
 }
 
+// fmtSince formats the duration since a past time in a compact human form.
+func fmtSince(t time.Time) string {
+	if t.IsZero() {
+		return styleDim.Render("—")
+	}
+	d := time.Since(t).Truncate(time.Second)
+	switch {
+	case d < time.Minute:
+		return styleValue.Render(fmt.Sprintf("%ds ago", int(d.Seconds())))
+	case d < time.Hour:
+		return styleValue.Render(fmt.Sprintf("%dm ago", int(d.Minutes())))
+	default:
+		return styleValue.Render(fmt.Sprintf("%dh ago", int(d.Hours())))
+	}
+}
+
 func pad(s string, width int) string {
-	// Visual width (strip ANSI codes for counting) — simple approximation:
-	// we measure the RENDERED rune count by checking lipgloss width.
 	w := lipgloss.Width(s)
 	if w >= width {
 		return s
@@ -118,7 +132,7 @@ type UIOptions struct {
 
 // uiLineCount is the number of \n-terminated lines renderUI emits.
 // RunLiveUI uses this to move the cursor back exactly this many lines.
-const uiLineCount = 21
+const uiLineCount = 23
 
 // renderUI returns a string of exactly uiLineCount newline-terminated lines.
 func renderUI(s *TunnelStats, opts UIOptions) string {
@@ -168,18 +182,23 @@ func renderUI(s *TunnelStats, opts UIOptions) string {
 	}
 	write(relayLabel + relayVal + pingLabel + pingVal)
 
-	// ── Line 7: blank ─────────────────────────────────────────────────────────
+	// ── Line 7: last active ───────────────────────────────────────────────────
+	lastLabel := styleLabel.Render("  Last   ")
+	write(lastLabel + fmtSince(s.LastActiveTime()))
+
+	// ── Line 8: blank ─────────────────────────────────────────────────────────
 	write("")
 
-	// ── Line 8: separator ─────────────────────────────────────────────────────
+	// ── Line 9: separator ─────────────────────────────────────────────────────
 	write(sep())
 
-	// ── Line 9: aggregate stats ───────────────────────────────────────────────
+	// ── Line 10: aggregate stats ──────────────────────────────────────────────
 	reqs := s.Requests.Load()
 	errs := s.Errors.Load()
 	bytesIn := s.BytesIn.Load()
 	bytesOut := s.BytesOut.Load()
-	avg := s.AvgDuration()
+	p50 := s.Percentile(0.50)
+	p90 := s.Percentile(0.90)
 
 	col := func(label, value string) string {
 		return styleLabel.Render(label) + "  " + styleValue.Render(value)
@@ -192,30 +211,37 @@ func renderUI(s *TunnelStats, opts UIOptions) string {
 		errColor = styleDim
 	}
 
-	statsLine := fmt.Sprintf("  %s   %s   %s   %s   %s",
+	statsLine := fmt.Sprintf("  %s   %s   %s   %s",
 		col("Requests", fmt.Sprintf("%d", reqs)),
 		styleLabel.Render("Errors")+"  "+errColor.Render(fmt.Sprintf("%d", errs)),
 		col("↓", fmtBytes(bytesIn)),
 		col("↑", fmtBytes(bytesOut)),
-		col("Avg", func() string {
-			if avg == 0 {
-				return styleDim.Render("—")
-			}
-			return fmtDuration(avg)
-		}()),
 	)
 	write(statsLine)
 
-	// ── Line 10: separator ────────────────────────────────────────────────────
+	// ── Line 11: latency percentiles ──────────────────────────────────────────
+	fmtPercentile := func(label string, d time.Duration) string {
+		if d == 0 {
+			return styleLabel.Render(label) + "  " + styleDim.Render("—")
+		}
+		return col(label, fmtDuration(d))
+	}
+	percLine := fmt.Sprintf("  %s   %s",
+		fmtPercentile("p50", p50),
+		fmtPercentile("p90", p90),
+	)
+	write(percLine)
+
+	// ── Line 12: separator ────────────────────────────────────────────────────
 	write(sep())
 
-	// ── Line 11: blank ────────────────────────────────────────────────────────
+	// ── Line 13: blank ────────────────────────────────────────────────────────
 	write("")
 
-	// ── Line 12: section header ───────────────────────────────────────────────
+	// ── Line 14: section header ───────────────────────────────────────────────
 	write("  " + styleDim.Render("RECENT REQUESTS"))
 
-	// ── Line 13: column headers ───────────────────────────────────────────────
+	// ── Line 15: column headers ───────────────────────────────────────────────
 	hdr := fmt.Sprintf("  %-8s %-36s %-7s %-8s %s",
 		styleLabel.Render("METHOD"),
 		styleLabel.Render("PATH"),
@@ -225,12 +251,11 @@ func renderUI(s *TunnelStats, opts UIOptions) string {
 	)
 	write(hdr)
 
-	// ── Line 14: header separator ─────────────────────────────────────────────
+	// ── Line 16: header separator ─────────────────────────────────────────────
 	write(sep())
 
-	// ── Lines 15-19: up to 5 most recent requests (padded if fewer) ───────────
+	// ── Lines 17-21: up to 5 most recent requests (padded if fewer) ───────────
 	recent := s.Recent()
-	// Show at most 5, newest first.
 	if len(recent) > 5 {
 		recent = recent[len(recent)-5:]
 	}
@@ -267,10 +292,10 @@ func renderUI(s *TunnelStats, opts UIOptions) string {
 		}
 	}
 
-	// ── Line 20: footer separator ─────────────────────────────────────────────
+	// ── Line 22: footer separator ─────────────────────────────────────────────
 	write(sep())
 
-	// ── Line 21: blank ────────────────────────────────────────────────────────
+	// ── Line 23: blank ────────────────────────────────────────────────────────
 	write("")
 
 	return b.String()
