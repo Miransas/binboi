@@ -1,13 +1,14 @@
+/* eslint-disable react-hooks/purity */
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import useSWR from "swr";
 import {
-  
   ArrowUp,
   ChevronDown,
   ChevronRight,
+  Circle,
   Clock,
   ExternalLink,
   Globe,
@@ -17,6 +18,7 @@ import {
   Terminal,
   Trash2,
   Wifi,
+  XCircle,
 } from "lucide-react";
 
 import { usePricingPlan } from "@/components/provider/pricing-plan-provider";
@@ -60,15 +62,36 @@ function fmtDuration(ms: number): string {
   return `${(ms / 1000).toFixed(1)}s`;
 }
 
+// ── live uptime hook ──────────────────────────────────────────────────────────
+
+function useUptime(since: string | undefined, active: boolean): string {
+  const [, setTick] = useState(0);
+
+  useEffect(() => {
+    if (!active || !since) return;
+    const id = setInterval(() => setTick((n) => n + 1), 1000);
+    return () => clearInterval(id);
+  }, [active, since]);
+
+  if (!active || !since) return "—";
+  const totalSec = Math.max(0, Math.floor((Date.now() - new Date(since).getTime()) / 1000));
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  if (h > 0) return `${h}h ${m}m ${s}s`;
+  if (m > 0) return `${m}m ${s}s`;
+  return `${s}s`;
+}
+
 // ── request log terminal ──────────────────────────────────────────────────────
 
 const METHOD_COLOR: Record<string, string> = {
-  GET:     "text-blue-400",
-  POST:    "text-emerald-400",
-  PUT:     "text-amber-400",
-  PATCH:   "text-amber-400",
-  DELETE:  "text-red-400",
-  HEAD:    "text-zinc-500",
+  GET: "text-blue-400",
+  POST: "text-emerald-400",
+  PUT: "text-amber-400",
+  PATCH: "text-amber-400",
+  DELETE: "text-red-400",
+  HEAD: "text-zinc-500",
   OPTIONS: "text-zinc-500",
 };
 
@@ -81,48 +104,73 @@ function statusColor(code: number): string {
 
 function RequestLog({
   subdomain,
+  isActive,
   requests,
 }: {
   subdomain: string;
+  isActive: boolean;
   requests: ControlPlaneRequest[];
 }) {
   const rows = requests
     .filter((r) => r.tunnel_subdomain === subdomain)
-    .slice(0, 50);
+    .slice(0, 100);
+
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to newest entry when rows change
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [rows.length]);
 
   return (
-    <div className="mt-4 overflow-hidden rounded-xl border border-white/[0.04] bg-zinc-950/80">
-      {/* header bar */}
-      <div className="flex items-center gap-2 border-b border-white/[0.04] bg-black/40 px-4 py-2.5">
-        <Terminal className="h-3.5 w-3.5 text-zinc-600" />
-        <span className="font-mono text-[10px] font-semibold uppercase tracking-widest text-zinc-600">
+    <div className="mt-4 overflow-hidden rounded-xl border border-white/[0.06] bg-black/60">
+      {/* ── header bar ── */}
+      <div className="flex items-center gap-2 border-b border-white/[0.04] bg-zinc-950 px-4 py-2.5">
+        <Terminal className="h-3.5 w-3.5 text-zinc-500" />
+        <span className="font-mono text-[10px] font-semibold uppercase tracking-widest text-zinc-500">
           request log · {subdomain}
         </span>
+
+        {isActive && (
+          <span className="ml-2 flex items-center gap-1 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-widest text-emerald-400">
+            <Circle className="h-1.5 w-1.5 fill-emerald-400 text-emerald-400 animate-pulse" />
+            LIVE
+          </span>
+        )}
+
         <span className="ml-auto font-mono text-[10px] text-zinc-700">
-          {rows.length} recent
+          {rows.length} captured
         </span>
       </div>
 
-      {/* rows */}
-      <div className="max-h-56 overflow-y-auto px-4 py-2 font-mono text-[11px] leading-6">
+      {/* ── log rows ── */}
+      <div className="max-h-72 overflow-y-auto px-4 py-2 font-mono text-[11px] leading-7">
         {rows.length === 0 ? (
-          <p className="py-4 text-center text-zinc-700">
-            No requests recorded yet for this tunnel.
+          <p className="py-6 text-center text-zinc-700">
+            Waiting for requests…
           </p>
         ) : (
-          rows.map((r) => (
-            <div key={r.id} className="flex items-baseline gap-2 hover:bg-white/[0.02]">
-              <span className="shrink-0 text-zinc-700">{fmtTime(r.created_at)}</span>
-              <span className={`w-14 shrink-0 font-bold ${METHOD_COLOR[r.method] ?? "text-zinc-400"}`}>
-                {r.method}
-              </span>
-              <span className="min-w-0 flex-1 truncate text-zinc-400">{r.path}</span>
-              <span className={`shrink-0 font-semibold ${statusColor(r.status)}`}>
-                {r.status}
-              </span>
-              <span className="shrink-0 text-zinc-700">{fmtDuration(r.duration_ms)}</span>
-            </div>
-          ))
+          <>
+            {rows.map((r) => (
+              <div
+                key={r.id}
+                className="flex items-baseline gap-2 rounded px-1 hover:bg-white/[0.03]"
+              >
+                <span className="w-20 shrink-0 text-zinc-700">{fmtTime(r.created_at)}</span>
+                <span className={`w-16 shrink-0 font-bold ${METHOD_COLOR[r.method] ?? "text-zinc-400"}`}>
+                  {r.method}
+                </span>
+                <span className="min-w-0 flex-1 truncate text-zinc-300">{r.path}</span>
+                <span className={`w-10 shrink-0 text-right font-semibold ${statusColor(r.status)}`}>
+                  {r.status}
+                </span>
+                <span className="w-14 shrink-0 text-right text-zinc-600">
+                  {fmtDuration(r.duration_ms)}
+                </span>
+              </div>
+            ))}
+            <div ref={bottomRef} />
+          </>
         )}
       </div>
     </div>
@@ -140,15 +188,13 @@ function TunnelCard({
   requests: ControlPlaneRequest[];
   onDelete: (id: string) => Promise<void>;
 }) {
-  const [logOpen, setLogOpen] = useState(false);
-
   const isActive = tunnel.status === "ACTIVE";
+  const [logOpen, setLogOpen] = useState(isActive);
 
-  const lastReqAt = (() => {
-    const hits = requests.filter((r) => r.tunnel_subdomain === tunnel.subdomain);
-    if (hits.length === 0) return undefined;
-    return hits.reduce((a, b) => (a.created_at > b.created_at ? a : b)).created_at;
-  })();
+  const uptime = useUptime(tunnel.last_connected_at, isActive);
+
+  const tunnelRequests = requests.filter((r) => r.tunnel_subdomain === tunnel.subdomain);
+  const errorCount = tunnelRequests.filter((r) => r.status >= 400).length;
 
   return (
     <motion.div
@@ -162,11 +208,10 @@ function TunnelCard({
       <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
         <div className="flex items-start gap-4">
           <div
-            className={`rounded-xl border border-white/5 bg-zinc-950 p-3 ${
-              isActive
+            className={`rounded-xl border border-white/5 bg-zinc-950 p-3 ${isActive
                 ? "text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.1)]"
                 : "text-zinc-600"
-            }`}
+              }`}
           >
             <Globe className="h-6 w-6" />
           </div>
@@ -176,11 +221,10 @@ function TunnelCard({
                 {tunnel.subdomain}
               </h3>
               <span
-                className={`rounded border px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest ${
-                  isActive
+                className={`rounded border px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest ${isActive
                     ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-400"
                     : "border-zinc-700 bg-zinc-800 text-zinc-500"
-                }`}
+                  }`}
               >
                 {tunnel.status}
               </span>
@@ -222,37 +266,37 @@ function TunnelCard({
       {/* ── stats footer ── */}
       <div className="mt-6 grid grid-cols-2 gap-4 border-t border-white/[0.03] pt-6 sm:grid-cols-4">
         <div>
-          <p className="text-[9px] font-bold uppercase tracking-widest text-zinc-600">Requests</p>
+          <p className="text-[9px] font-bold uppercase tracking-widest text-zinc-600">Total requests</p>
           <p className="mt-0.5 text-sm font-semibold text-zinc-300">
             {tunnel.request_count.toLocaleString()}
           </p>
         </div>
         <div>
-          <p className="text-[9px] font-bold uppercase tracking-widest text-zinc-600">Data out</p>
+          <p className="text-[9px] font-bold uppercase tracking-widest text-zinc-600">Data transferred</p>
           <p className="mt-0.5 flex items-center gap-1 text-sm font-semibold text-violet-400">
             <ArrowUp className="h-3 w-3" />
             {fmtBytes(tunnel.bytes_out)}
           </p>
         </div>
         <div>
-          <p className="text-[9px] font-bold uppercase tracking-widest text-zinc-600">Last connected</p>
-          <p className="mt-0.5 flex items-center gap-1 text-sm font-semibold text-zinc-400">
-            <Clock className="h-3 w-3" />
+          <p className="text-[9px] font-bold uppercase tracking-widest text-zinc-600">Uptime</p>
+          <p className="mt-0.5 flex items-center gap-1 text-sm font-semibold">
+            <Clock className="h-3 w-3 text-zinc-600" />
             {isActive ? (
-              <span className="text-emerald-400">now</span>
+              <span className="text-emerald-400">{uptime}</span>
             ) : (
-              fmtRelative(tunnel.last_connected_at)
+              <span className="text-zinc-600">offline</span>
             )}
           </p>
         </div>
         <div>
-          <p className="text-[9px] font-bold uppercase tracking-widest text-zinc-600">Last request</p>
-          <p className="mt-0.5 flex items-center gap-1 text-sm font-semibold text-zinc-400">
-            <Clock className="h-3 w-3" />
-            {lastReqAt ? (
-              fmtRelative(lastReqAt)
+          <p className="text-[9px] font-bold uppercase tracking-widest text-zinc-600">Errors</p>
+          <p className="mt-0.5 flex items-center gap-1 text-sm font-semibold">
+            <XCircle className="h-3 w-3 text-zinc-600" />
+            {errorCount > 0 ? (
+              <span className="text-red-400">{errorCount}</span>
             ) : (
-              <span className="text-zinc-700">—</span>
+              <span className="text-zinc-600">0</span>
             )}
           </p>
         </div>
@@ -280,7 +324,7 @@ function TunnelCard({
             transition={{ duration: 0.2 }}
             className="overflow-hidden"
           >
-            <RequestLog subdomain={tunnel.subdomain} requests={requests} />
+            <RequestLog subdomain={tunnel.subdomain} isActive={isActive} requests={requests} />
           </motion.div>
         )}
       </AnimatePresence>
@@ -319,11 +363,11 @@ export default function TunnelPage() {
   const { data: requests = [] } = useSWR<ControlPlaneRequest[]>(
     "/api/v1/requests",
     (p: string) => fetchControlPlane<ControlPlaneRequest[]>(p),
-    { refreshInterval: 3000, revalidateOnFocus: false },
+    { refreshInterval: 2000, revalidateOnFocus: false },
   );
 
-  const active    = tunnels.filter((t) => t.status === "ACTIVE").length;
-  const reqTotal  = tunnels.reduce((s, t) => s + t.request_count, 0);
+  const active = tunnels.filter((t) => t.status === "ACTIVE").length;
+  const reqTotal = tunnels.reduce((s, t) => s + t.request_count, 0);
   const freeLimitReached = plan === "FREE" && active >= 1;
 
   const createTunnel = async () => {
@@ -392,11 +436,12 @@ export default function TunnelPage() {
         </motion.section>
 
         {/* ── Stats row ──────────────────────────────────────────────────── */}
-        <motion.section variants={itemVariants} className="mb-8 grid gap-4 sm:grid-cols-3">
+        <motion.section variants={itemVariants} className="mb-8 grid gap-4 sm:grid-cols-4">
           {[
-            { label: "Reserved",       value: tunnels.length, color: "text-zinc-400" },
-            { label: "Active sessions",value: active,         color: "text-emerald-400" },
+            { label: "Reserved", value: tunnels.length, color: "text-zinc-400" },
+            { label: "Active sessions", value: active, color: "text-emerald-400" },
             { label: "Total requests", value: reqTotal.toLocaleString(), color: "text-cyan-400" },
+            { label: "Data transferred", value: fmtBytes(tunnels.reduce((s, t) => s + t.bytes_out, 0)), color: "text-violet-400" },
           ].map((s) => (
             <div
               key={s.label}

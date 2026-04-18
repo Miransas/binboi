@@ -11,11 +11,15 @@ import (
 
 var ErrTokenNotFound = errors.New("no access token configured")
 
-const DefaultServerAddr = "binboi.com:8081"
+const (
+	DefaultServerAddr = "binboi.com:8081"
+	DefaultAPIURL     = "https://api.binboi.com"
+)
 
 type Config struct {
 	Token      string `json:"token"`
 	ServerAddr string `json:"server_addr"`
+	APIURL     string `json:"api_url"`
 }
 
 func configPath() (string, error) {
@@ -34,6 +38,9 @@ func configPath() (string, error) {
 func SaveConfig(cfg Config) error {
 	if cfg.ServerAddr == "" {
 		cfg.ServerAddr = DefaultServerAddr
+	}
+	if cfg.APIURL == "" {
+		cfg.APIURL = DefaultAPIURL
 	}
 
 	path, err := configPath()
@@ -85,6 +92,24 @@ func ResolveServerAddr(explicit string) string {
 	return DefaultServerAddr
 }
 
+// ResolveAPIURL returns the control-plane API base URL, checking (in order):
+// explicit argument → BINBOI_API_URL env var → config.json api_url →
+// DefaultAPIURL.
+func ResolveAPIURL(explicit string) string {
+	if u := strings.TrimSpace(explicit); u != "" {
+		return strings.TrimRight(u, "/")
+	}
+	if u := strings.TrimSpace(os.Getenv("BINBOI_API_URL")); u != "" {
+		return strings.TrimRight(u, "/")
+	}
+	if cfg, err := LoadConfig(); err == nil {
+		if u := strings.TrimSpace(cfg.APIURL); u != "" {
+			return strings.TrimRight(u, "/")
+		}
+	}
+	return DefaultAPIURL
+}
+
 func LoadConfig() (Config, error) {
 	path, err := configPath()
 	if err != nil {
@@ -104,6 +129,17 @@ func LoadConfig() (Config, error) {
 		return Config{}, fmt.Errorf("parse config: %w", err)
 	}
 	return cfg, nil
+}
+
+// ClearToken removes the auth token from config.json while preserving
+// server_addr and any other fields.
+func ClearToken() error {
+	cfg, err := LoadConfig()
+	if err != nil && !errors.Is(err, ErrTokenNotFound) {
+		return err
+	}
+	cfg.Token = ""
+	return SaveConfig(cfg)
 }
 
 func LoadToken() (string, error) {
