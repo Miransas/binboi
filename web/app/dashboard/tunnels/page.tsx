@@ -1,20 +1,28 @@
 "use client";
 
+import { Fragment, useState } from "react";
 import useSWR from "swr";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Activity,
   AlertTriangle,
   ArrowUp,
+  ChevronDown,
+  ChevronRight,
   Clock,
   ExternalLink,
   Globe,
   RefreshCcw,
+  Terminal,
   Wifi,
   WifiOff,
 } from "lucide-react";
 
-import { fetchControlPlane, type ControlPlaneTunnel } from "@/lib/controlplane";
+import {
+  fetchControlPlane,
+  type ControlPlaneTunnel,
+  type ControlPlaneRequest,
+} from "@/lib/controlplane";
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -46,6 +54,45 @@ function fmtBytes(n: number): string {
   return `${n} B`;
 }
 
+function fmtTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  });
+}
+
+function fmtDuration(ms: number): string {
+  if (ms < 1000) return `${ms}ms`;
+  return `${(ms / 1000).toFixed(1)}s`;
+}
+
+function lastRequestAt(subdomain: string, requests: ControlPlaneRequest[]): string | undefined {
+  const hits = requests.filter((r) => r.tunnel_subdomain === subdomain);
+  if (hits.length === 0) return undefined;
+  return hits.reduce((a, b) => (a.created_at > b.created_at ? a : b)).created_at;
+}
+
+// ── terminal log helpers ──────────────────────────────────────────────────────
+
+const METHOD_COLOR: Record<string, string> = {
+  GET: "text-blue-400",
+  POST: "text-emerald-400",
+  PUT: "text-amber-400",
+  PATCH: "text-amber-400",
+  DELETE: "text-red-400",
+  HEAD: "text-zinc-500",
+  OPTIONS: "text-zinc-500",
+};
+
+function statusColor(code: number): string {
+  if (code >= 500) return "text-red-400";
+  if (code >= 400) return "text-amber-400";
+  if (code >= 200) return "text-emerald-400";
+  return "text-zinc-500";
+}
+
 function StatusBadge({ status }: { status: ControlPlaneTunnel["status"] }) {
   const map = {
     ACTIVE:   { dot: "bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]", text: "text-emerald-400", label: "Active" },
@@ -69,18 +116,35 @@ const row       = { hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0, 
 // ── page ──────────────────────────────────────────────────────────────────────
 
 export default function TunnelsPage() {
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+  const toggle = (id: string) =>
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+
   const { data, error, mutate, isLoading } = useSWR(
     "/api/v1/tunnels",
     (path: string) => fetchControlPlane<ControlPlaneTunnel[]>(path),
     { refreshInterval: 5000, revalidateOnFocus: false },
   );
 
+  const { data: reqData } = useSWR(
+    "/api/v1/requests",
+    (path: string) => fetchControlPlane<ControlPlaneRequest[]>(path),
+    { refreshInterval: 3000, revalidateOnFocus: false },
+  );
+
   const tunnels: ControlPlaneTunnel[] = Array.isArray(data) ? data : [];
-  const active         = tunnels.filter((t) => t.status === "ACTIVE").length;
-  const inactive       = tunnels.filter((t) => t.status === "INACTIVE").length;
-  const totalRequests  = tunnels.reduce((sum, t) => sum + t.request_count, 0);
-  const totalBytes     = tunnels.reduce((sum, t) => sum + t.bytes_out, 0);
-  const hasError       = error != null;
+  const requests: ControlPlaneRequest[] = Array.isArray(reqData) ? reqData : [];
+
+  const active        = tunnels.filter((t) => t.status === "ACTIVE").length;
+  const inactive      = tunnels.filter((t) => t.status === "INACTIVE").length;
+  const totalRequests = tunnels.reduce((sum, t) => sum + t.request_count, 0);
+  const totalBytes    = tunnels.reduce((sum, t) => sum + t.bytes_out, 0);
+  const hasError      = error != null;
 
   return (
     <motion.main
@@ -122,11 +186,11 @@ export default function TunnelsPage() {
         {/* ── Stats ──────────────────────────────────────────────────────── */}
         <motion.div variants={row} className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
           {[
-            { label: "Total",     value: String(tunnels.length),            color: "text-white",        icon: Globe },
-            { label: "Active",    value: String(active),                    color: "text-emerald-400",  icon: Wifi },
-            { label: "Inactive",  value: String(inactive),                  color: "text-zinc-500",     icon: WifiOff },
-            { label: "Requests",  value: totalRequests.toLocaleString(),    color: "text-miransas-cyan",icon: Activity },
-            { label: "Data out",  value: fmtBytes(totalBytes),              color: "text-violet-400",   icon: ArrowUp },
+            { label: "Total",    value: String(tunnels.length),         color: "text-white",         icon: Globe },
+            { label: "Active",   value: String(active),                 color: "text-emerald-400",   icon: Wifi },
+            { label: "Inactive", value: String(inactive),               color: "text-zinc-500",      icon: WifiOff },
+            { label: "Requests", value: totalRequests.toLocaleString(), color: "text-miransas-cyan", icon: Activity },
+            { label: "Data out", value: fmtBytes(totalBytes),           color: "text-violet-400",    icon: ArrowUp },
           ].map((s) => (
             <div key={s.label} className="rounded-2xl border border-white/[0.06] bg-zinc-900/20 px-6 py-5 backdrop-blur-sm">
               <div className="mb-2 flex items-center gap-2 text-zinc-600">
@@ -191,9 +255,10 @@ export default function TunnelsPage() {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[860px] text-left text-sm">
+              <table className="w-full min-w-[900px] text-left text-sm">
                 <thead>
                   <tr className="border-b border-white/[0.04] text-[10px] font-bold uppercase tracking-widest text-zinc-600">
+                    <th className="w-8 px-4 py-3.5" />
                     <th className="px-6 py-3.5">Subdomain</th>
                     <th className="px-6 py-3.5">Status</th>
                     <th className="px-6 py-3.5">Target</th>
@@ -203,65 +268,150 @@ export default function TunnelsPage() {
                         <ArrowUp className="h-3 w-3" /> Data out
                       </span>
                     </th>
-                    <th className="px-4 py-3.5">Last active</th>
+                    <th className="px-4 py-3.5">Last request</th>
                     <th className="px-6 py-3.5" />
                   </tr>
                 </thead>
-                <AnimatePresence mode="popLayout">
-                  <motion.tbody className="divide-y divide-white/[0.04]">
-                    {tunnels.map((t) => (
-                      <motion.tr
-                        key={t.id}
-                        layout
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="group hover:bg-white/[0.02]"
-                      >
-                        <td className="px-6 py-4">
-                          <div className="font-mono font-semibold text-white">{t.subdomain}</div>
-                          <div className="mt-0.5 truncate text-[11px] text-zinc-600">{t.public_url}</div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <StatusBadge status={t.status} />
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className="font-mono text-xs text-zinc-400">{t.target}</span>
-                        </td>
-                        <td className="px-4 py-4">
-                          <span className="text-zinc-300">{t.request_count.toLocaleString()}</span>
-                        </td>
-                        <td className="px-4 py-4">
-                          <span className="flex items-center gap-1 text-xs text-violet-400">
-                            <ArrowUp className="h-3 w-3 shrink-0" />
-                            {fmtBytes(t.bytes_out)}
-                          </span>
-                        </td>
-                        <td className="px-4 py-4">
-                          <div className="flex items-center gap-1.5 text-xs text-zinc-500">
-                            <Clock className="h-3 w-3 shrink-0" />
-                            {t.status === "ACTIVE"
-                              ? <span className="text-emerald-400">now</span>
-                              : fmtRelative(t.last_connected_at)}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 text-right">
-                          {t.public_url && (
-                            <a
-                              href={t.public_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 rounded-lg border border-white/[0.06] px-2.5 py-1.5 text-xs text-zinc-500 opacity-0 transition hover:text-zinc-300 group-hover:opacity-100"
-                            >
-                              Open
-                              <ExternalLink className="h-3 w-3" />
-                            </a>
+                <tbody className="divide-y divide-white/[0.04]">
+                  <AnimatePresence mode="popLayout">
+                    {tunnels.map((t) => {
+                      const lastReq = lastRequestAt(t.subdomain, requests);
+                      const isOpen  = expanded.has(t.id);
+                      const tunnelRequests = requests
+                        .filter((r) => r.tunnel_subdomain === t.subdomain)
+                        .slice(0, 50);
+
+                      return (
+                        <Fragment key={t.id}>
+                          <motion.tr
+                            layout
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="group hover:bg-white/[0.02]"
+                          >
+                            {/* expand toggle */}
+                            <td className="px-4 py-4">
+                              <button
+                                onClick={() => toggle(t.id)}
+                                className="rounded-md p-1 text-zinc-600 transition hover:bg-white/[0.06] hover:text-zinc-300"
+                                title={isOpen ? "Collapse request log" : "Expand request log"}
+                              >
+                                {isOpen
+                                  ? <ChevronDown className="h-3.5 w-3.5" />
+                                  : <ChevronRight className="h-3.5 w-3.5" />
+                                }
+                              </button>
+                            </td>
+
+                            {/* Subdomain */}
+                            <td className="px-6 py-4">
+                              <div className="font-mono font-semibold text-white">{t.subdomain}</div>
+                              <div className="mt-0.5 truncate text-[11px] text-zinc-600">{t.public_url}</div>
+                            </td>
+
+                            {/* Status */}
+                            <td className="px-6 py-4">
+                              <StatusBadge status={t.status} />
+                            </td>
+
+                            {/* Target */}
+                            <td className="px-6 py-4">
+                              <span className="font-mono text-xs text-zinc-400">{t.target}</span>
+                            </td>
+
+                            {/* Requests */}
+                            <td className="px-4 py-4">
+                              <span className="text-zinc-300">{t.request_count.toLocaleString()}</span>
+                            </td>
+
+                            {/* Data out */}
+                            <td className="px-4 py-4">
+                              <span className="flex items-center gap-1 text-xs text-violet-400">
+                                <ArrowUp className="h-3 w-3 shrink-0" />
+                                {fmtBytes(t.bytes_out)}
+                              </span>
+                            </td>
+
+                            {/* Last request */}
+                            <td className="px-4 py-4">
+                              <div className="flex items-center gap-1.5 text-xs text-zinc-500">
+                                <Clock className="h-3 w-3 shrink-0" />
+                                {t.status === "ACTIVE" && !lastReq
+                                  ? <span className="text-emerald-400">connected</span>
+                                  : lastReq
+                                    ? fmtRelative(lastReq)
+                                    : <span className="text-zinc-700">—</span>
+                                }
+                              </div>
+                            </td>
+
+                            {/* Actions */}
+                            <td className="px-6 py-4 text-right">
+                              {t.public_url && (
+                                <a
+                                  href={t.public_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1 rounded-lg border border-white/[0.06] px-2.5 py-1.5 text-xs text-zinc-500 opacity-0 transition hover:text-zinc-300 group-hover:opacity-100"
+                                >
+                                  Open
+                                  <ExternalLink className="h-3 w-3" />
+                                </a>
+                              )}
+                            </td>
+                          </motion.tr>
+
+                          {/* ── expanded request log row ── */}
+                          {isOpen && (
+                            <tr>
+                              <td colSpan={8} className="bg-zinc-950/60 px-6 py-3">
+                                <div className="overflow-hidden rounded-xl border border-white/[0.04] bg-zinc-950/80">
+                                  {/* header bar */}
+                                  <div className="flex items-center gap-2 border-b border-white/[0.04] bg-black/40 px-4 py-2.5">
+                                    <Terminal className="h-3.5 w-3.5 text-zinc-600" />
+                                    <span className="font-mono text-[10px] font-semibold uppercase tracking-widest text-zinc-600">
+                                      request log · {t.subdomain}
+                                    </span>
+                                    <span className="ml-auto font-mono text-[10px] text-zinc-700">
+                                      {tunnelRequests.length} recent
+                                    </span>
+                                  </div>
+
+                                  {/* rows */}
+                                  <div className="max-h-48 overflow-y-auto px-4 py-2 font-mono text-[11px] leading-6">
+                                    {tunnelRequests.length === 0 ? (
+                                      <p className="py-4 text-center text-zinc-700">
+                                        No requests recorded yet for this tunnel.
+                                      </p>
+                                    ) : (
+                                      tunnelRequests.map((r) => (
+                                        <div
+                                          key={r.id}
+                                          className="flex items-baseline gap-2 hover:bg-white/[0.02]"
+                                        >
+                                          <span className="shrink-0 text-zinc-700">{fmtTime(r.created_at)}</span>
+                                          <span className={`w-14 shrink-0 font-bold ${METHOD_COLOR[r.method] ?? "text-zinc-400"}`}>
+                                            {r.method}
+                                          </span>
+                                          <span className="min-w-0 flex-1 truncate text-zinc-400">{r.path}</span>
+                                          <span className={`shrink-0 font-semibold ${statusColor(r.status)}`}>
+                                            {r.status}
+                                          </span>
+                                          <span className="shrink-0 text-zinc-700">{fmtDuration(r.duration_ms)}</span>
+                                        </div>
+                                      ))
+                                    )}
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
                           )}
-                        </td>
-                      </motion.tr>
-                    ))}
-                  </motion.tbody>
-                </AnimatePresence>
+                        </Fragment>
+                      );
+                    })}
+                  </AnimatePresence>
+                </tbody>
               </table>
             </div>
           )}
